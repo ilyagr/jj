@@ -16,7 +16,7 @@ jj commit -m 'third'
 
 comment "We are in a repo with three commits, all
 editing the same line:"
-run_command "jj log"
+run_command "jj-old log"
 
 run_command "jj diff -r first"
 run_command "jj diff -r second"
@@ -40,7 +40,7 @@ comment "Let's now instead make \"second\" and \"third\"
 sibling and merge them:"
 run_command "jj rebase -s second -d first"
 run_command "jj merge second third -m merged"
-run_command "jj log"
+run_command "jj-old log"
 comment "Again, because the merge commit has the
 changes from all three commits, it has no
 conflict."

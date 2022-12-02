@@ -1,0 +1,3015 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   sodipodi:docname="demo_svg-term-inkscaped-notomono.svg"
+   id="svg1814"
+   version="1.1"
+   height="2171"
+   width="850"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15)">
+  <metadata
+     id="metadata1820">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs1818" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1362"
+     inkscape:window-height="908"
+     id="namedview1816"
+     showgrid="false"
+     inkscape:zoom="1.4715356"
+     inkscape:cx="283.5567"
+     inkscape:cy="1791.6942"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1806"
+     inkscape:document-rotation="0" />
+  <rect
+     width="850"
+     height="2171"
+     rx="0"
+     ry="0"
+     class="a"
+     id="rect912"
+     x="0"
+     y="0"
+     style="opacity:1" />
+  <svg
+     height="2171"
+     viewBox="0 0 85 217.1"
+     width="850"
+     version="1.1"
+     id="svg1812">
+    <style
+       id="style914">.a{fill:#282d35}.c,.d{fill:#b9c0cb;white-space:pre}.d{fill:#a8cc8c}.e{fill:#dbab79}.e,.h,.i,.j{white-space:pre}.h{fill:#71bef2;font-weight:700}.i,.j{fill:#6f7783}.j{fill:#d290e3}.j,.k,.l{font-weight:700}.k{fill:#6f7783;white-space:pre}.l{fill:#dbab79}.l,.m,.n{white-space:pre}.m{fill:#66c2cd;font-weight:700}.n{fill:#73bef3}.n,.o,.p{font-weight:700}.o{fill:#a8cc8c;white-space:pre}.p{fill:#b9c0cb}.p,.q,.r,.s,.t{white-space:pre}.q{fill:#d290e4;font-weight:700}.r,.s,.t{fill:#66c2cd}.s,.t{fill:#d290e4}.t{fill:#e88388}</style>
+    <g
+       font-family="Monaco, Consolas, Menlo, 'Bitstream Vera Sans Mono', 'Powerline Symbols', monospace"
+       font-size="1.67px"
+       id="g1810"
+       style="opacity:1">
+      <defs
+         id="defs988">
+        <symbol
+           id="1">
+          <text
+             y="1.67"
+             class="c"
+             id="text916">$</text>
+          <text
+             x="2.0039999"
+             y="1.67"
+             class="c"
+             id="text918">jj-old</text>
+          <text
+             x="9.0179996"
+             y="1.67"
+             class="c"
+             id="text920">log</text>
+        </symbol>
+        <symbol
+           id="2">
+          <text
+             y="1.67"
+             class="c"
+             id="text923">│</text>
+          <text
+             x="3.006"
+             y="1.67"
+             class="c"
+             id="text925">third</text>
+        </symbol>
+        <symbol
+           id="3">
+          <text
+             y="1.67"
+             class="c"
+             id="text928">│</text>
+          <text
+             x="3.006"
+             y="1.67"
+             class="c"
+             id="text930">second</text>
+        </symbol>
+        <symbol
+           id="4">
+          <text
+             y="1.67"
+             class="c"
+             id="text933">│</text>
+          <text
+             x="3.006"
+             y="1.67"
+             class="c"
+             id="text935">first</text>
+        </symbol>
+        <symbol
+           id="5">
+          <text
+             x="3.006"
+             y="1.67"
+             class="d"
+             id="text938">(empty)</text>
+          <text
+             x="11.022"
+             y="1.67"
+             class="c"
+             id="text940">(no</text>
+          <text
+             x="15.03"
+             y="1.67"
+             class="c"
+             id="text942">description</text>
+          <text
+             x="27.054001"
+             y="1.67"
+             class="c"
+             id="text944">set)</text>
+        </symbol>
+        <symbol
+           id="6">
+          <text
+             y="1.67"
+             class="e"
+             id="text947">Modified</text>
+          <text
+             x="9.0179996"
+             y="1.67"
+             class="e"
+             id="text949">regular</text>
+          <text
+             x="17.034"
+             y="1.67"
+             class="e"
+             id="text951">file</text>
+          <text
+             x="22.044001"
+             y="1.67"
+             class="e"
+             id="text953">file:</text>
+        </symbol>
+        <symbol
+           id="7">
+          <text
+             y="1.67"
+             class="c"
+             id="text956">Rebased</text>
+          <text
+             x="8.0159998"
+             y="1.67"
+             class="c"
+             id="text958">2</text>
+          <text
+             x="10.02"
+             y="1.67"
+             class="c"
+             id="text960">commits</text>
+        </symbol>
+        <symbol
+           id="8">
+          <text
+             y="1.67"
+             class="c"
+             id="text963">Added</text>
+          <text
+             x="6.0120001"
+             y="1.67"
+             class="c"
+             id="text965">0</text>
+          <text
+             x="8.0159998"
+             y="1.67"
+             class="c"
+             id="text967">files,</text>
+          <text
+             x="15.03"
+             y="1.67"
+             class="c"
+             id="text969">modified</text>
+          <text
+             x="24.048"
+             y="1.67"
+             class="c"
+             id="text971">1</text>
+          <text
+             x="26.052"
+             y="1.67"
+             class="c"
+             id="text973">files,</text>
+          <text
+             x="33.066002"
+             y="1.67"
+             class="c"
+             id="text975">removed</text>
+          <text
+             x="41.082001"
+             y="1.67"
+             class="c"
+             id="text977">0</text>
+          <text
+             x="43.085999"
+             y="1.67"
+             class="c"
+             id="text979">files</text>
+        </symbol>
+        <symbol
+           id="a">
+          <path
+             fill="transparent"
+             d="M 0,0 H 85 V 101 H 0 Z"
+             id="path982" />
+        </symbol>
+        <symbol
+           id="b">
+          <path
+             fill="#6f7683"
+             d="M 0,0 H 1.102 V 2.171 H 0 Z"
+             id="path985" />
+        </symbol>
+      </defs>
+      <path
+         class="a"
+         d="M 0,0 H 85 V 217.1 H 0 Z"
+         id="path990" />
+      <svg
+         width="85"
+         version="1.1"
+         id="svg1808"
+         height="100%">
+        <svg
+           version="1.1"
+           id="svg1806"
+           width="100%"
+           height="100%">
+          <g
+             id="use992">
+            <path
+               fill="transparent"
+               d="M 0,0 H 85 V 101 H 0 Z"
+               id="path1822" />
+          </g>
+          <g
+             id="use994"
+             transform="translate(-0.004,195.36501)">
+            <path
+               fill="#6f7683"
+               d="M 0,0 H 1.102 V 2.171 H 0 Z"
+               id="path1826" />
+          </g>
+          <text
+             y="1.67"
+             class="c"
+             id="text996"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Initialized</text>
+          <text
+             x="12.024"
+             y="1.67"
+             class="c"
+             id="text998"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">repo</text>
+          <text
+             x="17.034"
+             y="1.67"
+             class="c"
+             id="text1000"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">in</text>
+          <text
+             x="20.040001"
+             y="1.67"
+             class="c"
+             id="text1002"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">&quot;.&quot;</text>
+          <text
+             y="3.8410001"
+             class="c"
+             id="text1004"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="3.8410001"
+             class="c"
+             id="text1006"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="3.8410001"
+             class="c"
+             id="text1008"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="3.8410001"
+             class="c"
+             id="text1010"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="3.8410001"
+             class="h"
+             id="text1012"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">7</text>
+          <text
+             x="22.044001"
+             y="3.8410001"
+             class="i"
+             id="text1014"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">d38f1</text>
+          <text
+             x="28.056"
+             y="3.8410001"
+             class="c"
+             id="text1016"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="3.8410001"
+             class="c"
+             id="text1018"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="3.8410001"
+             class="c"
+             id="text1020"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <text
+             y="6.0120001"
+             class="c"
+             id="text1022"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="6.0120001"
+             class="c"
+             id="text1024"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="6.0120001"
+             class="c"
+             id="text1026"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="6.0120001"
+             class="c"
+             id="text1028"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="6.0120001"
+             class="h"
+             id="text1030"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">b4</text>
+          <text
+             x="23.046"
+             y="6.0120001"
+             class="i"
+             id="text1032"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">78bb</text>
+          <text
+             x="28.056"
+             y="6.0120001"
+             class="c"
+             id="text1034"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="6.0120001"
+             class="c"
+             id="text1036"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="6.0120001"
+             class="c"
+             id="text1038"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <text
+             y="8.1829996"
+             class="c"
+             id="text1040"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="8.1829996"
+             class="c"
+             id="text1042"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="8.1829996"
+             class="c"
+             id="text1044"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="8.1829996"
+             class="c"
+             id="text1046"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="8.1829996"
+             class="h"
+             id="text1048"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="22.044001"
+             y="8.1829996"
+             class="i"
+             id="text1050"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">469ae</text>
+          <text
+             x="28.056"
+             y="8.1829996"
+             class="c"
+             id="text1052"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="8.1829996"
+             class="c"
+             id="text1054"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="8.1829996"
+             class="c"
+             id="text1056"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <text
+             y="12.525"
+             class="d"
+             id="text1058"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="12.525"
+             class="d"
+             id="text1060"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">We</text>
+          <text
+             x="5.0100002"
+             y="12.525"
+             class="d"
+             id="text1062"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">are</text>
+          <text
+             x="9.0179996"
+             y="12.525"
+             class="d"
+             id="text1064"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">in</text>
+          <text
+             x="12.024"
+             y="12.525"
+             class="d"
+             id="text1066"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">a</text>
+          <text
+             x="14.028"
+             y="12.525"
+             class="d"
+             id="text1068"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">repo</text>
+          <text
+             x="19.038"
+             y="12.525"
+             class="d"
+             id="text1070"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">with</text>
+          <text
+             x="24.048"
+             y="12.525"
+             class="d"
+             id="text1072"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">three</text>
+          <text
+             x="30.059999"
+             y="12.525"
+             class="d"
+             id="text1074"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commits,</text>
+          <text
+             x="39.077999"
+             y="12.525"
+             class="d"
+             id="text1076"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">all</text>
+          <text
+             y="14.696"
+             class="d"
+             id="text1078"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="14.696"
+             class="d"
+             id="text1080"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">editing</text>
+          <text
+             x="10.02"
+             y="14.696"
+             class="d"
+             id="text1082"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             x="14.028"
+             y="14.696"
+             class="d"
+             id="text1084"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">same</text>
+          <text
+             x="19.038"
+             y="14.696"
+             class="d"
+             id="text1086"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">line:</text>
+          <g
+             id="use1088"
+             transform="translate(0,17.368)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1830">$</text>
+            <text
+               x="2.0039999"
+               y="1.67"
+               class="c"
+               id="text1832">jj-old</text>
+            <text
+               x="9.0179996"
+               y="1.67"
+               class="c"
+               id="text1834">log</text>
+          </g>
+          <text
+             y="21.209"
+             class="c"
+             id="text1090"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="3.006"
+             y="21.209"
+             class="j"
+             id="text1092"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">NL</text>
+          <text
+             x="5.0100002"
+             y="21.209"
+             class="k"
+             id="text1094"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">SNMX</text>
+          <text
+             x="10.02"
+             y="21.209"
+             class="l"
+             id="text1096"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="21.209"
+             class="m"
+             id="text1098"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="21.209"
+             class="n"
+             id="text1100"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="23.046"
+             y="21.209"
+             class="k"
+             id="text1102"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">469ae</text>
+          <text
+             y="23.379999"
+             class="c"
+             id="text1104"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="3.006"
+             y="23.379999"
+             class="o"
+             id="text1106"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(empty)</text>
+          <text
+             x="11.022"
+             y="23.379999"
+             class="p"
+             id="text1108"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="15.03"
+             y="23.379999"
+             class="p"
+             id="text1110"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="27.054001"
+             y="23.379999"
+             class="p"
+             id="text1112"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <text
+             y="25.551001"
+             class="c"
+             id="text1114"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="25.551001"
+             class="q"
+             id="text1116"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">L</text>
+          <text
+             x="4.0079999"
+             y="25.551001"
+             class="i"
+             id="text1118"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">LMTPY</text>
+          <text
+             x="10.02"
+             y="25.551001"
+             class="e"
+             id="text1120"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="25.551001"
+             class="r"
+             id="text1122"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="25.551001"
+             class="s"
+             id="text1124"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="28.056"
+             y="25.551001"
+             class="h"
+             id="text1126"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">b47b</text>
+          <text
+             x="32.063999"
+             y="25.551001"
+             class="i"
+             id="text1128"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">2f</text>
+          <g
+             id="use1130"
+             transform="translate(0,26.052)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1838">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1840">third</text>
+          </g>
+          <text
+             y="29.893"
+             class="c"
+             id="text1132"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="29.893"
+             class="q"
+             id="text1134"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">V</text>
+          <text
+             x="4.0079999"
+             y="29.893"
+             class="i"
+             id="text1136"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">SYKRZ</text>
+          <text
+             x="10.02"
+             y="29.893"
+             class="e"
+             id="text1138"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="29.893"
+             class="r"
+             id="text1140"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="29.893"
+             class="s"
+             id="text1142"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="29.058001"
+             y="29.893"
+             class="h"
+             id="text1144"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">6</text>
+          <text
+             x="30.059999"
+             y="29.893"
+             class="i"
+             id="text1146"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">28320</text>
+          <g
+             id="use1148"
+             transform="translate(0,30.393999)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1844">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1846">second</text>
+          </g>
+          <text
+             y="34.235001"
+             class="c"
+             id="text1150"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="34.235001"
+             class="q"
+             id="text1152"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">NQ</text>
+          <text
+             x="5.0100002"
+             y="34.235001"
+             class="i"
+             id="text1154"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZVOU</text>
+          <text
+             x="10.02"
+             y="34.235001"
+             class="e"
+             id="text1156"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="34.235001"
+             class="r"
+             id="text1158"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="34.235001"
+             class="s"
+             id="text1160"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             x="28.056"
+             y="34.235001"
+             class="h"
+             id="text1162"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">bb</text>
+          <text
+             x="30.059999"
+             y="34.235001"
+             class="i"
+             id="text1164"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">d56d</text>
+          <g
+             id="use1166"
+             transform="translate(0,34.736)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1850">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1852">first</text>
+          </g>
+          <text
+             y="38.577"
+             class="c"
+             id="text1168"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="38.577"
+             class="q"
+             id="text1170"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Z</text>
+          <text
+             x="4.0079999"
+             y="38.577"
+             class="i"
+             id="text1172"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZZZZZ</text>
+          <text
+             x="10.02"
+             y="38.577"
+             class="e"
+             id="text1174"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="12.024"
+             y="38.577"
+             class="r"
+             id="text1176"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">53</text>
+          <text
+             x="15.03"
+             y="38.577"
+             class="r"
+             id="text1178"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">years</text>
+          <text
+             x="21.042"
+             y="38.577"
+             class="r"
+             id="text1180"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ago</text>
+          <text
+             x="25.049999"
+             y="38.577"
+             class="h"
+             id="text1182"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">0</text>
+          <text
+             x="26.052"
+             y="38.577"
+             class="i"
+             id="text1184"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">00000</text>
+          <g
+             id="use1186"
+             transform="translate(0,39.077999)">
+            <text
+               x="3.006"
+               y="1.67"
+               class="d"
+               id="text1856">(empty)</text>
+            <text
+               x="11.022"
+               y="1.67"
+               class="c"
+               id="text1858">(no</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1860">description</text>
+            <text
+               x="27.054001"
+               y="1.67"
+               class="c"
+               id="text1862">set)</text>
+          </g>
+          <text
+             y="42.918999"
+             class="c"
+             id="text1188"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="42.918999"
+             class="c"
+             id="text1190"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="42.918999"
+             class="c"
+             id="text1192"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">diff</text>
+          <text
+             x="10.02"
+             y="42.918999"
+             class="c"
+             id="text1194"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-r</text>
+          <text
+             x="13.026"
+             y="42.918999"
+             class="c"
+             id="text1196"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             y="45.09"
+             class="e"
+             id="text1198"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Added</text>
+          <text
+             x="6.0120001"
+             y="45.09"
+             class="e"
+             id="text1200"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">regular</text>
+          <text
+             x="14.028"
+             y="45.09"
+             class="e"
+             id="text1202"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">file</text>
+          <text
+             x="19.038"
+             y="45.09"
+             class="e"
+             id="text1204"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">file:</text>
+          <text
+             x="8.0159998"
+             y="47.261002"
+             class="d"
+             id="text1206"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="9.0179996"
+             y="47.261002"
+             class="c"
+             id="text1208"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">:</text>
+          <text
+             x="11.022"
+             y="47.261002"
+             class="d"
+             id="text1210"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             y="49.431999"
+             class="c"
+             id="text1212"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="49.431999"
+             class="c"
+             id="text1214"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="49.431999"
+             class="c"
+             id="text1216"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">diff</text>
+          <text
+             x="10.02"
+             y="49.431999"
+             class="c"
+             id="text1218"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-r</text>
+          <text
+             x="13.026"
+             y="49.431999"
+             class="c"
+             id="text1220"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <g
+             id="use1222"
+             transform="translate(0,49.932999)">
+            <text
+               y="1.67"
+               class="e"
+               id="text1866">Modified</text>
+            <text
+               x="9.0179996"
+               y="1.67"
+               class="e"
+               id="text1868">regular</text>
+            <text
+               x="17.034"
+               y="1.67"
+               class="e"
+               id="text1870">file</text>
+            <text
+               x="22.044001"
+               y="1.67"
+               class="e"
+               id="text1872">file:</text>
+          </g>
+          <text
+             x="3.006"
+             y="53.773998"
+             class="t"
+             id="text1224"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="8.0159998"
+             y="53.773998"
+             class="d"
+             id="text1226"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="9.0179996"
+             y="53.773998"
+             class="c"
+             id="text1228"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">:</text>
+          <text
+             x="11.022"
+             y="53.773998"
+             class="t"
+             id="text1230"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             x="16.032"
+             y="53.773998"
+             class="d"
+             id="text1232"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             y="55.945"
+             class="c"
+             id="text1234"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="55.945"
+             class="c"
+             id="text1236"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="55.945"
+             class="c"
+             id="text1238"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">diff</text>
+          <text
+             x="10.02"
+             y="55.945"
+             class="c"
+             id="text1240"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-r</text>
+          <text
+             x="13.026"
+             y="55.945"
+             class="c"
+             id="text1242"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <g
+             id="use1244"
+             transform="translate(0,56.445999)">
+            <text
+               y="1.67"
+               class="e"
+               id="text1876">Modified</text>
+            <text
+               x="9.0179996"
+               y="1.67"
+               class="e"
+               id="text1878">regular</text>
+            <text
+               x="17.034"
+               y="1.67"
+               class="e"
+               id="text1880">file</text>
+            <text
+               x="22.044001"
+               y="1.67"
+               class="e"
+               id="text1882">file:</text>
+          </g>
+          <text
+             x="3.006"
+             y="60.286999"
+             class="t"
+             id="text1246"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="8.0159998"
+             y="60.286999"
+             class="d"
+             id="text1248"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="9.0179996"
+             y="60.286999"
+             class="c"
+             id="text1250"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">:</text>
+          <text
+             x="11.022"
+             y="60.286999"
+             class="t"
+             id="text1252"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="17.034"
+             y="60.286999"
+             class="d"
+             id="text1254"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             y="64.628998"
+             class="d"
+             id="text1256"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="64.628998"
+             class="d"
+             id="text1258"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Let's</text>
+          <text
+             x="8.0159998"
+             y="64.628998"
+             class="d"
+             id="text1260"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">reorder</text>
+          <text
+             x="16.032"
+             y="64.628998"
+             class="d"
+             id="text1262"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             x="20.040001"
+             y="64.628998"
+             class="d"
+             id="text1264"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="27.054001"
+             y="64.628998"
+             class="d"
+             id="text1266"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">and</text>
+          <text
+             x="31.062"
+             y="64.628998"
+             class="d"
+             id="text1268"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="37.074001"
+             y="64.628998"
+             class="d"
+             id="text1270"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commits:</text>
+          <text
+             y="68.971001"
+             class="c"
+             id="text1272"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="68.971001"
+             class="c"
+             id="text1274"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="68.971001"
+             class="c"
+             id="text1276"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">rebase</text>
+          <text
+             x="12.024"
+             y="68.971001"
+             class="c"
+             id="text1278"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-s</text>
+          <text
+             x="15.03"
+             y="68.971001"
+             class="c"
+             id="text1280"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="21.042"
+             y="68.971001"
+             class="c"
+             id="text1282"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-d</text>
+          <text
+             x="24.048"
+             y="68.971001"
+             class="c"
+             id="text1284"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <g
+             id="use1286"
+             transform="translate(0,69.472)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1886">Rebased</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1888">2</text>
+            <text
+               x="10.02"
+               y="1.67"
+               class="c"
+               id="text1890">commits</text>
+          </g>
+          <text
+             y="73.313004"
+             class="c"
+             id="text1288"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="73.313004"
+             class="c"
+             id="text1290"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="73.313004"
+             class="c"
+             id="text1292"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="73.313004"
+             class="c"
+             id="text1294"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="73.313004"
+             class="h"
+             id="text1296"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">c2</text>
+          <text
+             x="23.046"
+             y="73.313004"
+             class="i"
+             id="text1298"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">65d7</text>
+          <text
+             x="28.056"
+             y="73.313004"
+             class="c"
+             id="text1300"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="73.313004"
+             class="c"
+             id="text1302"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="73.313004"
+             class="c"
+             id="text1304"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <g
+             id="use1306"
+             transform="translate(0,73.814003)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1894">Added</text>
+            <text
+               x="6.0120001"
+               y="1.67"
+               class="c"
+               id="text1896">0</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1898">files,</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1900">modified</text>
+            <text
+               x="24.048"
+               y="1.67"
+               class="c"
+               id="text1902">1</text>
+            <text
+               x="26.052"
+               y="1.67"
+               class="c"
+               id="text1904">files,</text>
+            <text
+               x="33.066002"
+               y="1.67"
+               class="c"
+               id="text1906">removed</text>
+            <text
+               x="41.082001"
+               y="1.67"
+               class="c"
+               id="text1908">0</text>
+            <text
+               x="43.085999"
+               y="1.67"
+               class="c"
+               id="text1910">files</text>
+          </g>
+          <text
+             y="77.654999"
+             class="c"
+             id="text1308"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="77.654999"
+             class="c"
+             id="text1310"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="77.654999"
+             class="c"
+             id="text1312"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">rebase</text>
+          <text
+             x="12.024"
+             y="77.654999"
+             class="c"
+             id="text1314"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-s</text>
+          <text
+             x="15.03"
+             y="77.654999"
+             class="c"
+             id="text1316"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="22.044001"
+             y="77.654999"
+             class="c"
+             id="text1318"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-d</text>
+          <text
+             x="25.049999"
+             y="77.654999"
+             class="c"
+             id="text1320"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             y="79.825996"
+             class="c"
+             id="text1322"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Rebased</text>
+          <text
+             x="8.0159998"
+             y="79.825996"
+             class="c"
+             id="text1324"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">1</text>
+          <text
+             x="10.02"
+             y="79.825996"
+             class="c"
+             id="text1326"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commits</text>
+          <text
+             y="81.997002"
+             class="c"
+             id="text1328"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="81.997002"
+             class="c"
+             id="text1330"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="81.997002"
+             class="c"
+             id="text1332"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">log</text>
+          <text
+             y="84.167999"
+             class="c"
+             id="text1334"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">◉</text>
+          <text
+             x="3.006"
+             y="84.167999"
+             class="q"
+             id="text1336"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">V</text>
+          <text
+             x="4.0079999"
+             y="84.167999"
+             class="i"
+             id="text1338"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">SYKRZ</text>
+          <text
+             x="10.02"
+             y="84.167999"
+             class="e"
+             id="text1340"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="84.167999"
+             class="r"
+             id="text1342"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="84.167999"
+             class="s"
+             id="text1344"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="29.058001"
+             y="84.167999"
+             class="h"
+             id="text1346"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">4</text>
+          <text
+             x="30.059999"
+             y="84.167999"
+             class="i"
+             id="text1348"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">88b68</text>
+          <g
+             id="use1350"
+             transform="translate(0,84.668999)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1914">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1916">second</text>
+          </g>
+          <text
+             y="88.510002"
+             class="c"
+             id="text1352"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="2.0039999"
+             y="88.510002"
+             class="c"
+             id="text1354"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="5.0100002"
+             y="88.510002"
+             class="j"
+             id="text1356"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">NL</text>
+          <text
+             x="7.0139999"
+             y="88.510002"
+             class="k"
+             id="text1358"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">SNMX</text>
+          <text
+             x="12.024"
+             y="88.510002"
+             class="l"
+             id="text1360"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="20.040001"
+             y="88.510002"
+             class="m"
+             id="text1362"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="24.048"
+             y="88.510002"
+             class="n"
+             id="text1364"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">c2</text>
+          <text
+             x="26.052"
+             y="88.510002"
+             class="k"
+             id="text1366"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">65d7</text>
+          <text
+             x="31.062"
+             y="88.510002"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;white-space:pre"
+             fill="#e88388"
+             font-weight="700"
+             id="text1368">conflict</text>
+          <text
+             y="90.681"
+             class="c"
+             id="text1370"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">├─╯</text>
+          <text
+             x="5.0100002"
+             y="90.681"
+             class="o"
+             id="text1372"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(empty)</text>
+          <text
+             x="13.026"
+             y="90.681"
+             class="p"
+             id="text1374"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="17.034"
+             y="90.681"
+             class="p"
+             id="text1376"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="29.058001"
+             y="90.681"
+             class="p"
+             id="text1378"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <text
+             y="92.851997"
+             class="c"
+             id="text1380"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">◉</text>
+          <text
+             x="3.006"
+             y="92.851997"
+             class="q"
+             id="text1382"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">L</text>
+          <text
+             x="4.0079999"
+             y="92.851997"
+             class="i"
+             id="text1384"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">LMTPY</text>
+          <text
+             x="10.02"
+             y="92.851997"
+             class="e"
+             id="text1386"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="92.851997"
+             class="r"
+             id="text1388"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="92.851997"
+             class="s"
+             id="text1390"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="28.056"
+             y="92.851997"
+             class="h"
+             id="text1392"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">8</text>
+          <text
+             x="29.058001"
+             y="92.851997"
+             class="i"
+             id="text1394"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">fddae</text>
+          <text
+             x="35.07"
+             y="92.851997"
+             class="t"
+             id="text1396"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">conflict</text>
+          <g
+             id="use1398"
+             transform="translate(0,93.352997)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1920">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1922">third</text>
+          </g>
+          <text
+             y="97.194"
+             class="c"
+             id="text1400"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">◉</text>
+          <text
+             x="3.006"
+             y="97.194"
+             class="q"
+             id="text1402"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">NQ</text>
+          <text
+             x="5.0100002"
+             y="97.194"
+             class="i"
+             id="text1404"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZVOU</text>
+          <text
+             x="10.02"
+             y="97.194"
+             class="e"
+             id="text1406"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="97.194"
+             class="r"
+             id="text1408"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="97.194"
+             class="s"
+             id="text1410"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             x="28.056"
+             y="97.194"
+             class="h"
+             id="text1412"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">bb</text>
+          <text
+             x="30.059999"
+             y="97.194"
+             class="i"
+             id="text1414"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">d56d</text>
+          <g
+             id="use1416"
+             transform="translate(0,97.695)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1926">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text1928">first</text>
+          </g>
+          <text
+             y="101.536"
+             class="c"
+             id="text1418"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">◉</text>
+          <text
+             x="3.006"
+             y="101.536"
+             class="q"
+             id="text1420"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Z</text>
+          <text
+             x="4.0079999"
+             y="101.536"
+             class="i"
+             id="text1422"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZZZZZ</text>
+          <text
+             x="10.02"
+             y="101.536"
+             class="e"
+             id="text1424"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="12.024"
+             y="101.536"
+             class="r"
+             id="text1426"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">53</text>
+          <text
+             x="15.03"
+             y="101.536"
+             class="r"
+             id="text1428"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">years</text>
+          <text
+             x="21.042"
+             y="101.536"
+             class="r"
+             id="text1430"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ago</text>
+          <text
+             x="25.049999"
+             y="101.536"
+             class="h"
+             id="text1432"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">0</text>
+          <text
+             x="26.052"
+             y="101.536"
+             class="i"
+             id="text1434"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">00000</text>
+          <g
+             id="use1436"
+             transform="translate(0,102.037)">
+            <text
+               x="3.006"
+               y="1.67"
+               class="d"
+               id="text1932">(empty)</text>
+            <text
+               x="11.022"
+               y="1.67"
+               class="c"
+               id="text1934">(no</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1936">description</text>
+            <text
+               x="27.054001"
+               y="1.67"
+               class="c"
+               id="text1938">set)</text>
+          </g>
+          <text
+             y="108.049"
+             class="d"
+             id="text1438"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="108.049"
+             class="d"
+             id="text1440"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">The</text>
+          <text
+             x="6.0120001"
+             y="108.049"
+             class="d"
+             id="text1442"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commit</text>
+          <text
+             x="13.026"
+             y="108.049"
+             class="d"
+             id="text1444"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">labeled</text>
+          <text
+             x="21.042"
+             y="108.049"
+             class="d"
+             id="text1446"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">&quot;third&quot;</text>
+          <text
+             x="29.058001"
+             y="108.049"
+             class="d"
+             id="text1448"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">has</text>
+          <text
+             x="33.066002"
+             y="108.049"
+             class="d"
+             id="text1450"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">a</text>
+          <text
+             x="35.07"
+             y="108.049"
+             class="d"
+             id="text1452"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">conflict,</text>
+          <text
+             y="110.22"
+             class="d"
+             id="text1454"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="110.22"
+             class="d"
+             id="text1456"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">as</text>
+          <text
+             x="5.0100002"
+             y="110.22"
+             class="d"
+             id="text1458"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">expected.</text>
+          <text
+             x="15.03"
+             y="110.22"
+             class="d"
+             id="text1460"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">What's</text>
+          <text
+             x="22.044001"
+             y="110.22"
+             class="d"
+             id="text1462"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">more</text>
+          <text
+             x="27.054001"
+             y="110.22"
+             class="d"
+             id="text1464"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">interesting</text>
+          <text
+             x="39.077999"
+             y="110.22"
+             class="d"
+             id="text1466"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">is</text>
+          <text
+             y="112.391"
+             class="d"
+             id="text1468"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="112.391"
+             class="d"
+             id="text1470"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">that</text>
+          <text
+             x="7.0139999"
+             y="112.391"
+             class="d"
+             id="text1472"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             x="11.022"
+             y="112.391"
+             class="d"
+             id="text1474"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">top</text>
+          <text
+             x="15.03"
+             y="112.391"
+             class="d"
+             id="text1476"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commit</text>
+          <text
+             x="22.044001"
+             y="112.391"
+             class="d"
+             id="text1478"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">has</text>
+          <text
+             x="26.052"
+             y="112.391"
+             class="d"
+             id="text1480"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">no</text>
+          <text
+             x="29.058001"
+             y="112.391"
+             class="d"
+             id="text1482"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">conflict!</text>
+          <text
+             x="39.077999"
+             y="112.391"
+             class="d"
+             id="text1484"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">That's</text>
+          <text
+             y="114.562"
+             class="d"
+             id="text1486"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="114.562"
+             class="d"
+             id="text1488"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">because</text>
+          <text
+             x="10.02"
+             y="114.562"
+             class="d"
+             id="text1490"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">it</text>
+          <text
+             x="13.026"
+             y="114.562"
+             class="d"
+             id="text1492"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">has</text>
+          <text
+             x="17.034"
+             y="114.562"
+             class="d"
+             id="text1494"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             x="21.042"
+             y="114.562"
+             class="d"
+             id="text1496"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">changes</text>
+          <text
+             x="29.058001"
+             y="114.562"
+             class="d"
+             id="text1498"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">from</text>
+          <text
+             x="34.068001"
+             y="114.562"
+             class="d"
+             id="text1500"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">all</text>
+          <text
+             x="38.076"
+             y="114.562"
+             class="d"
+             id="text1502"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">three</text>
+          <text
+             y="116.733"
+             class="d"
+             id="text1504"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="116.733"
+             class="d"
+             id="text1506"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commits</text>
+          <text
+             x="10.02"
+             y="116.733"
+             class="d"
+             id="text1508"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">applied</text>
+          <text
+             x="18.035999"
+             y="116.733"
+             class="d"
+             id="text1510"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">to</text>
+          <text
+             x="21.042"
+             y="116.733"
+             class="d"
+             id="text1512"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">it.</text>
+          <text
+             y="123.246"
+             class="d"
+             id="text1514"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="123.246"
+             class="d"
+             id="text1516"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Let's</text>
+          <text
+             x="8.0159998"
+             y="123.246"
+             class="d"
+             id="text1518"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">verify</text>
+          <text
+             x="15.03"
+             y="123.246"
+             class="d"
+             id="text1520"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">that</text>
+          <text
+             x="20.040001"
+             y="123.246"
+             class="d"
+             id="text1522"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">by</text>
+          <text
+             x="23.046"
+             y="123.246"
+             class="d"
+             id="text1524"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">looking</text>
+          <text
+             x="31.062"
+             y="123.246"
+             class="d"
+             id="text1526"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at</text>
+          <text
+             x="34.068001"
+             y="123.246"
+             class="d"
+             id="text1528"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">its</text>
+          <text
+             x="38.076"
+             y="123.246"
+             class="d"
+             id="text1530"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">contents:</text>
+          <text
+             y="127.588"
+             class="c"
+             id="text1532"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="127.588"
+             class="c"
+             id="text1534"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="127.588"
+             class="c"
+             id="text1536"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">co</text>
+          <text
+             x="8.0159998"
+             y="127.588"
+             class="c"
+             id="text1538"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             y="129.759"
+             class="c"
+             id="text1540"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="129.759"
+             class="c"
+             id="text1542"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="129.759"
+             class="c"
+             id="text1544"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="129.759"
+             class="c"
+             id="text1546"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="129.759"
+             class="h"
+             id="text1548"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">9</text>
+          <text
+             x="22.044001"
+             y="129.759"
+             class="i"
+             id="text1550"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">22d57</text>
+          <text
+             x="28.056"
+             y="129.759"
+             class="c"
+             id="text1552"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="129.759"
+             class="c"
+             id="text1554"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="129.759"
+             class="c"
+             id="text1556"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <g
+             id="use1558"
+             transform="translate(0,130.25999)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1942">Added</text>
+            <text
+               x="6.0120001"
+               y="1.67"
+               class="c"
+               id="text1944">0</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1946">files,</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1948">modified</text>
+            <text
+               x="24.048"
+               y="1.67"
+               class="c"
+               id="text1950">1</text>
+            <text
+               x="26.052"
+               y="1.67"
+               class="c"
+               id="text1952">files,</text>
+            <text
+               x="33.066002"
+               y="1.67"
+               class="c"
+               id="text1954">removed</text>
+            <text
+               x="41.082001"
+               y="1.67"
+               class="c"
+               id="text1956">0</text>
+            <text
+               x="43.085999"
+               y="1.67"
+               class="c"
+               id="text1958">files</text>
+          </g>
+          <text
+             y="134.101"
+             class="c"
+             id="text1560"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="134.101"
+             class="c"
+             id="text1562"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">cat</text>
+          <text
+             x="6.0120001"
+             y="134.101"
+             class="c"
+             id="text1564"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">file</text>
+          <text
+             y="136.272"
+             class="c"
+             id="text1566"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             y="140.614"
+             class="d"
+             id="text1568"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="140.614"
+             class="d"
+             id="text1570"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Let's</text>
+          <text
+             x="8.0159998"
+             y="140.614"
+             class="d"
+             id="text1572"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="12.024"
+             y="140.614"
+             class="d"
+             id="text1574"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">instead</text>
+          <text
+             x="20.040001"
+             y="140.614"
+             class="d"
+             id="text1576"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">make</text>
+          <text
+             x="25.049999"
+             y="140.614"
+             class="d"
+             id="text1578"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">&quot;second&quot;</text>
+          <text
+             x="34.068001"
+             y="140.614"
+             class="d"
+             id="text1580"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">and</text>
+          <text
+             x="38.076"
+             y="140.614"
+             class="d"
+             id="text1582"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">&quot;third&quot;</text>
+          <text
+             y="142.785"
+             class="d"
+             id="text1584"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="142.785"
+             class="d"
+             id="text1586"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">sibling</text>
+          <text
+             x="10.02"
+             y="142.785"
+             class="d"
+             id="text1588"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">and</text>
+          <text
+             x="14.028"
+             y="142.785"
+             class="d"
+             id="text1590"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merge</text>
+          <text
+             x="20.040001"
+             y="142.785"
+             class="d"
+             id="text1592"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">them:</text>
+          <text
+             y="147.127"
+             class="c"
+             id="text1594"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="147.127"
+             class="c"
+             id="text1596"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="147.127"
+             class="c"
+             id="text1598"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">rebase</text>
+          <text
+             x="12.024"
+             y="147.127"
+             class="c"
+             id="text1600"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-s</text>
+          <text
+             x="15.03"
+             y="147.127"
+             class="c"
+             id="text1602"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="22.044001"
+             y="147.127"
+             class="c"
+             id="text1604"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-d</text>
+          <text
+             x="25.049999"
+             y="147.127"
+             class="c"
+             id="text1606"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <g
+             id="use1608"
+             transform="translate(0,147.62801)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1962">Rebased</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1964">2</text>
+            <text
+               x="10.02"
+               y="1.67"
+               class="c"
+               id="text1966">commits</text>
+          </g>
+          <text
+             y="151.46899"
+             class="c"
+             id="text1610"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="151.46899"
+             class="c"
+             id="text1612"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="151.46899"
+             class="c"
+             id="text1614"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="151.46899"
+             class="c"
+             id="text1616"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="151.46899"
+             class="h"
+             id="text1618"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">a</text>
+          <text
+             x="22.044001"
+             y="151.46899"
+             class="i"
+             id="text1620"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">7877b</text>
+          <text
+             x="28.056"
+             y="151.46899"
+             class="c"
+             id="text1622"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(no</text>
+          <text
+             x="32.063999"
+             y="151.46899"
+             class="c"
+             id="text1624"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">description</text>
+          <text
+             x="44.088001"
+             y="151.46899"
+             class="c"
+             id="text1626"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">set)</text>
+          <g
+             id="use1628"
+             transform="translate(0,151.97)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1970">Added</text>
+            <text
+               x="6.0120001"
+               y="1.67"
+               class="c"
+               id="text1972">0</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1974">files,</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1976">modified</text>
+            <text
+               x="24.048"
+               y="1.67"
+               class="c"
+               id="text1978">1</text>
+            <text
+               x="26.052"
+               y="1.67"
+               class="c"
+               id="text1980">files,</text>
+            <text
+               x="33.066002"
+               y="1.67"
+               class="c"
+               id="text1982">removed</text>
+            <text
+               x="41.082001"
+               y="1.67"
+               class="c"
+               id="text1984">0</text>
+            <text
+               x="43.085999"
+               y="1.67"
+               class="c"
+               id="text1986">files</text>
+          </g>
+          <text
+             y="155.811"
+             class="c"
+             id="text1630"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">$</text>
+          <text
+             x="2.0039999"
+             y="155.811"
+             class="c"
+             id="text1632"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">jj</text>
+          <text
+             x="5.0100002"
+             y="155.811"
+             class="c"
+             id="text1634"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merge</text>
+          <text
+             x="11.022"
+             y="155.811"
+             class="c"
+             id="text1636"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="18.035999"
+             y="155.811"
+             class="c"
+             id="text1638"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="24.048"
+             y="155.811"
+             class="c"
+             id="text1640"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">-m</text>
+          <text
+             x="27.054001"
+             y="155.811"
+             class="c"
+             id="text1642"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merged</text>
+          <text
+             y="157.98199"
+             class="c"
+             id="text1644"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Working</text>
+          <text
+             x="8.0159998"
+             y="157.98199"
+             class="c"
+             id="text1646"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">copy</text>
+          <text
+             x="13.026"
+             y="157.98199"
+             class="c"
+             id="text1648"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="17.034"
+             y="157.98199"
+             class="c"
+             id="text1650"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">at:</text>
+          <text
+             x="21.042"
+             y="157.98199"
+             class="h"
+             id="text1652"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">b4b</text>
+          <text
+             x="24.048"
+             y="157.98199"
+             class="i"
+             id="text1654"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">9f5</text>
+          <text
+             x="28.056"
+             y="157.98199"
+             class="c"
+             id="text1656"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merged</text>
+          <g
+             id="use1658"
+             transform="translate(0,158.483)">
+            <text
+               y="1.67"
+               class="c"
+               id="text1990">Added</text>
+            <text
+               x="6.0120001"
+               y="1.67"
+               class="c"
+               id="text1992">0</text>
+            <text
+               x="8.0159998"
+               y="1.67"
+               class="c"
+               id="text1994">files,</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text1996">modified</text>
+            <text
+               x="24.048"
+               y="1.67"
+               class="c"
+               id="text1998">1</text>
+            <text
+               x="26.052"
+               y="1.67"
+               class="c"
+               id="text2000">files,</text>
+            <text
+               x="33.066002"
+               y="1.67"
+               class="c"
+               id="text2002">removed</text>
+            <text
+               x="41.082001"
+               y="1.67"
+               class="c"
+               id="text2004">0</text>
+            <text
+               x="43.085999"
+               y="1.67"
+               class="c"
+               id="text2006">files</text>
+          </g>
+          <g
+             id="use1660"
+             transform="translate(0,160.65401)">
+            <text
+               y="1.67"
+               class="c"
+               id="text2010">$</text>
+            <text
+               x="2.0039999"
+               y="1.67"
+               class="c"
+               id="text2012">jj-old</text>
+            <text
+               x="9.0179996"
+               y="1.67"
+               class="c"
+               id="text2014">log</text>
+          </g>
+          <text
+             y="164.495"
+             class="c"
+             id="text1662"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="5.0100002"
+             y="164.495"
+             class="j"
+             id="text1664"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZU</text>
+          <text
+             x="7.0139999"
+             y="164.495"
+             class="k"
+             id="text1666"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">UVNK</text>
+          <text
+             x="12.024"
+             y="164.495"
+             class="l"
+             id="text1668"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="20.040001"
+             y="164.495"
+             class="m"
+             id="text1670"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="24.048"
+             y="164.495"
+             class="n"
+             id="text1672"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">b4b</text>
+          <text
+             x="27.054001"
+             y="164.495"
+             class="k"
+             id="text1674"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">9f5</text>
+          <text
+             y="166.666"
+             class="c"
+             id="text1676"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">├─╮</text>
+          <text
+             x="5.0100002"
+             y="166.666"
+             class="o"
+             id="text1678"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">(empty)</text>
+          <text
+             x="13.026"
+             y="166.666"
+             class="p"
+             id="text1680"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merged</text>
+          <text
+             y="168.83701"
+             class="c"
+             id="text1682"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="2.0039999"
+             y="168.83701"
+             class="c"
+             id="text1684"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="5.0100002"
+             y="168.83701"
+             class="q"
+             id="text1686"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">V</text>
+          <text
+             x="6.0120001"
+             y="168.83701"
+             class="i"
+             id="text1688"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">SYKRZ</text>
+          <text
+             x="12.024"
+             y="168.83701"
+             class="e"
+             id="text1690"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="20.040001"
+             y="168.83701"
+             class="r"
+             id="text1692"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="24.048"
+             y="168.83701"
+             class="s"
+             id="text1694"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             x="31.062"
+             y="168.83701"
+             class="h"
+             id="text1696"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">02</text>
+          <text
+             x="33.066002"
+             y="168.83701"
+             class="i"
+             id="text1698"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">6ce8</text>
+          <text
+             y="171.008"
+             class="c"
+             id="text1700"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="2.0039999"
+             y="171.008"
+             class="c"
+             id="text1702"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="5.0100002"
+             y="171.008"
+             class="c"
+             id="text1704"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">second</text>
+          <text
+             y="173.179"
+             class="c"
+             id="text1706"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">│</text>
+          <text
+             x="2.0039999"
+             y="173.179"
+             class="c"
+             id="text1708"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="5.0100002"
+             y="173.179"
+             class="q"
+             id="text1710"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">L</text>
+          <text
+             x="6.0120001"
+             y="173.179"
+             class="i"
+             id="text1712"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">LMTPY</text>
+          <text
+             x="12.024"
+             y="173.179"
+             class="e"
+             id="text1714"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="20.040001"
+             y="173.179"
+             class="r"
+             id="text1716"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="24.048"
+             y="173.179"
+             class="s"
+             id="text1718"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             x="30.059999"
+             y="173.179"
+             class="h"
+             id="text1720"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">8</text>
+          <text
+             x="31.062"
+             y="173.179"
+             class="i"
+             id="text1722"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">fddae</text>
+          <text
+             x="37.074001"
+             y="173.179"
+             class="t"
+             id="text1724"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">conflict</text>
+          <text
+             y="175.35001"
+             class="c"
+             id="text1726"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">├─╯</text>
+          <text
+             x="5.0100002"
+             y="175.35001"
+             class="c"
+             id="text1728"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">third</text>
+          <text
+             y="177.521"
+             class="c"
+             id="text1730"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="177.521"
+             class="q"
+             id="text1732"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">N</text>
+          <text
+             x="4.0079999"
+             y="177.521"
+             class="i"
+             id="text1734"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">QZVOU</text>
+          <text
+             x="10.02"
+             y="177.521"
+             class="e"
+             id="text1736"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ilyagr@</text>
+          <text
+             x="18.035999"
+             y="177.521"
+             class="r"
+             id="text1738"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">now</text>
+          <text
+             x="22.044001"
+             y="177.521"
+             class="s"
+             id="text1740"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">first</text>
+          <text
+             x="28.056"
+             y="177.521"
+             class="h"
+             id="text1742"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">bb</text>
+          <text
+             x="30.059999"
+             y="177.521"
+             class="i"
+             id="text1744"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">d56d</text>
+          <g
+             id="use1746"
+             transform="translate(0,178.022)">
+            <text
+               y="1.67"
+               class="c"
+               id="text2018">│</text>
+            <text
+               x="3.006"
+               y="1.67"
+               class="c"
+               id="text2020">first</text>
+          </g>
+          <text
+             y="181.86301"
+             class="c"
+             id="text1748"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">●</text>
+          <text
+             x="3.006"
+             y="181.86301"
+             class="q"
+             id="text1750"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZZ</text>
+          <text
+             x="5.0100002"
+             y="181.86301"
+             class="i"
+             id="text1752"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ZZZZ</text>
+          <text
+             x="10.02"
+             y="181.86301"
+             class="e"
+             id="text1754"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">@</text>
+          <text
+             x="12.024"
+             y="181.86301"
+             class="r"
+             id="text1756"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">53</text>
+          <text
+             x="15.03"
+             y="181.86301"
+             class="r"
+             id="text1758"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">years</text>
+          <text
+             x="21.042"
+             y="181.86301"
+             class="r"
+             id="text1760"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">ago</text>
+          <text
+             x="25.049999"
+             y="181.86301"
+             class="h"
+             id="text1762"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">00</text>
+          <text
+             x="27.054001"
+             y="181.86301"
+             class="i"
+             id="text1764"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">0000</text>
+          <g
+             id="use1766"
+             transform="translate(0,182.364)">
+            <text
+               x="3.006"
+               y="1.67"
+               class="d"
+               id="text2024">(empty)</text>
+            <text
+               x="11.022"
+               y="1.67"
+               class="c"
+               id="text2026">(no</text>
+            <text
+               x="15.03"
+               y="1.67"
+               class="c"
+               id="text2028">description</text>
+            <text
+               x="27.054001"
+               y="1.67"
+               class="c"
+               id="text2030">set)</text>
+          </g>
+          <text
+             y="188.37601"
+             class="d"
+             id="text1768"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="188.37601"
+             class="d"
+             id="text1770"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">Again,</text>
+          <text
+             x="9.0179996"
+             y="188.37601"
+             class="d"
+             id="text1772"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">because</text>
+          <text
+             x="17.034"
+             y="188.37601"
+             class="d"
+             id="text1774"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             x="21.042"
+             y="188.37601"
+             class="d"
+             id="text1776"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">merge</text>
+          <text
+             x="27.054001"
+             y="188.37601"
+             class="d"
+             id="text1778"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commit</text>
+          <text
+             x="34.068001"
+             y="188.37601"
+             class="d"
+             id="text1780"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">has</text>
+          <text
+             x="38.076"
+             y="188.37601"
+             class="d"
+             id="text1782"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">the</text>
+          <text
+             y="190.547"
+             class="d"
+             id="text1784"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="190.547"
+             class="d"
+             id="text1786"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">changes</text>
+          <text
+             x="10.02"
+             y="190.547"
+             class="d"
+             id="text1788"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">from</text>
+          <text
+             x="15.03"
+             y="190.547"
+             class="d"
+             id="text1790"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">all</text>
+          <text
+             x="19.038"
+             y="190.547"
+             class="d"
+             id="text1792"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">three</text>
+          <text
+             x="25.049999"
+             y="190.547"
+             class="d"
+             id="text1794"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">commits,</text>
+          <text
+             x="34.068001"
+             y="190.547"
+             class="d"
+             id="text1796"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">it</text>
+          <text
+             x="37.074001"
+             y="190.547"
+             class="d"
+             id="text1798"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">has</text>
+          <text
+             x="41.082001"
+             y="190.547"
+             class="d"
+             id="text1800"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">no</text>
+          <text
+             y="192.718"
+             class="d"
+             id="text1802"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">#</text>
+          <text
+             x="2.0039999"
+             y="192.718"
+             class="d"
+             id="text1804"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:1.67px;font-family:'Noto Mono';-inkscape-font-specification:'Noto Mono';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal">conflict.</text>
+        </svg>
+      </svg>
+    </g>
+  </svg>
+</svg>
