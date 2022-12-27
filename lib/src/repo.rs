@@ -14,6 +14,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -1158,4 +1159,209 @@ mod dirty_cell {
             *self.dirty.get_mut() = true;
         }
     }
+}
+
+/// Conceptually like `HashMap<Vec<I>, V>`, but supports lookup by prefixes
+/// of keys.
+#[derive(Debug, Clone)]
+pub struct Trie<I: Eq + Hash + Clone, V> {
+    // TODO: The trie currently uses more memory (~4x by one measurement) than
+    // a simple HashSet of commit & change ids would. This could be addressed by:
+    //
+    // 1. Including a several-letter suffix of the key in each node in order to
+    // avoid having a ton of HashMap-s with one element. This is called a
+    // "radix trie".
+    //
+    // 2. Having better supposer for iterating over keys, thus avoiding the
+    // need to store the key as part of the value in many applications. Note
+    // that this may require allocating objects (e.g. a deque) to store the
+    // complete keys.
+    //
+    // It's unclear if either of these is worth the complexity.
+    value: Option<V>,
+    next_level: HashMap<I, Box<Trie<I, V>>>,
+}
+
+impl<I: Eq + Hash + Clone, V> Default for Trie<I, V> {
+    fn default() -> Self {
+        Trie::new()
+    }
+}
+
+impl<I: Eq + Hash + Clone, V> Trie<I, V> {
+    pub fn new() -> Self {
+        Self {
+            value: None,
+            next_level: HashMap::new(),
+        }
+    }
+
+    pub fn insert(&mut self, key: &[I], value: V) -> bool {
+        match key {
+            [] => {
+                let return_value = self.value.is_none();
+                self.value = Some(value);
+                return_value
+            }
+            [first, rest @ ..] => self
+                .next_level
+                .entry(first.clone())
+                .or_default()
+                .insert(rest, value),
+        }
+    }
+
+    pub fn get<'a>(&'a self, key: &[I]) -> Option<&'a V> {
+        self.get_subtrie(key).and_then(|trie| trie.value.as_ref())
+    }
+
+    pub fn get_subtrie<'a>(&'a self, key: &[I]) -> Option<&'a Trie<I, V>> {
+        match key {
+            [] => Some(self),
+            [first, rest @ ..] => self
+                .next_level
+                .get(first)
+                .and_then(|subtrie| subtrie.get_subtrie(rest)),
+        }
+    }
+
+    pub fn itervalues(&self) -> TrieValueIterator<I, V> {
+        TrieValueIterator::new(self)
+    }
+
+    /// This function returns the shortest length of a prefix of `key` that
+    /// corresponds to a trie that is either a) empty or b) contains only a
+    /// single element that matches `key` exactly.
+    ///
+    /// In the special case when there are keys in the trie for which our `key`
+    /// is an exact prefix, returns `key.len() + 1`. Conceptually, in order to
+    /// disambiguate, you need every letter of the key *and* the additional
+    /// fact that it's the entire key). This case is extremely unlikely for
+    /// hashes with 12+ hexadecimal characters.
+    pub fn shortest_unique_prefix_len(&self, key: &[I]) -> usize {
+        match key {
+            [] => {
+                if self.next_level.is_empty() {
+                    0
+                } else {
+                    // The special case: there are keys in the trie for which the original `key`
+                    // (from the first level of recursion) is a prefix.
+                    1
+                }
+            }
+            [first, rest @ ..] => {
+                match self.next_level.get(first) {
+                    None => {
+                        // The key we're looking for is not in our trie. We may or may not need one
+                        // more character (let's say `I` is `u8` to simplify terminology) to
+                        // distinguish it from all the keys that *are* in our trie.
+                        if self.next_level.is_empty() {
+                            0
+                        } else {
+                            1
+                        }
+                    }
+                    Some(next_trie) => match next_trie.shortest_unique_prefix_len(rest) {
+                        0 => {
+                            // The `next_trie` subtrie of our trie is either empty or contains a
+                            // single element matching our key exactly.
+                            if self.next_level.len() == 1 && self.value.is_none() {
+                                // Our trie has the same property. There's no need for more
+                                // characters to distinguish our key from all other keys.
+                                // TODO: Test the second `&&` branch
+                                0
+                            } else {
+                                1
+                            }
+                        }
+                        n => n + 1,
+                    },
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TrieValueIterator<'a, I: Eq + Hash + Clone, V> {
+    current_value: Option<&'a V>,
+    subtrie_iter: Option<Box<TrieValueIterator<'a, I, V>>>, /* Iterating inside a value of
+                                                             * `next_level_iter` */
+    next_level_iter: std::collections::hash_map::Iter<'a, I, Box<Trie<I, V>>>,
+}
+
+impl<'a, I: Eq + Hash + Clone, V> TrieValueIterator<'a, I, V> {
+    pub fn new(trie: &'a Trie<I, V>) -> Self {
+        Self {
+            current_value: trie.value.as_ref(),
+            subtrie_iter: None,
+            next_level_iter: trie.next_level.iter(),
+        }
+    }
+}
+
+impl<'a, I: Eq + Hash + Clone, V> Iterator for TrieValueIterator<'a, I, V> {
+    type Item = &'a V;
+
+    fn next(&mut self) -> Option<&'a V> {
+        if let Some(value) = self.current_value {
+            self.current_value = None;
+            return Some(value);
+        }
+
+        if let Some(subtrie_iter) = self.subtrie_iter.as_mut() {
+            if let Some(value) = subtrie_iter.next() {
+                return Some(value);
+            }
+        }
+
+        if let Some((_key, next_trie)) = self.next_level_iter.next() {
+            self.subtrie_iter = Some(Box::new(TrieValueIterator::new(next_trie)));
+            return self.next();
+        }
+
+        None
+    }
+}
+
+#[test]
+fn test_trie() {
+    let mut trie = Trie::new();
+    assert_eq!(trie.itervalues().next(), None);
+    trie.insert(b"ab", "val1".to_string());
+    trie.insert(b"acd", "val2".to_string());
+    assert_eq!(trie.shortest_unique_prefix_len(b"acd"), 2);
+    assert_eq!(trie.shortest_unique_prefix_len(b"ac"), 3);
+
+    let mut trie = Trie::new();
+    assert_eq!(trie.itervalues().next(), None);
+    trie.insert(b"ab", "val1".to_string());
+    trie.insert(b"acd", "val2".to_string());
+    trie.insert(b"acf", "val2".to_string());
+    trie.insert(b"a", "val3".to_string());
+    trie.insert(b"ba", "val2".to_string());
+
+    // In case further debugging is needed
+    // println!("{trie:?}");
+    // let mut iter = trie.itervalues();
+    // println!("{:?}", iter.next());
+    // println!("{:?}", iter);
+    // println!("{:?}", iter.next());
+    // println!("{:?}", iter);
+
+    assert_eq!(trie.get(b"a"), Some(&"val3".to_string()));
+    assert_eq!(trie.get(b"ab"), Some(&"val1".to_string()));
+    assert_eq!(trie.get(b"b"), None);
+
+    assert_eq!(trie.shortest_unique_prefix_len(b"a"), 2); // Unlikely for hashes case: the entire length of the key is an insufficient
+                                                          // prefix
+    assert_eq!(trie.shortest_unique_prefix_len(b"ba"), 1);
+    assert_eq!(trie.shortest_unique_prefix_len(b"ab"), 2);
+    assert_eq!(trie.shortest_unique_prefix_len(b"acd"), 3);
+    // If it were there, the length would be 1.
+    assert_eq!(trie.shortest_unique_prefix_len(b"c"), 1);
+
+    let mut values = trie.itervalues().collect_vec();
+    values.sort();
+    assert_eq!(values, vec!["val1", "val2", "val2", "val2", "val3"])
 }
