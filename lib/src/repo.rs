@@ -25,7 +25,7 @@ use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use self::dirty_cell::DirtyCell;
-use crate::backend::{Backend, BackendError, BackendResult, ChangeId, CommitId, TreeId};
+use crate::backend::{Backend, BackendError, BackendResult, ChangeId, CommitId, ObjectId, TreeId};
 use crate::commit::Commit;
 use crate::commit_builder::CommitBuilder;
 use crate::dag_walk::topo_order_reverse;
@@ -92,6 +92,12 @@ impl<'a> RepoRef<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum ChangeOrCommitId {
+    Change { id: ChangeId, num_commits: usize },
+    Commit { id: CommitId },
+}
+
 pub struct ReadonlyRepo {
     repo_path: PathBuf,
     store: Arc<Store>,
@@ -101,6 +107,8 @@ pub struct ReadonlyRepo {
     settings: RepoSettings,
     index_store: Arc<IndexStore>,
     index: OnceCell<Arc<ReadonlyIndex>>,
+    // TODO: This should eventually become part of the index and not be stored fully in memory.
+    commit_change_id_index: OnceCell<Trie<u8, ()>>,
     view: View,
 }
 
@@ -190,6 +198,7 @@ impl ReadonlyRepo {
             settings: repo_settings,
             index_store,
             index: OnceCell::new(),
+            commit_change_id_index: OnceCell::new(),
             view,
         }))
     }
@@ -240,6 +249,32 @@ impl ReadonlyRepo {
             self.index_store
                 .get_index_at_op(&self.operation, &self.store)
         })
+    }
+
+    fn commit_change_id_index(&self) -> &Trie<u8, ()> {
+        self.commit_change_id_index.get_or_init(|| {
+            let all_visible_revisions = crate::revset::RevsetExpression::all()
+                .evaluate(self.as_repo_ref(), None)
+                .unwrap();
+            let change_hex_iter = all_visible_revisions
+                .iter()
+                .map(|index_entry| index_entry.change_id().hex());
+            // We need to account for rewritten commits as well
+            let index = self.as_repo_ref().index();
+            let commit_hex_iter = index
+                .iter()
+                .map(|index_entry| index_entry.commit_id().hex());
+            let mut trie = Trie::new();
+            for id_hex in itertools::chain(change_hex_iter, commit_hex_iter) {
+                trie.insert(id_hex.as_bytes(), ());
+            }
+            trie
+        })
+    }
+
+    pub fn shortest_unique_prefix_length(&self, target_id_hex: &str) -> usize {
+        self.commit_change_id_index()
+            .shortest_unique_prefix_len(target_id_hex.as_bytes())
     }
 
     pub fn store(&self) -> &Arc<Store> {
@@ -535,6 +570,7 @@ impl RepoLoader {
             settings: self.repo_settings.clone(),
             index_store: self.index_store.clone(),
             index: OnceCell::with_value(index),
+            commit_change_id_index: OnceCell::new(),
             view,
         };
         Arc::new(repo)
@@ -550,6 +586,7 @@ impl RepoLoader {
             settings: self.repo_settings.clone(),
             index_store: self.index_store.clone(),
             index: OnceCell::new(),
+            commit_change_id_index: OnceCell::new(),
             view,
         };
         Arc::new(repo)
