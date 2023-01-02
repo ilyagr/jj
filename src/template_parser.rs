@@ -13,7 +13,7 @@
 // limitations under the License.
 
 use chrono::{DateTime, FixedOffset, LocalResult, TimeZone, Utc};
-use jujutsu_lib::backend::{CommitId, Signature, Timestamp};
+use jujutsu_lib::backend::{Signature, Timestamp};
 use jujutsu_lib::commit::Commit;
 use jujutsu_lib::op_store::WorkspaceId;
 use jujutsu_lib::repo::RepoRef;
@@ -23,12 +23,12 @@ use pest_derive::Parser;
 
 use crate::formatter::PlainTextFormatter;
 use crate::templater::{
-    AuthorProperty, BranchProperty, ChangeIdProperty, CommitIdKeyword, CommitterProperty,
-    ConditionalTemplate, ConflictProperty, ConstantTemplateProperty, DescriptionProperty,
-    DivergentProperty, DynamicLabelTemplate, GitRefsProperty, IsGitHeadProperty,
-    IsWorkingCopyProperty, LabelTemplate, ListTemplate, LiteralTemplate, SignatureTimestamp,
-    StringPropertyTemplate, TagProperty, Template, TemplateFunction, TemplateProperty,
-    WorkingCopiesProperty,
+    AuthorProperty, BranchProperty, CommitOrChangeId, CommitOrChangeIdKeyword,
+    CommitOrChangeIdShortest, CommitterProperty, ConditionalTemplate, ConflictProperty,
+    ConstantTemplateProperty, DescriptionProperty, DivergentProperty, DynamicLabelTemplate,
+    GitRefsProperty, IsGitHeadProperty, IsWorkingCopyProperty, LabelTemplate, ListTemplate,
+    LiteralTemplate, SignatureTimestamp, StringPropertyTemplate, TagProperty, Template,
+    TemplateFunction, TemplateProperty, WorkingCopiesProperty,
 };
 
 #[derive(Parser)]
@@ -68,14 +68,6 @@ struct StringFirstLine;
 impl TemplateProperty<String, String> for StringFirstLine {
     fn extract(&self, context: &String) -> String {
         context.lines().next().unwrap().to_string()
-    }
-}
-
-struct CommitIdShortest;
-
-impl TemplateProperty<CommitId, String> for CommitIdShortest {
-    fn extract(&self, context: &CommitId) -> String {
-        CommitIdKeyword::shortest_format(context.clone())
     }
 }
 
@@ -146,7 +138,10 @@ impl TemplateProperty<Timestamp, String> for RelativeTimestampString {
 enum Property<'a, I> {
     String(Box<dyn TemplateProperty<I, String> + 'a>),
     Boolean(Box<dyn TemplateProperty<I, bool> + 'a>),
-    CommitId(Box<dyn TemplateProperty<I, CommitId> + 'a>),
+    CommitOrChangeId(
+        Box<dyn TemplateProperty<I, CommitOrChangeId> + 'a>,
+        RepoRef<'a>,
+    ),
     Signature(Box<dyn TemplateProperty<I, Signature> + 'a>),
     Timestamp(Box<dyn TemplateProperty<I, Timestamp> + 'a>),
 }
@@ -162,10 +157,13 @@ impl<'a, I: 'a> Property<'a, I> {
                 first,
                 Box::new(move |value| property.extract(&value)),
             ))),
-            Property::CommitId(property) => Property::CommitId(Box::new(TemplateFunction::new(
-                first,
-                Box::new(move |value| property.extract(&value)),
-            ))),
+            Property::CommitOrChangeId(property, repo) => Property::CommitOrChangeId(
+                Box::new(TemplateFunction::new(
+                    first,
+                    Box::new(move |value| property.extract(&value)),
+                )),
+                repo,
+            ),
             Property::Signature(property) => Property::Signature(Box::new(TemplateFunction::new(
                 first,
                 Box::new(move |value| property.extract(&value)),
@@ -203,8 +201,9 @@ fn parse_method_chain<'a, I: 'a>(
                 let PropertyAndLabels(next_method, labels) = parse_boolean_method(method);
                 (next_method.after(property), labels)
             }
-            Property::CommitId(property) => {
-                let PropertyAndLabels(next_method, labels) = parse_commit_id_method(method);
+            Property::CommitOrChangeId(property, repo) => {
+                let PropertyAndLabels(next_method, labels) =
+                    parse_commit_or_chain_id_method(method, repo);
                 (next_method.after(property), labels)
             }
             Property::Signature(property) => {
@@ -247,14 +246,17 @@ fn parse_boolean_method<'a>(method: Pair<Rule>) -> PropertyAndLabels<'a, bool> {
 
 // TODO: pass a context to the returned function (we need the repo to find the
 //       shortest unambiguous prefix)
-fn parse_commit_id_method<'a>(method: Pair<Rule>) -> PropertyAndLabels<'a, CommitId> {
+fn parse_commit_or_chain_id_method<'a>(
+    method: Pair<Rule>,
+    repo: RepoRef<'a>,
+) -> PropertyAndLabels<'a, CommitOrChangeId> {
     assert_eq!(method.as_rule(), Rule::method);
     let mut inner = method.into_inner();
     let name = inner.next().unwrap();
     // TODO: validate arguments
 
     let this_function = match name.as_str() {
-        "short" => Property::String(Box::new(CommitIdShortest)),
+        "short" => Property::String(Box::new(CommitOrChangeIdShortest { repo })),
         name => panic!("no such commit ID method: {name}"),
     };
     let chain_method = inner.last().unwrap();
@@ -290,7 +292,6 @@ fn parse_timestamp_method<'a>(method: Pair<Rule>) -> PropertyAndLabels<'a, Times
     let chain_method = inner.last().unwrap();
     parse_method_chain(chain_method, this_function)
 }
-
 struct PropertyAndLabels<'a, C>(Property<'a, C>, Vec<String>);
 
 fn parse_commit_keyword<'a>(
@@ -301,8 +302,12 @@ fn parse_commit_keyword<'a>(
     assert_eq!(pair.as_rule(), Rule::identifier);
     let property = match pair.as_str() {
         "description" => Property::String(Box::new(DescriptionProperty)),
-        "change_id" => Property::String(Box::new(ChangeIdProperty)),
-        "commit_id" => Property::CommitId(Box::new(CommitIdKeyword)),
+        "change_id" => {
+            Property::CommitOrChangeId(Box::new(CommitOrChangeIdKeyword::change()), repo)
+        }
+        "commit_id" => {
+            Property::CommitOrChangeId(Box::new(CommitOrChangeIdKeyword::commit()), repo)
+        }
         "author" => Property::Signature(Box::new(AuthorProperty)),
         "committer" => Property::Signature(Box::new(CommitterProperty)),
         "working_copies" => Property::String(Box::new(WorkingCopiesProperty { repo })),
@@ -330,9 +335,9 @@ fn coerce_to_string<'a, I: 'a>(
             property,
             Box::new(|value| String::from(if value { "true" } else { "false" })),
         )),
-        Property::CommitId(property) => Box::new(TemplateFunction::new(
+        Property::CommitOrChangeId(property, _) => Box::new(TemplateFunction::new(
             property,
-            Box::new(CommitIdKeyword::default_format),
+            Box::new(CommitOrChangeIdKeyword::default_format),
         )),
         Property::Signature(property) => Box::new(TemplateFunction::new(
             property,
