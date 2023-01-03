@@ -820,6 +820,7 @@ dependencies = [
  "timeago",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
