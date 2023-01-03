@@ -24,11 +24,12 @@ use pest_derive::Parser;
 use crate::formatter::PlainTextFormatter;
 use crate::templater::{
     AuthorProperty, BranchProperty, CommitOrChangeId, CommitOrChangeIdKeyword,
-    CommitOrChangeIdShortest, CommitterProperty, ConditionalTemplate, ConflictProperty,
-    ConstantTemplateProperty, DescriptionProperty, DivergentProperty, DynamicLabelTemplate,
-    GitRefsProperty, IsGitHeadProperty, IsWorkingCopyProperty, LabelTemplate, ListTemplate,
-    LiteralTemplate, SignatureTimestamp, StringPropertyTemplate, TagProperty, Template,
-    TemplateFunction, TemplateProperty, WorkingCopiesProperty,
+    CommitOrChangeIdShort, CommitOrChangeIdShortUnderscorePrefix, CommitterProperty,
+    ConditionalTemplate, ConflictProperty, ConstantTemplateProperty, DescriptionProperty,
+    DivergentProperty, DynamicLabelTemplate, GitRefsProperty, IsGitHeadProperty,
+    IsWorkingCopyProperty, LabelTemplate, ListTemplate, LiteralTemplate, SignatureTimestamp,
+    StringPropertyTemplate, TagProperty, Template, TemplateFunction, TemplateProperty,
+    WorkingCopiesProperty,
 };
 
 #[derive(Parser)]
@@ -256,7 +257,10 @@ fn parse_commit_or_chain_id_method<'a>(
     // TODO: validate arguments
 
     let this_function = match name.as_str() {
-        "short" => Property::String(Box::new(CommitOrChangeIdShortest { repo })),
+        "short" => Property::String(Box::new(CommitOrChangeIdShort { repo })),
+        "short_underscore_prefix" => {
+            Property::String(Box::new(CommitOrChangeIdShortUnderscorePrefix { repo }))
+        }
         name => panic!("no such commit ID method: {name}"),
     };
     let chain_method = inner.last().unwrap();

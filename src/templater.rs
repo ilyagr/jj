@@ -443,19 +443,77 @@ impl CommitOrChangeIdKeyword {
         commit_or_change_id.hex()
     }
 
-    pub fn shortest_format(commit_or_change_id: CommitOrChangeId) -> String {
-        // TODO: make this actually be the shortest unambiguous prefix
+    pub fn short_format(commit_or_change_id: CommitOrChangeId) -> String {
         commit_or_change_id.hex()[..12].to_string()
+    }
+    pub fn short_underline_prefix_format(
+        commit_or_change_id: CommitOrChangeId,
+        repo: RepoRef,
+    ) -> String {
+        highlight_shortest_prefix(&commit_or_change_id.hex(), 12, repo)
     }
 }
 
-pub struct CommitOrChangeIdShortest<'a> {
+fn shortest_unique_prefix_length(target_id_hex: &str, repo: RepoRef) -> usize {
+    let all_visible_revisions = RevsetExpression::all().evaluate(repo, None).unwrap();
+    let change_hex_iter = all_visible_revisions
+        .iter()
+        .map(|index_entry| index_entry.change_id().hex());
+    // We need to account for rewritten commits as well
+    let index = repo.index();
+    let commit_hex_iter = index
+        .iter()
+        .map(|index_entry| index_entry.commit_id().hex());
+
+    let target_id_hex = target_id_hex.as_bytes();
+    itertools::chain(change_hex_iter, commit_hex_iter)
+        .filter_map(|id_hex| {
+            let id_hex = id_hex.as_bytes();
+            let common_len = target_id_hex
+                .iter()
+                .zip(id_hex.iter())
+                .take_while(|(a, b)| a == b)
+                .count();
+            if common_len == target_id_hex.len() && common_len == id_hex.len() {
+                None // Target id matched itself
+            } else {
+                Some(common_len + 1)
+            }
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+fn highlight_shortest_prefix(hex: &str, total_len: usize, repo: RepoRef) -> String {
+    let prefix_len = shortest_unique_prefix_length(hex, repo);
+    if prefix_len < total_len - 1 {
+        format!(
+            "{}_{}",
+            &hex[0..prefix_len],
+            &hex[prefix_len..total_len - 1]
+        )
+    } else {
+        hex[0..total_len].to_string()
+    }
+}
+
+pub struct CommitOrChangeIdShort<'a> {
     pub repo: RepoRef<'a>,
 }
 
-impl TemplateProperty<CommitOrChangeId, String> for CommitOrChangeIdShortest<'_> {
+impl TemplateProperty<CommitOrChangeId, String> for CommitOrChangeIdShort<'_> {
     fn extract(&self, context: &CommitOrChangeId) -> String {
-        CommitOrChangeIdKeyword::shortest_format(context.clone())
+        CommitOrChangeIdKeyword::short_format(context.clone())
+    }
+}
+
+pub struct CommitOrChangeIdShortUnderscorePrefix<'a> {
+    pub repo: RepoRef<'a>,
+}
+
+impl TemplateProperty<CommitOrChangeId, String> for CommitOrChangeIdShortUnderscorePrefix<'_> {
+    fn extract(&self, context: &CommitOrChangeId) -> String {
+        CommitOrChangeIdKeyword::short_underline_prefix_format(context.clone(), self.repo)
     }
 }
 
