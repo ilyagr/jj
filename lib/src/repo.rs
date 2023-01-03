@@ -25,7 +25,7 @@ use once_cell::sync::OnceCell;
 use thiserror::Error;
 
 use self::dirty_cell::DirtyCell;
-use crate::backend::{Backend, BackendError, BackendResult, ChangeId, CommitId, TreeId};
+use crate::backend::{Backend, BackendError, BackendResult, ChangeId, CommitId, ObjectId, TreeId};
 use crate::commit::Commit;
 use crate::commit_builder::CommitBuilder;
 use crate::dag_walk::topo_order_reverse;
@@ -1168,16 +1168,16 @@ pub struct Trie<I: Eq + Hash + Clone, V> {
     // TODO: The trie currently uses more memory (~4x by one measurement) than
     // a simple HashSet of commit & change ids would. This could be addressed by:
     //
-    // 1. Including a several-letter suffix of the key in each node in order to
-    // avoid having a ton of HashMap-s with one element. This is called a
-    // "radix trie".
-    //
     // 2. Having better supposer for iterating over keys, thus avoiding the
     // need to store the key as part of the value in many applications. Note
     // that this may require allocating objects (e.g. a deque) to store the
     // complete keys.
     //
     // It's unclear if either of these is worth the complexity.
+    key_prefix: Vec<I>,
+    // TODO: This is fun an all, but the code may be easier to understand if we have *either*
+    // key_prefix *or* next_level. That only makes sense for tries of hashes (where only the tails
+    // become key_prefixes)
     value: Option<V>,
     next_level: HashMap<I, Box<Trie<I, V>>>,
 }
@@ -1191,37 +1191,68 @@ impl<I: Eq + Hash + Clone, V> Default for Trie<I, V> {
 impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     pub fn new() -> Self {
         Self {
+            key_prefix: vec![],
             value: None,
             next_level: HashMap::new(),
         }
     }
 
+    fn len_common_prefix(left: &[I], right: &[I]) -> usize {
+        let mut result = 0;
+        for (a, b) in std::iter::zip(left, right) {
+            if a != b {
+                break;
+            }
+            result += 1;
+        }
+        result
+    }
+
     pub fn insert(&mut self, key: &[I], value: V) -> bool {
-        match key {
-            [] => {
+        let common = Self::len_common_prefix(key, &self.key_prefix);
+        if self.key_prefix.is_empty() && self.value.is_none() && self.next_level.is_empty() {
+            self.value = Some(value);
+            self.key_prefix = key.to_vec();
+            true
+        } else if common == self.key_prefix.len() {
+            // key_prefix is a prefix of key
+            if let Some(next_char) = key.get(common) {
+                self.next_level
+                    .entry(next_char.clone())
+                    .or_default()
+                    .insert(&key[common + 1..], value)
+            } else {
+                // key == self.key_prefix
                 let return_value = self.value.is_none();
                 self.value = Some(value);
                 return_value
             }
-            [first, rest @ ..] => self
-                .next_level
-                .entry(first.clone())
-                .or_default()
-                .insert(rest, value),
+        } else {
+            let new_trie = Box::new(Self {
+                key_prefix: self.key_prefix[common + 1..].to_vec(),
+                value: self.value.take(),
+                next_level: self.next_level.drain().collect(),
+            });
+            self.next_level
+                .insert(self.key_prefix[common].clone(), new_trie);
+            self.key_prefix.truncate(common);
+            // Now self.key_prefix is a prefix of key. The trie is restructured but
+            // equivalent to what it was before.
+
+            self.insert(key, value)
         }
     }
 
     pub fn get<'a>(&'a self, key: &[I]) -> Option<&'a V> {
-        self.get_subtrie(key).and_then(|trie| trie.value.as_ref())
-    }
-
-    pub fn get_subtrie<'a>(&'a self, key: &[I]) -> Option<&'a Trie<I, V>> {
-        match key {
-            [] => Some(self),
-            [first, rest @ ..] => self
-                .next_level
-                .get(first)
-                .and_then(|subtrie| subtrie.get_subtrie(rest)),
+        let common = Self::len_common_prefix(key, &self.key_prefix);
+        if common < self.key_prefix.len() {
+            None
+        } else if let Some(next_char) = key.get(common) {
+            self.next_level
+                .get(next_char)
+                .and_then(|subtrie| subtrie.get(&key[common + 1..]))
+        } else {
+            self.value.as_ref()
         }
     }
 
@@ -1239,43 +1270,54 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     /// fact that it's the entire key). This case is extremely unlikely for
     /// hashes with 12+ hexadecimal characters.
     pub fn shortest_unique_prefix_len(&self, key: &[I]) -> usize {
-        match key {
+        let common = Self::len_common_prefix(key, &self.key_prefix);
+        if common < self.key_prefix.len() {
+            return common + 1;
+        }
+        // self.key_prefix is a prefix of key
+        match &key[common..] {
             [] => {
+                // self.key_prefix == key
                 if self.next_level.is_empty() {
                     0
                 } else {
-                    // The special case: there are keys in the trie for which the original `key`
-                    // (from the first level of recursion) is a prefix.
-                    1
+                    // The special case: there are keys in the trie for which the original
+                    // `key` (from the first level of recursion) is a prefix.
+                    key.len() + 1
                 }
             }
             [first, rest @ ..] => {
                 match self.next_level.get(first) {
                     None => {
-                        // The key we're looking for is not in our trie. We may or may not need one
-                        // more character (let's say `I` is `u8` to simplify terminology) to
-                        // distinguish it from all the keys that *are* in our trie.
+                        // The key we're looking for is not in our trie. We may or may not need
+                        // one more character (let's say `I` is `u8`
+                        // to simplify terminology) to distinguish
+                        // it from all the keys that *are* in our trie.
                         if self.next_level.is_empty() {
-                            0
+                            common // TODO: test, double-check. Is it always +1?
+                                   // Shouldn't we check that
+                                   // self.value.is_some()?
                         } else {
-                            1
+                            common + 1
                         }
                     }
-                    Some(next_trie) => match next_trie.shortest_unique_prefix_len(rest) {
-                        0 => {
-                            // The `next_trie` subtrie of our trie is either empty or contains a
-                            // single element matching our key exactly.
-                            if self.next_level.len() == 1 && self.value.is_none() {
-                                // Our trie has the same property. There's no need for more
-                                // characters to distinguish our key from all other keys.
-                                // TODO: Test the second `&&` branch
-                                0
-                            } else {
-                                1
+                    Some(next_trie) => {
+                        match next_trie.shortest_unique_prefix_len(&key[common + 1..]) {
+                            0 => {
+                                // The `next_trie` subtrie of our trie is either empty or contains a
+                                // single element matching our key exactly.
+                                if self.next_level.len() == 1 && self.value.is_none() {
+                                    // Our trie has the same property. There's no need for more
+                                    // characters to distinguish our key from all other keys.
+                                    // TODO: Test the second `&&` branch
+                                    0 // Shouldn't happen in the radix tree
+                                } else {
+                                    common + 1
+                                }
                             }
+                            n => common + n + 1,
                         }
-                        n => n + 1,
-                    },
+                    }
                 }
             }
         }
