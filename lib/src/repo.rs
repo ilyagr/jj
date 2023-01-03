@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::io::ErrorKind;
@@ -1181,7 +1181,7 @@ pub enum Trie<I: Eq + Hash + Clone, V> {
     // TODO: Redo the above comment
     Empty, // Distinguishing this from Node siplifies the insert function
     Leaf {
-        key_tail: Vec<I>,
+        key_tail: VecDeque<I>,
         value: Option<V>, /* `Option` is here solely to make borrow checker happy in `insert`.
                            * Should never be None. */
     },
@@ -1207,7 +1207,7 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
         match self {
             Empty => {
                 *self = Leaf {
-                    key_tail: key.to_vec(),
+                    key_tail: key.to_vec().into(),
                     value: Some(value),
                 };
                 None
@@ -1215,7 +1215,7 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
             Leaf {
                 key_tail,
                 value: ref mut trie_val,
-            } if key_tail == key => {
+            } if key_tail == &key => {
                 // This `take` is the entire reason Leaf::value is an `Option<V>` rather than a
                 // simple `V`. It could be avoided here by not returning a value, but not in the
                 // next branch
@@ -1227,14 +1227,24 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
                 key_tail,
                 value: trie_val,
             } => {
-                let mut new_node = Node {
-                    next_level: HashMap::default(),
-                    value: None,
+                let old_value = trie_val.take();
+                // This is optimized for minimal allocation
+                *self = match key_tail.pop_front() {
+                    None => Node {
+                        next_level: HashMap::default(),
+                        value: old_value,
+                    },
+                    Some(first) => Node {
+                        next_level: HashMap::from([(
+                            first,
+                            Box::new(Leaf {
+                                key_tail: std::mem::take(key_tail),
+                                value: old_value,
+                            }),
+                        )]),
+                        value: None,
+                    },
                 };
-                if let Some(old_value) = trie_val.take() {
-                    new_node.insert(key_tail, old_value);
-                }
-                *self = new_node;
                 self.insert(key, value)
             }
             Node {
@@ -1257,7 +1267,7 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     pub fn get<'a>(&'a self, key: &[I]) -> Option<&'a V> {
         match &self {
             Empty => None,
-            Leaf { key_tail, value } if key_tail == key => value.as_ref(),
+            Leaf { key_tail, value } if key_tail == &key => value.as_ref(),
             Leaf { .. } => None,
             Node { next_level, value } => match key {
                 [] => value.as_ref(),
