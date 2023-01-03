@@ -1209,25 +1209,25 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     }
 
     pub fn insert(&mut self, key: &[I], value: V) -> bool {
-        let common = Self::len_common_prefix(key, &self.key_prefix);
         if self.key_prefix.is_empty() && self.value.is_none() && self.next_level.is_empty() {
             self.value = Some(value);
             self.key_prefix = key.to_vec();
             true
-        } else if common == self.key_prefix.len() {
-            // key_prefix is a prefix of key
-            if let Some(next_char) = key.get(common) {
-                self.next_level
+        } else if key.starts_with(&self.key_prefix) {
+            match &key[self.key_prefix.len()..] {
+                [] => {
+                    let return_value = self.value.is_none();
+                    self.value = Some(value);
+                    return_value
+                }
+                [next_char, rest @ ..] => self
+                    .next_level
                     .entry(next_char.clone())
                     .or_default()
-                    .insert(&key[common + 1..], value)
-            } else {
-                // key == self.key_prefix
-                let return_value = self.value.is_none();
-                self.value = Some(value);
-                return_value
+                    .insert(rest, value),
             }
         } else {
+            let common = Self::len_common_prefix(key, &self.key_prefix);
             let new_trie = Box::new(Self {
                 key_prefix: self.key_prefix[common + 1..].to_vec(),
                 value: self.value.take(),
@@ -1236,7 +1236,7 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
             self.next_level
                 .insert(self.key_prefix[common].clone(), new_trie);
             self.key_prefix.truncate(common);
-            // Now self.key_prefix is a prefix of key. The trie is restructured but
+            // Now `key` starts with `self.key_prefix`. The trie is restructured but
             // equivalent to what it was before.
 
             self.insert(key, value)
@@ -1244,13 +1244,13 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     }
 
     pub fn get<'a>(&'a self, key: &[I]) -> Option<&'a V> {
-        let common = Self::len_common_prefix(key, &self.key_prefix);
-        if common < self.key_prefix.len() {
-            None
-        } else if let Some(next_char) = key.get(common) {
+        if !key.starts_with(&self.key_prefix) {
+            return None;
+        }
+        if let Some(next_char) = key.get(self.key_prefix.len()) {
             self.next_level
                 .get(next_char)
-                .and_then(|subtrie| subtrie.get(&key[common + 1..]))
+                .and_then(|subtrie| subtrie.get(&key[self.key_prefix.len() + 1..]))
         } else {
             self.value.as_ref()
         }
@@ -1271,13 +1271,13 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     /// hashes with 12+ hexadecimal characters.
     pub fn shortest_unique_prefix_len(&self, key: &[I]) -> usize {
         let common = Self::len_common_prefix(key, &self.key_prefix);
-        if common < self.key_prefix.len() {
+        let prefix_len = self.key_prefix.len();
+        if common < prefix_len {
             return common + 1;
         }
         // self.key_prefix is a prefix of key
-        match &key[common..] {
+        match &key[prefix_len..] {
             [] => {
-                // self.key_prefix == key
                 if self.next_level.is_empty() {
                     0
                 } else {
@@ -1294,15 +1294,16 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
                         // to simplify terminology) to distinguish
                         // it from all the keys that *are* in our trie.
                         if self.next_level.is_empty() {
-                            common // TODO: test, double-check. Is it always +1?
-                                   // Shouldn't we check that
-                                   // self.value.is_some()?
+                            prefix_len // TODO: test, double-check. Is it always
+                                       // +1?
+                                       // Shouldn't we check that
+                                       // self.value.is_some()?
                         } else {
-                            common + 1
+                            prefix_len + 1
                         }
                     }
                     Some(next_trie) => {
-                        match next_trie.shortest_unique_prefix_len(&key[common + 1..]) {
+                        match next_trie.shortest_unique_prefix_len(rest) {
                             0 => {
                                 // The `next_trie` subtrie of our trie is either empty or contains a
                                 // single element matching our key exactly.
@@ -1312,10 +1313,10 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
                                     // TODO: Test the second `&&` branch
                                     0 // Shouldn't happen in the radix tree
                                 } else {
-                                    common + 1
+                                    prefix_len + 1
                                 }
                             }
-                            n => common + n + 1,
+                            n => prefix_len + n + 1,
                         }
                     }
                 }
