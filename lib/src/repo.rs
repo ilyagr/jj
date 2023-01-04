@@ -1196,10 +1196,10 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
         }
     }
 
-    pub fn insert(&mut self, key: &[I], value: V) -> bool {
+    pub fn insert(&mut self, key: &[I], value: V) -> Option<V> {
         match key {
             [] => {
-                let return_value = self.value.is_none();
+                let return_value = self.value.take();
                 self.value = Some(value);
                 return_value
             }
@@ -1240,42 +1240,31 @@ impl<I: Eq + Hash + Clone, V> Trie<I, V> {
     /// hashes with 12+ hexadecimal characters.
     pub fn shortest_unique_prefix_len(&self, key: &[I]) -> usize {
         match key {
+            [] if self.next_level.is_empty() => 0,
             [] => {
-                if self.next_level.is_empty() {
-                    0
-                } else {
-                    // The special case: there are keys in the trie for which the original `key`
-                    // (from the first level of recursion) is a prefix.
-                    1
-                }
+                // The special case: there are keys in the trie for which the original `key`
+                // (from the first level of recursion) is a prefix.
+                1
             }
             [first, rest @ ..] => {
                 match self.next_level.get(first) {
-                    None => {
-                        // The key we're looking for is not in our trie. We may or may not need one
-                        // more character (let's say `I` is `u8` to simplify terminology) to
-                        // distinguish it from all the keys that *are* in our trie.
-                        if self.next_level.is_empty() {
+                    None if self.value.is_none() && self.next_level.is_empty() => 0, // Empty trie
+                    None => 1, // Key is missing but, if it wasn't, 1 char would be needed
+                    Some(next_trie) => {
+                        let next_prefix_len = next_trie.shortest_unique_prefix_len(rest);
+                        if next_prefix_len == 0
+                            && self.next_level.len() == 1
+                            && self.value.is_none()
+                        {
+                            // The `next_trie` subtrie of our trie is either empty or contains a
+                            // single element matching our key exactly. Moreover, our trie has the
+                            // same property. There's no need for more characters to distinguish our
+                            // key from all other keys.
                             0
                         } else {
-                            1
+                            next_prefix_len + 1
                         }
                     }
-                    Some(next_trie) => match next_trie.shortest_unique_prefix_len(rest) {
-                        0 => {
-                            // The `next_trie` subtrie of our trie is either empty or contains a
-                            // single element matching our key exactly.
-                            if self.next_level.len() == 1 && self.value.is_none() {
-                                // Our trie has the same property. There's no need for more
-                                // characters to distinguish our key from all other keys.
-                                // TODO: Test the second `&&` branch
-                                0
-                            } else {
-                                1
-                            }
-                        }
-                        n => n + 1,
-                    },
                 }
             }
         }
