@@ -3122,7 +3122,7 @@ fn cmd_branch(
             let mut tx =
                 workspace_command.start_transaction(&format!("delete {}", make_branch_term(names)));
             for branch_name in names {
-                tx.mut_repo().remove_local_branch(branch_name);
+                tx.mut_repo().delete_local_branch(branch_name);
             }
             workspace_command.finish_transaction(ui, tx)?;
         }
@@ -3134,7 +3134,7 @@ fn cmd_branch(
             let branch_term = make_branch_term(names.iter().collect_vec().as_slice());
             let mut tx = workspace_command.start_transaction(&format!("forget {branch_term}"));
             for branch_name in names {
-                tx.mut_repo().remove_branch(&branch_name);
+                tx.mut_repo().forget_branch(&branch_name);
             }
             workspace_command.finish_transaction(ui, tx)?;
         }
@@ -3774,7 +3774,7 @@ fn cmd_git_remote_remove(
         let mut tx =
             workspace_command.start_transaction(&format!("remove git remote {}", &args.remote));
         for branch in branches_to_delete {
-            tx.mut_repo().remove_remote_branch(&branch, &args.remote);
+            tx.mut_repo().delete_remote_branch(&branch, &args.remote);
         }
         workspace_command.finish_transaction(ui, tx)?;
     }

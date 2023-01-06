@@ -837,8 +837,8 @@ impl MutableRepo {
         self.view_mut().set_branch(name, target);
     }
 
-    pub fn remove_branch(&mut self, name: &str) {
-        self.view_mut().remove_branch(name);
+    pub fn forget_branch(&mut self, name: &str) {
+        self.view_mut().forget_branch(name);
     }
 
     pub fn get_local_branch(&self, name: &str) -> Option<RefTarget> {
@@ -849,8 +849,8 @@ impl MutableRepo {
         self.view_mut().set_local_branch(name, target);
     }
 
-    pub fn remove_local_branch(&mut self, name: &str) {
-        self.view_mut().remove_local_branch(name);
+    pub fn delete_local_branch(&mut self, name: &str) {
+        self.view_mut().delete_local_branch(name);
     }
 
     pub fn get_remote_branch(&self, name: &str, remote_name: &str) -> Option<RefTarget> {
@@ -862,8 +862,8 @@ impl MutableRepo {
         self.view_mut().set_remote_branch(name, remote_name, target);
     }
 
-    pub fn remove_remote_branch(&mut self, name: &str, remote_name: &str) {
-        self.view_mut().remove_remote_branch(name, remote_name);
+    pub fn delete_remote_branch(&mut self, name: &str, remote_name: &str) {
+        self.view_mut().delete_remote_branch(name, remote_name);
     }
 
     pub fn rename_remote(&mut self, old: &str, new: &str) {

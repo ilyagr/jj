@@ -1375,7 +1375,7 @@ fn test_evaluate_expression_branches(use_git: bool) {
             adds: vec![commit3.id().clone(), commit4.id().clone()],
         },
     );
-    mut_repo.remove_local_branch("branch3");
+    mut_repo.delete_local_branch("branch3");
     assert_eq!(
         resolve_commit_ids(mut_repo.as_repo_ref(), "branches()"),
         vec![
@@ -1455,7 +1455,7 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
             adds: vec![commit3.id().clone(), commit4.id().clone()],
         },
     );
-    mut_repo.remove_remote_branch("branch3", "origin");
+    mut_repo.delete_remote_branch("branch3", "origin");
     assert_eq!(
         resolve_commit_ids(mut_repo.as_repo_ref(), "remote_branches()"),
         vec![

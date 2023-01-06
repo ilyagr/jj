@@ -140,10 +140,10 @@ impl View {
         } else {
             match name {
                 RefName::LocalBranch(name) => {
-                    self.remove_local_branch(&name);
+                    self.delete_local_branch(&name);
                 }
                 RefName::RemoteBranch { branch, remote } => {
-                    self.remove_remote_branch(&branch, &remote);
+                    self.delete_remote_branch(&branch, &remote);
                 }
                 RefName::Tag(name) => {
                     self.remove_tag(&name);
@@ -163,7 +163,7 @@ impl View {
         self.data.branches.insert(name, target);
     }
 
-    pub fn remove_branch(&mut self, name: &str) {
+    pub fn forget_branch(&mut self, name: &str) {
         self.data.branches.remove(name);
     }
 
@@ -178,11 +178,11 @@ impl View {
         self.data.branches.entry(name).or_default().local_target = Some(target);
     }
 
-    pub fn remove_local_branch(&mut self, name: &str) {
+    pub fn delete_local_branch(&mut self, name: &str) {
         if let Some(branch) = self.data.branches.get_mut(name) {
             branch.local_target = None;
             if branch.remote_targets.is_empty() {
-                self.remove_branch(name);
+                self.forget_branch(name);
             }
         }
     }
@@ -203,11 +203,11 @@ impl View {
             .insert(remote_name, target);
     }
 
-    pub fn remove_remote_branch(&mut self, name: &str, remote_name: &str) {
+    pub fn delete_remote_branch(&mut self, name: &str, remote_name: &str) {
         if let Some(branch) = self.data.branches.get_mut(name) {
             branch.remote_targets.remove(remote_name);
             if branch.remote_targets.is_empty() && branch.local_target.is_none() {
-                self.remove_branch(name);
+                self.forget_branch(name);
             }
         }
     }

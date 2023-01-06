@@ -700,7 +700,7 @@ fn test_export_partial_failure() {
 
     // Now remove the `main` branch and make sure that the `main/sub` gets exported
     // even though it didn't change
-    mut_repo.remove_local_branch("main");
+    mut_repo.delete_local_branch("main");
     assert_eq!(
         git::export_refs(mut_repo, &git_repo),
         Ok(vec!["".to_string()])
@@ -759,7 +759,7 @@ fn test_export_reexport_transitions() {
 
     // Make changes on the jj side
     for branch in ["AXA", "AXB", "AXX"] {
-        mut_repo.remove_local_branch(branch);
+        mut_repo.delete_local_branch(branch);
     }
     for branch in ["XAA", "XAB", "XAX"] {
         mut_repo.set_local_branch(branch.to_string(), RefTarget::Normal(commit_a.id().clone()));

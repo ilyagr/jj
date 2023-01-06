@@ -491,8 +491,8 @@ fn test_has_changed(use_git: bool) {
 
     mut_repo.remove_public_head(commit2.id());
     mut_repo.remove_head(commit2.id());
-    mut_repo.remove_local_branch("stable");
-    mut_repo.remove_remote_branch("stable", "origin");
+    mut_repo.delete_local_branch("stable");
+    mut_repo.delete_remote_branch("stable", "origin");
     assert!(!mut_repo.has_changes());
 
     mut_repo.add_head(&commit2);
