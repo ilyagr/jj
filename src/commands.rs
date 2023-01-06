@@ -747,6 +747,10 @@ enum BranchSubcommand {
         /// The branches to delete.
         #[arg(required = true)]
         names: Vec<String>,
+        /// If specified, mark the branches for deletion on the specified
+        /// remote. The local branch is unaffected. Can be repeated.
+        #[arg(long)]
+        remote: Vec<String>,
     },
 
     /// Forget everything about a branch, including its local and remote
@@ -3015,10 +3019,18 @@ fn cmd_branch(
     fn validate_branch_names_exist<'a>(
         view: &'a View,
         names: &'a [String],
+        remotes: &'a [String],
     ) -> Result<(), CommandError> {
         for branch_name in names {
-            if view.get_local_branch(branch_name).is_none() {
+            if remotes.is_empty() && view.get_local_branch(branch_name).is_none() {
                 return Err(user_error(format!("No such branch: {branch_name}")));
+            }
+            for remote_name in remotes {
+                if view.get_remote_branch(branch_name, remote_name).is_none() {
+                    return Err(user_error(format!(
+                        "No such branch: {branch_name}@{remote_name}"
+                    )));
+                }
             }
         }
         Ok(())
@@ -3117,18 +3129,23 @@ fn cmd_branch(
             workspace_command.finish_transaction(ui, tx)?;
         }
 
-        BranchSubcommand::Delete { names } => {
-            validate_branch_names_exist(view, names)?;
+        BranchSubcommand::Delete { names, remote } => {
+            validate_branch_names_exist(view, names, remote)?;
             let mut tx =
                 workspace_command.start_transaction(&format!("delete {}", make_branch_term(names)));
             for branch_name in names {
-                tx.mut_repo().delete_local_branch(branch_name);
+                if remote.is_empty() {
+                    tx.mut_repo().delete_local_branch(branch_name);
+                }
+                for remote_name in remote {
+                    tx.mut_repo().delete_remote_branch(branch_name, remote_name);
+                }
             }
             workspace_command.finish_transaction(ui, tx)?;
         }
 
         BranchSubcommand::Forget { names, glob } => {
-            validate_branch_names_exist(view, names)?;
+            validate_branch_names_exist(view, names, &[])?;
             let globbed_names = find_globs(view, glob)?;
             let names: BTreeSet<String> = names.iter().cloned().chain(globbed_names).collect();
             let branch_term = make_branch_term(names.iter().collect_vec().as_slice());

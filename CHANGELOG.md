@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `jj resolve` now notifies the user of remaining conflicts, if any, on success.
   This can be prevented by the new `--quiet` option.
 
+* `jj branch delete` gained a `--remote` argument. This marks the branch for
+  deletion on that remote only.
+
 ### Fixed bugs
 
 * When sharing the working copy with a Git repo, we used to forget to export
