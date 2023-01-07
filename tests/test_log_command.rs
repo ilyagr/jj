@@ -60,6 +60,16 @@ fn test_log_with_or_without_diff() {
     o (no description set)
     "###);
 
+    // Test default log output format with prefixes
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["log", "--config-toml", "ui.unique-prefixes='underscore'"]), @r###"
+    @ f_fdaa62087a test.user@example.com 2001-02-03 04:05:10.000 +07:00 7_89e536fd2e
+    | a new commit
+    o 9_a45c67d3e9 test.user@example.com 2001-02-03 04:05:08.000 +07:00 4_291e264ae9
+    | add a file
+    o 000000000000  1970-01-01 00:00:00.000 +00:00 000000000000
+      (no description set)
+    "###);
+
     let stdout = test_env.jj_cmd_success(&repo_path, &["log", "-T", "description", "--no-graph"]);
     insta::assert_snapshot!(stdout, @r###"
     a new commit
