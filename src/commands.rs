@@ -66,7 +66,7 @@ use crate::templater::Template;
 use crate::time_util::{
     format_absolute_timestamp, format_duration, format_timestamp_relative_to_now,
 };
-use crate::ui::Ui;
+use crate::ui::{unique_prefix_setting, Ui, UniquePrefixesDisplayChoice};
 
 #[derive(clap::Parser, Clone, Debug)]
 enum Commands {
@@ -1590,11 +1590,9 @@ fn log_template(settings: &UserSettings) -> String {
     } else {
         "committer.timestamp()"
     };
-    // TODO: If/when this logic is relevant in the `lib` crate, make this into
-    // and enum similar to `ColorChoice`.
-    let prefix_format = match settings.unique_prefixes().as_str() {
-        "brackets" => "short_prefix_and_brackets()",
-        _ => "short()",
+    let prefix_format = match unique_prefix_setting(settings.config()) {
+        UniquePrefixesDisplayChoice::Brackets => "short_prefix_and_brackets()",
+        UniquePrefixesDisplayChoice::None => "short()",
     };
     let default_template = format!(
         r#"

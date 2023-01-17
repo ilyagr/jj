@@ -106,6 +106,48 @@ fn pager_setting(config: &config::Config) -> FullCommandArgs {
         .unwrap_or_else(|_| "less -FRX".into())
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum UniquePrefixesDisplayChoice {
+    None,
+    Underscore,
+}
+
+impl Default for UniquePrefixesDisplayChoice {
+    fn default() -> Self {
+        UniquePrefixesDisplayChoice::None
+    }
+}
+
+impl FromStr for UniquePrefixesDisplayChoice {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "none" => Ok(UniquePrefixesDisplayChoice::None),
+            "underscore" => Ok(UniquePrefixesDisplayChoice::Underscore),
+            _ => Err("must be one of none or underscore"),
+        }
+    }
+}
+
+impl fmt::Display for UniquePrefixesDisplayChoice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            UniquePrefixesDisplayChoice::None => "none",
+            UniquePrefixesDisplayChoice::Underscore => "underscore",
+        };
+        write!(f, "{s}")
+    }
+}
+
+pub fn unique_prefix_setting(config: &config::Config) -> UniquePrefixesDisplayChoice {
+    config
+        .get_string("ui.unique-prefixs")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_default()
+}
+
 impl Ui {
     pub fn with_config(config: &config::Config) -> Ui {
         let color = use_color(color_setting(config));
