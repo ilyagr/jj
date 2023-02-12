@@ -66,6 +66,7 @@ pub struct Workspace {
     workspace_root: PathBuf,
     repo_loader: RepoLoader,
     working_copy: WorkingCopy,
+    local_tmp_dir: PathBuf,
 }
 
 fn create_jj_dir(workspace_root: &Path) -> Result<PathBuf, WorkspaceInitError> {
@@ -115,12 +116,15 @@ impl Workspace {
         workspace_root: &Path,
         working_copy: WorkingCopy,
         repo_loader: RepoLoader,
+        local_tmp_dir: &Path,
     ) -> Result<Workspace, PathError> {
         let workspace_root = workspace_root.canonicalize().context(workspace_root)?;
+        let local_tmp_dir = local_tmp_dir.canonicalize().context(local_tmp_dir)?;
         Ok(Workspace {
             workspace_root,
             repo_loader,
             working_copy,
+            local_tmp_dir,
         })
     }
 
@@ -166,7 +170,9 @@ impl Workspace {
     ) -> Result<(Self, Arc<ReadonlyRepo>), WorkspaceInitError> {
         let jj_dir = create_jj_dir(workspace_root)?;
         let repo_dir = jj_dir.join("repo");
+        let tmp_dir = jj_dir.join("tmp");
         std::fs::create_dir(&repo_dir).context(&repo_dir)?;
+        std::fs::create_dir(&tmp_dir).context(&tmp_dir)?;
         let repo = ReadonlyRepo::init(
             user_settings,
             &repo_dir,
@@ -183,7 +189,7 @@ impl Workspace {
             WorkspaceId::default(),
         )?;
         let repo_loader = repo.loader();
-        let workspace = Workspace::new(workspace_root, working_copy, repo_loader)?;
+        let workspace = Workspace::new(workspace_root, working_copy, repo_loader, &tmp_dir)?;
         Ok((workspace, repo))
     }
 
@@ -221,10 +227,12 @@ impl Workspace {
                     .as_bytes(),
             )
             .context(&repo_file_path)?;
+        let tmp_dir = jj_dir.join("tmp");
+        std::fs::create_dir(&tmp_dir).context(&tmp_dir)?;
 
         let (working_copy, repo) =
             init_working_copy(user_settings, repo, workspace_root, &jj_dir, workspace_id)?;
-        let workspace = Workspace::new(workspace_root, working_copy, repo.loader())?;
+        let workspace = Workspace::new(workspace_root, working_copy, repo.loader(), &tmp_dir)?;
         Ok((workspace, repo))
     }
 
@@ -250,6 +258,10 @@ impl Workspace {
         self.repo_loader.repo_path()
     }
 
+    pub fn tmp_dir(&self) -> &Path {
+        &self.local_tmp_dir
+    }
+
     pub fn repo_loader(&self) -> &RepoLoader {
         &self.repo_loader
     }
@@ -268,6 +280,7 @@ pub struct WorkspaceLoader {
     workspace_root: PathBuf,
     repo_dir: PathBuf,
     working_copy_state_path: PathBuf,
+    local_tmp_dir: PathBuf,
 }
 
 impl WorkspaceLoader {
@@ -295,11 +308,11 @@ impl WorkspaceLoader {
                 return Err(WorkspaceLoadError::RepoDoesNotExist(repo_dir));
             }
         }
-        let working_copy_state_path = jj_dir.join("working_copy");
         Ok(WorkspaceLoader {
             workspace_root: workspace_root.to_owned(),
             repo_dir,
-            working_copy_state_path,
+            working_copy_state_path: jj_dir.join("working_copy"),
+            local_tmp_dir: jj_dir.join("tmp"),
         })
     }
 
@@ -322,7 +335,12 @@ impl WorkspaceLoader {
             self.workspace_root.clone(),
             self.working_copy_state_path.clone(),
         );
-        let workspace = Workspace::new(&self.workspace_root, working_copy, repo_loader)?;
+        let workspace = Workspace::new(
+            &self.workspace_root,
+            working_copy,
+            repo_loader,
+            &self.local_tmp_dir,
+        )?;
         Ok(workspace)
     }
 }
