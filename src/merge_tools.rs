@@ -160,6 +160,7 @@ pub fn run_mergetool(
     ui: &mut Ui,
     tree: &Tree,
     repo_path: &RepoPath,
+    workspace_tmp_path: &Path,
     settings: &UserSettings,
 ) -> Result<TreeId, ConflictResolveError> {
     let conflict_id = match tree.path_value(repo_path) {
@@ -208,9 +209,15 @@ pub fn run_mergetool(
         "output" => initial_output_content.clone(),
     };
 
+    let tmp_merge_dir = if editor.use_tmp_dir_under_workspace {
+        workspace_tmp_path.join("merge")
+    } else {
+        std::env::temp_dir().join("merge")
+    };
+    std::fs::create_dir_all(&tmp_merge_dir)?;
     let temp_dir = tempfile::Builder::new()
         .prefix("jj-resolve-")
-        .tempdir()
+        .tempdir_in(tmp_merge_dir)
         .map_err(ExternalToolError::SetUpDirError)?;
     let suffix = repo_path
         .components()
@@ -308,6 +315,7 @@ pub fn edit_diff(
     left_tree: &Tree,
     right_tree: &Tree,
     instructions: &str,
+    workspace_tmp_path: &Path,
     base_ignores: Arc<GitIgnoreFile>,
     settings: &UserSettings,
 ) -> Result<TreeId, DiffEditError> {
@@ -319,9 +327,16 @@ pub fn edit_diff(
 
     // Check out the two trees in temporary directories. Only include changed files
     // in the sparse checkout patterns.
+    let editor = get_diff_editor_from_settings(ui, settings)?;
+    let tmp_diff_dir = if editor.use_tmp_dir_under_workspace {
+        workspace_tmp_path.join("diff")
+    } else {
+        std::env::temp_dir().join("diff")
+    };
+    std::fs::create_dir_all(&tmp_diff_dir)?;
     let temp_dir = tempfile::Builder::new()
         .prefix("jj-diff-edit-")
-        .tempdir()
+        .tempdir_in(tmp_diff_dir)
         .map_err(ExternalToolError::SetUpDirError)?;
     let left_wc_dir = temp_dir.path().join("left");
     let left_state_dir = temp_dir.path().join("left_state");
@@ -356,7 +371,6 @@ pub fn edit_diff(
     }
 
     // Start a diff editor on the two directories.
-    let editor = get_diff_editor_from_settings(ui, settings)?;
     let patterns = maplit::hashmap! {
         "left" => left_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
         "right" => right_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
@@ -407,6 +421,12 @@ struct MergeTool {
     // TODO: Instead of a boolean, this could denote the flavor of conflict markers to put in
     // the file (`jj` or `diff3` for example).
     pub merge_tool_edits_conflict_markers: bool,
+    // If false (default), place files the tool works on in the global temporary directory (e.g.
+    // /tmp). If true, the files will be placed inside the .jj directory. Some tools, notably
+    // VS Code, demand this since they restrict functionality for files in potentially
+    // untrustworthy directories. Setting this to true will make merge tools slower or
+    // unuseable if the repository is on a network file system or a read-only medium.
+    pub use_tmp_dir_under_workspace: bool,
 }
 
 impl Default for MergeTool {
@@ -416,6 +436,7 @@ impl Default for MergeTool {
             edit_args: ["$left", "$right"].map(ToOwned::to_owned).to_vec(),
             merge_args: vec![],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
     }
 }
@@ -558,6 +579,7 @@ mod tests {
                 "--auto-merge",
             ],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -571,6 +593,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -587,6 +610,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -602,6 +626,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -623,6 +648,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -642,6 +668,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -655,6 +682,7 @@ mod tests {
             ],
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -688,6 +716,7 @@ mod tests {
                 "--auto-merge",
             ],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -714,6 +743,7 @@ mod tests {
                 "$output",
             ],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -735,6 +765,7 @@ mod tests {
                 "$output",
             ],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
@@ -759,6 +790,7 @@ mod tests {
                 "$output",
             ],
             merge_tool_edits_conflict_markers: false,
+            use_tmp_dir_under_workspace: false,
         }
         "###);
 
