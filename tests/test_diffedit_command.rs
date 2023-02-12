@@ -143,7 +143,7 @@ fn test_diffedit_merge() {
     // Remove file1. The conflict remains in the working copy on top of the merge.
     std::fs::write(
         edit_script,
-        "files-before file1\0files-after JJ-INSTRUCTIONS file1 file3\0rm file1",
+        "files-before file1 file2\0files-after JJ-INSTRUCTIONS file1 file2 file3\0rm file1",
     )
     .unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "-r", "@-"]);

@@ -20,6 +20,7 @@ use std::process::Command;
 use std::sync::Arc;
 
 use config::ConfigError;
+use indexmap::IndexSet;
 use itertools::Itertools;
 use jj_lib::backend::{TreeId, TreeValue};
 use jj_lib::conflicts::materialize_merge_result;
@@ -300,10 +301,17 @@ pub fn edit_diff(
     settings: &UserSettings,
 ) -> Result<TreeId, DiffEditError> {
     let store = left_tree.store();
-    let changed_files = left_tree
+    let mut files_to_edit: IndexSet<_> = left_tree
         .diff(right_tree, &EverythingMatcher)
         .map(|(path, _value)| path)
-        .collect_vec();
+        .collect();
+    files_to_edit.extend(
+        left_tree
+            .conflicts_matching(&EverythingMatcher)
+            .into_iter()
+            .map(|(path, _value)| path),
+    );
+    let files_to_edit = files_to_edit.into_iter().collect_vec();
 
     // Check out the two trees in temporary directories. Only include changed files
     // in the sparse checkout patterns.
@@ -320,7 +328,7 @@ pub fn edit_diff(
         left_wc_dir.clone(),
         left_state_dir,
         left_tree,
-        changed_files.clone(),
+        files_to_edit.clone(),
     )?;
     set_readonly_recursively(&left_wc_dir).map_err(ExternalToolError::SetUpDirError)?;
     let mut right_tree_state = check_out(
@@ -328,7 +336,7 @@ pub fn edit_diff(
         right_wc_dir.clone(),
         right_state_dir,
         right_tree,
-        changed_files,
+        files_to_edit,
     )?;
     let instructions_path = right_wc_dir.join("JJ-INSTRUCTIONS");
     // In the unlikely event that the file already exists, then the user will simply
