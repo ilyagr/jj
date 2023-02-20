@@ -63,11 +63,87 @@ pub fn merge_commit_trees_without_repo(
     }
 }
 
-pub fn rebase_commit(
+/*
+ * <<<<<<<
+ * %%%%%%%
+ *  pub fn merge_commit_trees(repo: &dyn Repo, commits: &[Commit]) -> Tree {
+ * -    let store = repo.store();
+ * +    merge_commit_trees_without_repo(repo.store(), repo.index(), commits)
+ * +}
+ * +
+ * +pub fn merge_commit_trees_without_repo(
+ * +    store: &Arc<Store>,
+ * +    index: &dyn Index,
+ * +    commits: &[Commit],
+ * +) -> Tree {
+ *      if commits.is_empty() {
+ *          store
+ * +++++++
+ * pub fn merge_commit_trees<'a>(
+ *     repo: &dyn Repo,
+ *     commits: impl IntoIterator<Item = &'a Commit> + Copy,
+ * ) -> Tree {
+ *     let store = repo.store();
+ *     match commits.into_iter().next() {
+ *         None => store
+ * >>>>>>>
+ *             .get_tree(&RepoPath::root(), store.empty_tree_id())
+ * <<<<<<<
+ * %%%%%%%
+ *              .unwrap()
+ *      } else {
+ * -        let index = repo.index();
+ *          let mut new_tree = commits[0].tree();
+ *          let commit_ids = commits
+ *              .iter()
+ *              .map(|commit| commit.id().clone())
+ *              .collect_vec();
+ *          for (i, other_commit) in commits.iter().enumerate().skip(1) {
+ *              let ancestor_ids = index.common_ancestors(&commit_ids[0..i], &[commit_ids[i].clone()]);
+ *              let ancestors = ancestor_ids
+ *                  .iter()
+ *                  .map(|id| store.get_commit(id).unwrap())
+ * +++++++
+ *             .unwrap(),
+ *         Some(first_commit) => {
+ *             let index = repo.index();
+ *             let mut new_tree = first_commit.tree();
+ *             let commit_ids = commits
+ *                 .into_iter()
+ *                 .map(|commit| commit.id().clone())
+ * >>>>>>>
+ *                 .collect_vec();
+ * <<<<<<<
+ * %%%%%%%
+ * -            let ancestor_tree = merge_commit_trees(repo, &ancestors);
+ * +            let ancestor_tree = merge_commit_trees_without_repo(store, index, &ancestors);
+ *              let new_tree_id = merge_trees(&new_tree, &ancestor_tree, &other_commit.tree()).unwrap();
+ *              new_tree = store.get_tree(&RepoPath::root(), &new_tree_id).unwrap();
+ * +++++++
+ *             for (i, other_commit) in commits.into_iter().enumerate().skip(1) {
+ *                 let ancestor_ids =
+ *                     index.common_ancestors(&commit_ids[0..i], &[commit_ids[i].clone()]);
+ *                 let ancestors = ancestor_ids
+ *                     .iter()
+ *                     .map(|id| store.get_commit(id).unwrap())
+ *                     .collect_vec();
+ *                 let ancestor_tree = merge_commit_trees(repo, &ancestors);
+ *                 let new_tree_id =
+ *                     merge_trees(&new_tree, &ancestor_tree, &other_commit.tree()).unwrap();
+ *                 new_tree = store.get_tree(&RepoPath::root(), &new_tree_id).unwrap();
+ *             }
+ *             new_tree
+ * >>>>>>>
+ *         }
+ *     }
+ * }
+ */
+
+pub fn rebase_commit<'a>(
     settings: &UserSettings,
     mut_repo: &mut MutableRepo,
     old_commit: &Commit,
-    new_parents: &[Commit],
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
 ) -> BackendResult<Commit> {
     let old_parents = old_commit.parents();
     let old_parent_trees = old_parents
@@ -75,7 +151,7 @@ pub fn rebase_commit(
         .map(|parent| parent.store_commit().root_tree.clone())
         .collect_vec();
     let new_parent_trees = new_parents
-        .iter()
+        .into_iter()
         .map(|parent| parent.store_commit().root_tree.clone())
         .collect_vec();
     let new_tree_id = if new_parent_trees == old_parent_trees {
@@ -88,7 +164,7 @@ pub fn rebase_commit(
         merge_trees(&new_base_tree, &old_base_tree, &old_commit.tree()).unwrap()
     };
     let new_parent_ids = new_parents
-        .iter()
+        .into_iter()
         .map(|commit| commit.id().clone())
         .collect();
     mut_repo
@@ -98,18 +174,18 @@ pub fn rebase_commit(
         .write()
 }
 
-pub fn back_out_commit(
+pub fn back_out_commit<'a>(
     settings: &UserSettings,
     mut_repo: &mut MutableRepo,
     old_commit: &Commit,
-    new_parents: &[Commit],
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
 ) -> BackendResult<Commit> {
     let old_base_tree = merge_commit_trees(mut_repo, &old_commit.parents());
     let new_base_tree = merge_commit_trees(mut_repo, new_parents);
     // TODO: pass in labels for the merge parts
     let new_tree_id = merge_trees(&new_base_tree, &old_commit.tree(), &old_base_tree).unwrap();
     let new_parent_ids = new_parents
-        .iter()
+        .into_iter()
         .map(|commit| commit.id().clone())
         .collect();
     // TODO: i18n the description based on repo language

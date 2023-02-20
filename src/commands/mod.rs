@@ -2037,9 +2037,7 @@ fn cmd_new(ui: &mut Ui, command: &CommandHelper, args: &NewArgs) -> Result<(), C
         &workspace_command,
         &args.revisions,
         args.allow_large_revsets,
-    )?
-    .into_iter()
-    .collect_vec();
+    )?;
     let target_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
     let mut tx = workspace_command.start_transaction("new empty commit");
     let mut num_rebased = 0;
@@ -2827,9 +2825,7 @@ fn cmd_rebase(ui: &mut Ui, command: &CommandHelper, args: &RebaseArgs) -> Result
         &workspace_command,
         &args.destination,
         args.allow_large_revsets,
-    )?
-    .into_iter()
-    .collect_vec();
+    )?;
     if let Some(rev_str) = &args.revision {
         rebase_revision(ui, command, &mut workspace_command, &new_parents, rev_str)?;
     } else if !args.source.is_empty() {
@@ -2866,25 +2862,25 @@ fn cmd_rebase(ui: &mut Ui, command: &CommandHelper, args: &RebaseArgs) -> Result
     Ok(())
 }
 
-fn rebase_branch(
+fn rebase_branch<'a, 'b>(
     ui: &mut Ui,
     command: &CommandHelper,
     workspace_command: &mut WorkspaceCommandHelper,
-    new_parents: &[Commit],
-    branch_commits: &IndexSet<Commit>,
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
+    branch_commits: impl IntoIterator<Item = &'b Commit> + Copy,
 ) -> Result<(), CommandError> {
     let parent_ids = new_parents
-        .iter()
+        .into_iter()
         .map(|commit| commit.id().clone())
         .collect_vec();
     let branch_commit_ids = branch_commits
-        .iter()
+        .into_iter()
         .map(|commit| commit.id().clone())
         .collect_vec();
     let roots_expression = RevsetExpression::commits(parent_ids)
         .range(&RevsetExpression::commits(branch_commit_ids))
         .roots();
-    let root_commits: IndexSet<_> = roots_expression
+    let root_commits: IndexSet<Commit> = roots_expression
         .evaluate(workspace_command.repo().as_ref())
         .unwrap()
         .iter()
@@ -2893,24 +2889,25 @@ fn rebase_branch(
     rebase_descendants(ui, command, workspace_command, new_parents, &root_commits)
 }
 
-fn rebase_descendants(
+fn rebase_descendants<'a, 'b>(
     ui: &mut Ui,
     command: &CommandHelper,
     workspace_command: &mut WorkspaceCommandHelper,
-    new_parents: &[Commit],
-    old_commits: &IndexSet<Commit>,
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
+    old_commits: impl IntoIterator<Item = &'b Commit> + Copy,
 ) -> Result<(), CommandError> {
-    for old_commit in old_commits.iter() {
+    for old_commit in old_commits {
         workspace_command.check_rewritable(old_commit)?;
         check_rebase_destinations(workspace_command.repo(), new_parents, old_commit)?;
     }
-    let tx_message = if old_commits.len() == 1 {
+    let n_commits = old_commits.into_iter().count();
+    let tx_message = if n_commits == 1 {
         format!(
             "rebase commit {} and descendants",
-            old_commits.first().unwrap().id().hex()
+            old_commits.into_iter().next().unwrap().id().hex()
         )
     } else {
-        format!("rebase {} commits and their descendants", old_commits.len())
+        format!("rebase {n_commits} commits and their descendants")
     };
     let mut tx = workspace_command.start_transaction(&tx_message);
     // `rebase_descendants` takes care of sorting in reverse topological order, so
@@ -2918,17 +2915,17 @@ fn rebase_descendants(
     for old_commit in old_commits {
         rebase_commit(command.settings(), tx.mut_repo(), old_commit, new_parents)?;
     }
-    let num_rebased = old_commits.len() + tx.mut_repo().rebase_descendants(command.settings())?;
+    let num_rebased = n_commits + tx.mut_repo().rebase_descendants(command.settings())?;
     writeln!(ui, "Rebased {num_rebased} commits")?;
     tx.finish(ui)?;
     Ok(())
 }
 
-fn rebase_revision(
+fn rebase_revision<'a>(
     ui: &mut Ui,
     command: &CommandHelper,
     workspace_command: &mut WorkspaceCommandHelper,
-    new_parents: &[Commit],
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
     rev_str: &str,
 ) -> Result<(), CommandError> {
     let old_commit = workspace_command.resolve_single_rev(rev_str)?;
@@ -3001,9 +2998,9 @@ fn rebase_revision(
     Ok(())
 }
 
-fn check_rebase_destinations(
+fn check_rebase_destinations<'a>(
     repo: &Arc<ReadonlyRepo>,
-    new_parents: &[Commit],
+    new_parents: impl IntoIterator<Item = &'a Commit> + Copy,
     commit: &Commit,
 ) -> Result<(), CommandError> {
     for parent in new_parents {
