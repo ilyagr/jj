@@ -58,11 +58,13 @@ fn test_init_git_internal() {
     let jj_path = workspace_root.join(".jj");
     let repo_path = jj_path.join("repo");
     let store_path = repo_path.join("store");
+    let tmp_path = jj_path.join("tmp");
     assert!(workspace_root.is_dir());
     assert!(jj_path.is_dir());
     assert!(jj_path.join("working_copy").is_dir());
     assert!(repo_path.is_dir());
     assert!(store_path.is_dir());
+    assert!(tmp_path.is_dir());
     assert!(store_path.join("git").is_dir());
     assert!(store_path.join("git_target").is_file());
     let git_target_file_contents = std::fs::read_to_string(store_path.join("git_target")).unwrap();
@@ -95,11 +97,13 @@ fn test_init_git_external() {
     let jj_path = workspace_root.join(".jj");
     let repo_path = jj_path.join("repo");
     let store_path = repo_path.join("store");
+    let tmp_path = jj_path.join("tmp");
     assert!(workspace_root.is_dir());
     assert!(jj_path.is_dir());
     assert!(jj_path.join("working_copy").is_dir());
     assert!(repo_path.is_dir());
     assert!(store_path.is_dir());
+    assert!(tmp_path.is_dir());
     let git_target_file_contents = std::fs::read_to_string(store_path.join("git_target")).unwrap();
     assert!(git_target_file_contents
         .replace('\\', "/")
@@ -139,11 +143,13 @@ fn test_init_git_colocated() {
     let jj_path = workspace_root.join(".jj");
     let repo_path = jj_path.join("repo");
     let store_path = repo_path.join("store");
+    let tmp_path = jj_path.join("tmp");
     assert!(workspace_root.is_dir());
     assert!(jj_path.is_dir());
     assert!(jj_path.join("working_copy").is_dir());
     assert!(repo_path.is_dir());
     assert!(store_path.is_dir());
+    assert!(tmp_path.is_dir());
     let git_target_file_contents = std::fs::read_to_string(store_path.join("git_target")).unwrap();
     assert!(git_target_file_contents
         .replace('\\', "/")
@@ -156,6 +162,32 @@ fn test_init_git_colocated() {
     │  My commit message
     ~
     "###);
+}
+
+#[test]
+fn test_tmp_directory_unnecessary_and_recreated() {
+    let test_env = TestEnvironment::default();
+    let stdout = test_env.jj_cmd_success(test_env.env_root(), &["init", "--git", "repo"]);
+    insta::assert_snapshot!(stdout, @r###"
+    Initialized repo in "repo"
+    "###);
+
+    let workspace_root = test_env.env_root().join("repo");
+    let jj_path = workspace_root.join(".jj");
+    let repo_path = jj_path.join("repo");
+    let tmp_path = jj_path.join("tmp");
+    assert!(tmp_path.is_dir());
+
+    // Check that the tmp dir is unnecessary
+    std::fs::remove_dir_all(&tmp_path).unwrap();
+    assert!(!tmp_path.is_dir());
+    let stdout = test_env.jj_cmd_success(&repo_path, &["log", "-r", "@-"]);
+    insta::assert_snapshot!(stdout, @r###"
+    ◉  zzzzzzzzzzzz 1970-01-01 00:00:00.000 +00:00 000000000000
+       (empty) (no description set)
+    "###);
+    assert!(tmp_path.is_dir());
+    assert!(tmp_path.join("README").is_file());
 }
 
 #[test]
@@ -209,10 +241,12 @@ fn test_init_local() {
     let jj_path = workspace_root.join(".jj");
     let repo_path = jj_path.join("repo");
     let store_path = repo_path.join("store");
+    let tmp_path = jj_path.join("tmp");
     assert!(workspace_root.is_dir());
     assert!(jj_path.is_dir());
     assert!(jj_path.join("working_copy").is_dir());
     assert!(repo_path.is_dir());
+    assert!(tmp_path.is_dir());
     assert!(store_path.is_dir());
     assert!(store_path.join("commits").is_dir());
     assert!(store_path.join("trees").is_dir());

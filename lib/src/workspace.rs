@@ -119,6 +119,15 @@ impl Workspace {
         local_tmp_dir: &Path,
     ) -> Result<Workspace, PathError> {
         let workspace_root = workspace_root.canonicalize().context(workspace_root)?;
+        if !local_tmp_dir.is_dir() {
+            std::fs::create_dir(local_tmp_dir).context(local_tmp_dir)?;
+            let readme_path = local_tmp_dir.join("README");
+            std::fs::write(
+                &readme_path,
+                "This directory should be safe to delete whenever `jj` is not running.\n",
+            )
+            .context(&readme_path)?;
+        }
         let local_tmp_dir = local_tmp_dir.canonicalize().context(local_tmp_dir)?;
         Ok(Workspace {
             workspace_root,
@@ -170,9 +179,7 @@ impl Workspace {
     ) -> Result<(Self, Arc<ReadonlyRepo>), WorkspaceInitError> {
         let jj_dir = create_jj_dir(workspace_root)?;
         let repo_dir = jj_dir.join("repo");
-        let tmp_dir = jj_dir.join("tmp");
         std::fs::create_dir(&repo_dir).context(&repo_dir)?;
-        std::fs::create_dir(&tmp_dir).context(&tmp_dir)?;
         let repo = ReadonlyRepo::init(
             user_settings,
             &repo_dir,
@@ -189,7 +196,12 @@ impl Workspace {
             WorkspaceId::default(),
         )?;
         let repo_loader = repo.loader();
-        let workspace = Workspace::new(workspace_root, working_copy, repo_loader, &tmp_dir)?;
+        let workspace = Workspace::new(
+            workspace_root,
+            working_copy,
+            repo_loader,
+            &jj_dir.join("tmp"),
+        )?;
         Ok((workspace, repo))
     }
 
@@ -227,12 +239,15 @@ impl Workspace {
                     .as_bytes(),
             )
             .context(&repo_file_path)?;
-        let tmp_dir = jj_dir.join("tmp");
-        std::fs::create_dir(&tmp_dir).context(&tmp_dir)?;
 
         let (working_copy, repo) =
             init_working_copy(user_settings, repo, workspace_root, &jj_dir, workspace_id)?;
-        let workspace = Workspace::new(workspace_root, working_copy, repo.loader(), &tmp_dir)?;
+        let workspace = Workspace::new(
+            workspace_root,
+            working_copy,
+            repo.loader(),
+            &jj_dir.join("tmp"),
+        )?;
         Ok((workspace, repo))
     }
 
@@ -308,11 +323,13 @@ impl WorkspaceLoader {
                 return Err(WorkspaceLoadError::RepoDoesNotExist(repo_dir));
             }
         }
+        let local_tmp_dir = jj_dir.join("tmp");
+
         Ok(WorkspaceLoader {
             workspace_root: workspace_root.to_owned(),
             repo_dir,
             working_copy_state_path: jj_dir.join("working_copy"),
-            local_tmp_dir: jj_dir.join("tmp"),
+            local_tmp_dir,
         })
     }
 
