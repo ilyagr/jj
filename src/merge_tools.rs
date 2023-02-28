@@ -355,7 +355,7 @@ pub fn edit_diff(
         right_wc_dir.clone(),
         right_state_dir,
         right_tree,
-        changed_files,
+        changed_files.clone(),
     )?;
     let instructions_path = right_wc_dir.join("JJ-INSTRUCTIONS");
     // In the unlikely event that the file already exists, then the user will simply
@@ -370,13 +370,46 @@ pub fn edit_diff(
             .map_err(ExternalToolError::SetUpDirError)?;
     }
 
-    // Start a diff editor on the two directories.
-    let patterns = maplit::hashmap! {
-        "left" => left_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
-        "right" => right_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
-    };
     let mut cmd = Command::new(&editor.program);
-    cmd.args(interpolate_variables(&editor.edit_args, &patterns));
+    if editor.diff_invocation_style.as_deref() == Some("repeat-file-pairs") {
+        let mut args = vec![];
+        if let [first, repeat_section, rest @ ..] = &(editor
+            .edit_args
+            .split(|elt| elt == "$repeat" || elt == "$repeat_end")
+            .collect_vec())[..]
+        {
+            args.extend(first.iter().cloned()); // TODO: Replace with cmd.args
+            for file_repo_path in changed_files.iter() {
+                let left_path = file_repo_path.to_fs_path(&left_wc_dir);
+                let right_path = file_repo_path.to_fs_path(&right_wc_dir);
+                let patterns = maplit::hashmap! {
+                    "left" => left_path.to_str().expect("temp_dir would be valid utf-8"),
+                    "right" => right_path.to_str().expect("temp_dir would be valid utf-8"),
+                };
+                args.extend(interpolate_variables(repeat_section, &patterns).into_iter());
+            }
+            // TODO: Abort if len(rest) > 1
+            if let [tail] = rest {
+                args.extend(tail.iter().cloned())
+            }
+            cmd.args(args);
+        } else {
+            return Err(DiffEditError::ExternalToolError(
+                ExternalToolError::ConfigError(ConfigError::Message(
+                    "Invalid edit_args config for repeat_file_pairs invocation style: must \
+                     contain an element '$repeat' "
+                        .to_string(),
+                )),
+            ));
+        }
+    } else {
+        // Start a diff editor on the two directories.
+        let patterns = maplit::hashmap! {
+            "left" => left_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
+            "right" => right_wc_dir.to_str().expect("temp_dir would be valid utf-8"),
+        };
+        cmd.args(interpolate_variables(&editor.edit_args, &patterns));
+    }
     tracing::debug!(?cmd, "Invoking the external diff editor:");
     let exit_status = cmd
         .status()
@@ -429,6 +462,8 @@ struct MergeTool {
     /// slower or unuseable if the repository is on a network file system or
     /// a read-only medium.
     pub use_tmp_dir_under_workspace: bool,
+    /// "repeat-file-pairs" is a valid option. TODO: More docs
+    pub diff_invocation_style: Option<String>,
 }
 
 impl Default for MergeTool {
@@ -439,6 +474,7 @@ impl Default for MergeTool {
             merge_args: vec![],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
     }
 }
@@ -582,6 +618,7 @@ mod tests {
             ],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -596,6 +633,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -613,6 +651,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -629,6 +668,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -651,6 +691,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -671,6 +712,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -685,6 +727,7 @@ mod tests {
             merge_args: [],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -719,6 +762,7 @@ mod tests {
             ],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -746,6 +790,7 @@ mod tests {
             ],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -768,6 +813,7 @@ mod tests {
             ],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
@@ -793,6 +839,7 @@ mod tests {
             ],
             merge_tool_edits_conflict_markers: false,
             use_tmp_dir_under_workspace: false,
+            diff_invocation_style: None,
         }
         "###);
 
