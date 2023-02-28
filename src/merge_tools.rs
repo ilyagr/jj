@@ -421,11 +421,13 @@ struct MergeTool {
     // TODO: Instead of a boolean, this could denote the flavor of conflict markers to put in
     // the file (`jj` or `diff3` for example).
     pub merge_tool_edits_conflict_markers: bool,
-    // If false (default), place files the tool works on in the global temporary directory (e.g.
-    // /tmp). If true, the files will be placed inside the .jj directory. Some tools, notably
-    // VS Code, demand this since they restrict functionality for files in potentially
-    // untrustworthy directories. Setting this to true will make merge tools slower or
-    // unuseable if the repository is on a network file system or a read-only medium.
+    /// If false (default), place files the tool works on in the global
+    /// temporary directory (e.g. /tmp). If true, the files will be placed
+    /// inside the .jj directory. Some tools, notably VS Code, demand this
+    /// since they restrict functionality for files in potentially
+    /// untrustworthy directories. Setting this to true will make merge tools
+    /// slower or unuseable if the repository is on a network file system or
+    /// a read-only medium.
     pub use_tmp_dir_under_workspace: bool,
 }
 
