@@ -716,6 +716,10 @@ impl WorkspaceCommandHelper {
         self.workspace.working_copy()
     }
 
+    pub fn tmp_dir(&self) -> &Path {
+        self.workspace.tmp_dir()
+    }
+
     pub fn unsafe_start_working_copy_mutation(
         &mut self,
     ) -> Result<(LockedWorkingCopy, Commit), CommandError> {
