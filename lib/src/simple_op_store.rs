@@ -83,18 +83,12 @@ impl OpStore for SimpleOpStore {
     }
 
     fn read_view(&self, id: &ViewId) -> OpStoreResult<View> {
-        let path = self.view_path(id);
-        let buf = fs::read(path)?;
-
-        let proto = crate::protos::op_store::View::decode(&*buf)?;
-        Ok(view_from_proto(proto))
+        read_view_from_file(self.view_path(id))
     }
 
     fn write_view(&self, view: &View) -> OpStoreResult<ViewId> {
         let temp_file = NamedTempFile::new_in(&self.path)?;
-
-        let proto = view_to_proto(view);
-        temp_file.as_file().write_all(&proto.encode_to_vec())?;
+        write_view_to_file(view, temp_file.path().to_path_buf())?;
 
         let id = ViewId::new(blake2b_hash(view).to_vec());
 
@@ -121,6 +115,18 @@ impl OpStore for SimpleOpStore {
         persist_content_addressed_temp_file(temp_file, self.operation_path(&id))?;
         Ok(id)
     }
+}
+
+pub fn read_view_from_file(view_path: PathBuf) -> OpStoreResult<View> {
+    let buf = fs::read(view_path)?;
+
+    let proto = crate::protos::op_store::View::decode(&*buf)?;
+    Ok(view_from_proto(proto))
+}
+
+pub fn write_view_to_file(view: &View, path: PathBuf) -> OpStoreResult<()> {
+    let proto = view_to_proto(view);
+    Ok(std::fs::write(path, proto.encode_to_vec())?)
 }
 
 fn not_found_to_store_error(err: std::io::Error) -> OpStoreError {
