@@ -26,7 +26,7 @@ use crate::git_backend::NO_GC_REF_NAMESPACE;
 use crate::op_store::RefTarget;
 use crate::repo::{MutableRepo, Repo};
 use crate::settings::GitSettings;
-use crate::view::RefName;
+use crate::view::{RefName, View};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum GitImportError {
@@ -213,28 +213,55 @@ pub enum GitExportError {
     InternalGitError(#[from] git2::Error),
 }
 
-/// Reflect changes made in the Jujutsu repo compared to our current view of the
-/// Git repo in `mut_repo.view().git_refs()`. Returns a list of names of
-/// branches that failed to export.
-// TODO: Also indicate why we failed to export these branches
+/// Export changes to branches made in the Jujutsu repo compared to compared to
+/// our last seen view of the Git repo. Returns a list of names of branches that
+/// failed to export.
+///
+/// We ignore branches that are conflicted (were changed in the Git repo
+/// compared to our last remembered view of the Git repo stored on Git). These
+/// will be marked conflicted by the next `jj git import`.
+///
+/// We do not export tags and other refs at the moment, since these aren't
+/// supposed to be modified by JJ. For them, the Git state is considered
+/// authoritative.
+//
+// TODO: Also indicate the reason for any branches we failed to export
 pub fn export_refs(
     mut_repo: &mut MutableRepo,
     git_repo: &git2::Repository,
 ) -> Result<Vec<String>, GitExportError> {
-    // First find the changes we want need to make without modifying mut_repo
+    // It is important for `last_seen_view` to be unaffected by `jj undo`.
+    // Short-term TODO: this comment is expanded upon in a follow-up commit
+    let last_seen_refs_path = mut_repo.base_repo().repo_path().join("git_last_seen_refs");
+    let last_seen_view = crate::simple_op_store::read_view_from_file(last_seen_refs_path.clone())
+        .unwrap_or(crate::op_store::View::default());
+    let (new_exported_view, failed_branches) =
+        export_branches_since_old_view(mut_repo, &View::new(last_seen_view), git_repo)?;
+    crate::simple_op_store::write_view_to_file(new_exported_view.store_view(), last_seen_refs_path)
+        .map_err(|err| GitExportError::StateReadWriteError(err.to_string()))?;
+    Ok(failed_branches)
+}
+
+/// Exports unconflicted branches.
+///
+/// Potential conflicts between the Git repo state and the JJ state are detected
+/// by using `old_view` as the conflict base. Returns the list of unexported
+/// branches and the new git state (with successfully exported branches moved).
+fn export_branches_since_old_view(
+    mut_repo: &mut MutableRepo,
+    old_view: &View,
+    git_repo: &git2::Repository,
+) -> Result<(View, Vec<String>), GitExportError> {
+    let current_view = mut_repo.view();
+    let old_branches: HashSet<_> = old_view.branches().keys().cloned().collect();
+    let current_branches: HashSet<_> = current_view.branches().keys().cloned().collect(); // TODO: Do we need this?
+
     let mut branches_to_update = BTreeMap::new();
     let mut branches_to_delete = BTreeMap::new();
     let mut failed_branches = vec![];
-    let view = mut_repo.view();
-    let all_branch_names: HashSet<&str> = view
-        .git_refs()
-        .keys()
-        .filter_map(|git_ref| git_ref.strip_prefix("refs/heads/"))
-        .chain(view.branches().keys().map(AsRef::as_ref))
-        .collect();
-    for branch_name in all_branch_names {
-        let old_branch = view.get_git_ref(&format!("refs/heads/{branch_name}"));
-        let new_branch = view.get_local_branch(branch_name);
+    for branch_name in old_branches.union(&current_branches) {
+        let old_branch = old_view.get_local_branch(branch_name);
+        let new_branch = current_view.get_local_branch(branch_name);
         if new_branch == old_branch {
             continue;
         }
@@ -255,7 +282,6 @@ pub fn export_refs(
                     branches_to_update.insert(branch_name.to_owned(), (old_oid, new_oid.unwrap()));
                 }
                 RefTarget::Conflict { .. } => {
-                    // Skip conflicts and leave the old value in git_refs
                     continue;
                 }
             }
@@ -281,6 +307,7 @@ pub fn export_refs(
             }
         }
     }
+    let mut exported_view = old_view.clone();
     for (branch_name, old_oid) in branches_to_delete {
         let git_ref_name = format!("refs/heads/{branch_name}");
         let success = if let Ok(mut git_ref) = git_repo.find_reference(&git_ref_name) {
@@ -288,7 +315,7 @@ pub fn export_refs(
                 // The branch has not been updated by git, so go ahead and delete it
                 git_ref.delete().is_ok()
             } else {
-                // The branch was updated by git
+                // The branch was updated by git since we last checked its state
                 false
             }
         } else {
@@ -296,6 +323,7 @@ pub fn export_refs(
             true
         };
         if success {
+            exported_view.remove_branch(&branch_name);
             mut_repo.remove_git_ref(&git_ref_name);
         } else {
             failed_branches.push(branch_name);
@@ -331,13 +359,20 @@ pub fn export_refs(
                         // Iff it was updated to our desired target, we still consider it a success
                         git_ref.target() == Some(new_oid)
                     } else {
-                        // The reference was deleted in git
+                        // The reference was deleted in git and moved in jj
                         false
                     }
                 }
             }
         };
         if success {
+            exported_view.set_branch(
+                branch_name.clone(),
+                crate::op_store::BranchTarget {
+                    local_target: Some(RefTarget::Normal(CommitId::from_bytes(new_oid.as_bytes()))),
+                    remote_targets: Default::default(),
+                },
+            );
             mut_repo.set_git_ref(
                 git_ref_name,
                 RefTarget::Normal(CommitId::from_bytes(new_oid.as_bytes())),
@@ -346,7 +381,7 @@ pub fn export_refs(
             failed_branches.push(branch_name);
         }
     }
-    Ok(failed_branches)
+    Ok((exported_view, failed_branches))
 }
 
 #[derive(Error, Debug, PartialEq)]

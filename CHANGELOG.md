@@ -97,6 +97,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * It is no longer allowed to create branches at the root commit.
 
+* In colocated repos, a bug causing conflicts when undoing branch moves
+  (#922) has been fixed.
+
 ## [0.7.0] - 2023-02-16
 
 ### Breaking changes
