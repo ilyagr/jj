@@ -137,6 +137,13 @@ fn import_some_refs_and_update_view(
     for (ref_name, old_target) in &previously_known_git_refs {
         if git_ref_filter(ref_name) {
             old_git_heads.push(old_target.clone());
+            // TODO: Explanation. Also, should this go when the ref does match the filter?
+            // Need a test to distinguish !!!
+            if let Some(RefName::LocalBranch(_)) = parse_git_ref(ref_name) {
+                new_git_view.refs.remove(ref_name);
+            }
+            // TODO: Put all the branches from old_view into existing_git_refs?
+            // What to do with non-branches? Just ignore the existing git refs?
         } else {
             new_git_heads.insert(old_target.clone());
         }
