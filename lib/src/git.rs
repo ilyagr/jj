@@ -23,7 +23,7 @@ use thiserror::Error;
 use crate::backend::{CommitId, ObjectId};
 use crate::commit::Commit;
 use crate::git_backend::NO_GC_REF_NAMESPACE;
-use crate::op_store::RefTarget;
+use crate::op_store::{OpStoreError, RefTarget};
 use crate::repo::{MutableRepo, Repo};
 use crate::settings::GitSettings;
 use crate::view::{RefName, View};
@@ -213,6 +213,12 @@ pub enum GitExportError {
     InternalGitError(#[from] git2::Error),
 }
 
+impl From<OpStoreError> for GitExportError {
+    fn from(err: OpStoreError) -> GitExportError {
+        GitExportError::StateReadWriteError(err.to_string())
+    }
+}
+
 /// Export changes to branches made in the Jujutsu repo compared to compared to
 /// our last seen view of the Git repo. Returns a list of names of branches that
 /// failed to export.
@@ -230,16 +236,9 @@ pub fn export_refs(
     mut_repo: &mut MutableRepo,
     git_repo: &git2::Repository,
 ) -> Result<Vec<String>, GitExportError> {
-    // It is important for `last_seen_view` to be unaffected by `jj undo`.
-    // Short-term TODO: this comment is expanded upon in a follow-up commit
-    let last_seen_refs_path = mut_repo.base_repo().repo_path().join("git_last_seen_refs");
-    let last_seen_view = crate::simple_op_store::read_view_from_file(last_seen_refs_path.clone())
-        .unwrap_or(crate::op_store::View::default());
-    let (new_exported_view, failed_branches) =
-        export_branches_since_old_view(mut_repo, &View::new(last_seen_view), git_repo)?;
-    crate::simple_op_store::write_view_to_file(new_exported_view.store_view(), last_seen_refs_path)
-        .map_err(|err| GitExportError::StateReadWriteError(err.to_string()))?;
-    Ok(failed_branches)
+    with_last_seen_refs(mut_repo.base_repo().repo_path().clone(), |last_seen_view| {
+        export_branches_since_old_view(mut_repo, last_seen_view, git_repo)
+    })
 }
 
 /// Exports unconflicted branches.
@@ -382,6 +381,40 @@ fn export_branches_since_old_view(
         }
     }
     Ok((exported_view, failed_branches))
+}
+
+/// Reads the last seen state of git refs from a file, updates it with the
+/// provided function, and writes the result back to disk.
+///
+/// The state currently tracks only the local branches, and a View object is
+/// used to store them. The reason it is stored separately from jj's normal View
+/// of the repo is that it must not be affected by `jj undo`.
+fn with_last_seen_refs<Ret, Err, Err2: From<OpStoreError> + From<Err>>(
+    repo_path: PathBuf,
+    f: impl FnOnce(&View) -> Result<(View, Ret), Err>,
+) -> Result<Ret, Err2> {
+    // TODO 1: Modification of this file, as well as the git refs in the git
+    // storage, should be protected by a lock. This could work similarly to
+    // `working_copy_lock`, though using a libgit2 lock or a git-native lock would
+    // be better if it is possible.
+    //
+    // TODO 2: Conceptually, this state should contain all the information in the
+    // repo that's not stored by git and should not be affected by `jj undo`. In
+    // particular, jj's last seen view of remote-tracking branches should be stored
+    // here. It is currently affected by `undo`, which can cause minor issues.
+    //
+    // TODO 2.5: If remote branches were stored here, they should no longer be
+    // stored in jj's normal View and the format of the file would no longer be a
+    // View object. This would allow us to treat the state exported to the git repo
+    // similar to any other remote and unify `jj git push` and `jj git export` to a
+    // large degree.
+    let last_seen_refs_path = repo_path.join("git_last_seen_refs");
+    let old_view = crate::simple_op_store::read_view_from_file(last_seen_refs_path.clone())
+        // Short-term TODO: the default is changed in a subsequent commit.
+        .unwrap_or(crate::op_store::View::default());
+    let (new_view, ret) = f(&View::new(old_view))?;
+    crate::simple_op_store::write_view_to_file(new_view.store_view(), last_seen_refs_path)?;
+    Ok(ret)
 }
 
 #[derive(Error, Debug, PartialEq)]
