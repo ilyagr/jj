@@ -1135,6 +1135,59 @@ fn test_export_import_sequence() {
 }
 
 #[test]
+fn test_export_import_sequence_conflict() {
+    // Import a branch pointing to A, modify it in jj to point to B, export it,
+    // modify it in git to point to C, then import it again. There should be no
+    // conflict.
+    let test_data = GitRepoData::create();
+    let git_settings = GitSettings::default();
+    let git_repo = test_data.git_repo;
+    let mut tx = test_data
+        .repo
+        .start_transaction(&test_data.settings, "test");
+    let mut_repo = tx.mut_repo();
+    let commit_a = write_random_commit(mut_repo, &test_data.settings);
+    let commit_b = write_random_commit(mut_repo, &test_data.settings);
+    let commit_c = write_random_commit(mut_repo, &test_data.settings);
+
+    // Import the branch pointing to A
+    git_repo
+        .reference("refs/heads/main", git_id(&commit_a), true, "test")
+        .unwrap();
+    git::import_refs(mut_repo, &git_repo, &git_settings).unwrap();
+    assert_eq!(
+        mut_repo.get_git_ref("refs/heads/main"),
+        Some(RefTarget::Normal(commit_a.id().clone()))
+    );
+
+    // Modify the branch in jj to point to B
+    mut_repo.set_local_branch("main".to_string(), RefTarget::Normal(commit_b.id().clone()));
+
+    // The previous test exports the branch to git at this point, preventing a
+    // conflict. We don't do that here.
+
+    // Modify the branch in git to point to C and creating a conflict
+    git_repo
+        .reference("refs/heads/main", git_id(&commit_c), true, "test")
+        .unwrap();
+
+    // Import from git
+    git::import_refs(mut_repo, &git_repo, &git_settings).unwrap();
+    assert_eq!(
+        mut_repo.get_git_ref("refs/heads/main"),
+        Some(RefTarget::Normal(commit_c.id().clone()))
+    );
+    assert_eq!(
+        mut_repo.view().get_local_branch("main"),
+        Some(RefTarget::Conflict {
+            // TODO: Order? Use let-else?
+            adds: vec![commit_b.id().clone(), commit_c.id().clone()],
+            removes: vec![commit_a.id().clone()]
+        })
+    );
+}
+
+#[test]
 fn test_import_export_no_auto_local_branch() {
     // Import a remote tracking branch and export it. We should not create a git
     // branch.
