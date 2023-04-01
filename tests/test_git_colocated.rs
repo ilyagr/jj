@@ -247,7 +247,7 @@ fn test_git_colocated_branch_forget() {
 }
 
 #[test]
-fn test_git_colocated_conflicting_git_refs() {
+fn test_git_colocated_fail_if_git_ref_looks_like_subdir() {
     let test_env = TestEnvironment::default();
     let workspace_root = test_env.env_root().join("repo");
     git2::Repository::init(&workspace_root).unwrap();

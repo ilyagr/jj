@@ -68,7 +68,7 @@ fn test_resolution_of_git_tracking_branches() {
 }
 
 #[test]
-fn test_git_export_conflicting_git_refs() {
+fn test_git_export_fail_if_git_ref_looks_like_subdir() {
     let test_env = TestEnvironment::default();
     test_env.jj_cmd_success(test_env.env_root(), &["init", "repo", "--git"]);
     let repo_path = test_env.env_root().join("repo");
