@@ -513,6 +513,39 @@ fn test_git_colocated_undo_branch_creation() {
     ◉  qpvuntsmwlqt a56846756248 0
     ◉  zzzzzzzzzzzz 000000000000
     "###);
+
+    // TODO: Delete this??
+    // Undo both branch creation and a push (second time)
+    test_env.jj_cmd_success(&repo_path, &["branch", "set", "branch"]);
+    test_env.jj_cmd_success(&repo_path, &["git", "push", "--all"]);
+    let stdout = get_truncated_op_log(&test_env, &repo_path, 18);
+    insta::assert_snapshot!(stdout, @r###"
+    @  d20e52d544e9 test-username@host.example.com 2001-02-03 04:05:22.000 +07:00 - 2001-02-03 04:05:22.000 +07:00
+    │  point branch branch to commit bc15ec74b27a6d49c2fed80fe9af240c5962ae47
+    │  args: jj branch set branch
+    ◉  8e516ab64656 test-username@host.example.com 2001-02-03 04:05:20.000 +07:00 - 2001-02-03 04:05:20.000 +07:00
+    │  restore to operation 30fcb20e18545ce609925590a4672a0e565359a7229143c8e45b1ebe7b5868c15e049a5aff02b7ec3b5fcd52442ed93ab8688209cfa2575fd07dff555cc03ae6
+    │  args: jj op restore @--
+    ◉  9aeab0cb4e3f test-username@host.example.com 2001-02-03 04:05:18.000 +07:00 - 2001-02-03 04:05:18.000 +07:00
+    │  push all branches to git remote origin
+    │  args: jj git push --all
+    ◉  0f50694025ec test-username@host.example.com 2001-02-03 04:05:17.000 +07:00 - 2001-02-03 04:05:17.000 +07:00
+    │  point branch branch to commit bc15ec74b27a6d49c2fed80fe9af240c5962ae47
+    │  args: jj branch set branch
+    ◉  30fcb20e1854 test-username@host.example.com 2001-02-03 04:05:15.000 +07:00 - 2001-02-03 04:05:15.000 +07:00
+    │  undo operation 021f54e02ac6e604d7790db9144e12e4328fa67ab649abfb96fc9f6df4fc3ef5a55aae9a8c7ece1e77318cde59fcab92197cd5aae3f8afb48983f3a5e869281a
+    │  args: jj op undo
+    ◉  021f54e02ac6 test-username@host.example.com 2001-02-03 04:05:13.000 +07:00 - 2001-02-03 04:05:13.000 +07:00
+    │  point branch branch to commit bc15ec74b27a6d49c2fed80fe9af240c5962ae47
+    │  args: jj branch set branch
+    "###);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", "@--"]);
+    insta::assert_snapshot!(get_log_output_divergence(&test_env, &repo_path), @r###"
+    @  mzvwutvlkqwt bc15ec74b27a B branch
+    ◉  rlvkpnrzqnoo 3495bd79af6e A master HEAD@git
+    ◉  qpvuntsmwlqt a56846756248 0
+    ◉  zzzzzzzzzzzz 000000000000
+    "###);
 }
 
 fn get_truncated_op_log(test_env: &TestEnvironment, repo_path: &Path, lines: usize) -> String {
