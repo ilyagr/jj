@@ -42,6 +42,8 @@ fn test_git_export_conflicting_git_refs() {
     "###);
 }
 
+// TODO: Import deletion.
+// Maybe: export deletion, import/export delete-move conflict.
 #[test]
 fn test_git_import_remote_only_branch() {
     let test_env = TestEnvironment::default();
