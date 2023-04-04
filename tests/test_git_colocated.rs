@@ -17,7 +17,7 @@ use std::path::Path;
 use git2::Oid;
 use itertools::Itertools;
 
-use crate::common::{get_stderr_string, TestEnvironment};
+use crate::common::{get_stderr_string, get_stdout_string, TestEnvironment};
 
 pub mod common;
 
@@ -265,6 +265,70 @@ fn test_git_colocated_fail_if_git_ref_looks_like_subdir() {
     another (e.g. `foo` and `foo/bar`). Try to rename the branches that failed to
     export or their "parent" branches.
     "###);
+}
+
+#[test]
+fn test_git_colocated_export_problem() {
+    let test_env = TestEnvironment::default();
+    let source_path = test_env.env_root().join("source");
+    git2::Repository::init_bare(&source_path).unwrap();
+    let repo_path = test_env.env_root().join("repo");
+    git2::Repository::clone(&source_path.as_os_str().to_string_lossy(), &repo_path).unwrap();
+    test_env.jj_cmd_success(&repo_path, &["init", "--git-repo=."]);
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m=A"]);
+    test_env.jj_cmd_success(&repo_path, &["branch", "set", "master"]);
+
+    insta::assert_snapshot!(get_log_output_divergence(&test_env, &repo_path), @r###"
+    @  zsuskulnrvyr f652c32197cf
+    ◉  zzzzzzzzzzzz 000000000000 master
+    "###);
+
+    let assert = test_env
+        .jj_cmd(&repo_path, &["new", "-m=B"])
+        .assert()
+        .success();
+    // TODO: Create utility function
+    // BUG
+    insta::assert_snapshot!(get_stderr_string(&assert), @r###"
+    Failed to export some branches:
+      master
+    Hint: Git doesn't allow a branch name that looks like a parent directory of
+    another (e.g. `foo` and `foo/bar`). Try to rename the branches that failed to
+    export or their "parent" branches.
+    Failed to export some branches:
+      master
+    Hint: Git doesn't allow a branch name that looks like a parent directory of
+    another (e.g. `foo` and `foo/bar`). Try to rename the branches that failed to
+    export or their "parent" branches.
+    "###);
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    Working copy now at: 6bd36a13bcd2 B
+    Parent commit      : f652c32197cf (no description set)
+    "###);
+    // Also bug?
+    let assert = test_env
+        .jj_cmd(&repo_path, &["new", "-m=B"])
+        .assert()
+        .success();
+    // BUG
+    insta::assert_snapshot!(get_stderr_string(&assert), @r###"
+    Failed to export some branches:
+      master
+    Hint: Git doesn't allow a branch name that looks like a parent directory of
+    another (e.g. `foo` and `foo/bar`). Try to rename the branches that failed to
+    export or their "parent" branches.
+    "###);
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    Working copy now at: 8cf7d0359fdb B
+    Parent commit      : 6bd36a13bcd2 B
+    "###);
+    /*
+    let stderr = test_env.jj_cmd_failure(&repo_path, &["git", "push", "--all"]);
+    insta::assert_snapshot!(stderr, @r###"
+    Branch changes to push to origin:
+      Add branch master to 99deb38a33b0
+    "###);
+    */
 }
 
 #[test]
