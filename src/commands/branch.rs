@@ -167,6 +167,20 @@ fn cmd_branch_set(
         )?;
     }
 
+    let view = workspace_command.repo().view();
+    let branches_to_create = args
+        .names
+        .iter()
+        .filter(|branch_name| view.get_local_branch(branch_name).is_none())
+        .collect_vec();
+    if !branches_to_create.is_empty() {
+        writeln!(
+            ui.warning(),
+            "Creating new {}.",
+            make_branch_term(&branches_to_create)
+        )?;
+    }
+
     let target_commit =
         workspace_command.resolve_single_rev(args.revision.as_deref().unwrap_or("@"))?;
     workspace_command.check_rewritable(&target_commit)?;
