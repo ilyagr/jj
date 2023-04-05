@@ -207,10 +207,8 @@ pub fn import_some_refs(
 pub enum GitExportError {
     #[error("Cannot export conflicted branch '{0}'")]
     ConflictedBranch(String),
-    #[error("Failed to read export state: {0}")]
-    ReadStateError(String),
-    #[error("Failed to write export state: {0}")]
-    WriteStateError(String),
+    #[error("Failed to read or write export state: {0}")]
+    StateReadWriteError(String),
     #[error("Git error: {0}")]
     InternalGitError(#[from] git2::Error),
 }
