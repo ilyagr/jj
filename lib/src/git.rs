@@ -91,15 +91,21 @@ pub fn import_some_refs(
     git_settings: &GitSettings,
     git_ref_filter: impl Fn(&str) -> bool,
 ) -> Result<(), GitImportError> {
-    with_last_seen_refs(mut_repo.base_repo().repo_path().clone(), |last_seen_view| {
-        import_some_refs_and_update_view(
-            mut_repo,
-            last_seen_view,
-            git_repo,
-            git_settings,
-            git_ref_filter,
-        )
-    })
+    // See `export_refs` for an explanation and some TODOs.
+    let default_view = get_default_git_ref_view(mut_repo);
+    with_last_seen_refs(
+        mut_repo.base_repo().repo_path().clone(),
+        default_view,
+        |last_seen_view| {
+            import_some_refs_and_update_view(
+                mut_repo,
+                last_seen_view,
+                git_repo,
+                git_settings,
+                git_ref_filter,
+            )
+        },
+    )
 }
 
 // TODO: At the moment, this function still relies mostly on git refs for the
@@ -283,9 +289,19 @@ pub fn export_refs(
     mut_repo: &mut MutableRepo,
     git_repo: &git2::Repository,
 ) -> Result<Vec<String>, GitExportError> {
-    with_last_seen_refs(mut_repo.base_repo().repo_path().clone(), |last_seen_view| {
-        export_branches_since_old_view(mut_repo, last_seen_view, git_repo)
-    })
+    // Used in case the user just upgraded from jj 0.7 or below to a version of jj
+    // that uses an external file for storing git refs, or after a `jj git init`.
+    //
+    // TODO: Make this unnecessary after jj git init
+    // TODO: Consider simplifying this, especially after jj 0.10 is released.
+    //
+    // This comment also applies to the `import_some_refs`.
+    let default_view = get_default_git_ref_view(mut_repo);
+    with_last_seen_refs(
+        mut_repo.base_repo().repo_path().clone(),
+        default_view,
+        |last_seen_view| export_branches_since_old_view(mut_repo, last_seen_view, git_repo),
+    )
 }
 
 /// Exports unconflicted branches.
@@ -430,6 +446,26 @@ fn export_branches_since_old_view(
     Ok((exported_view, failed_branches))
 }
 
+/// This constructs a "last seen git view" from git refs in JJ's normal view.
+///
+/// This usually works since those refs are not modified by jj after they are
+/// read from the git repo. This notably fails after a `jj undo`.
+fn get_default_git_ref_view(mut_repo: &MutableRepo) -> View {
+    let mut result = View::new(crate::op_store::View::default());
+    for (ref_name, target) in mut_repo.view().git_refs() {
+        if let Some(RefName::LocalBranch(branch_name)) = parse_git_ref(ref_name) {
+            result.set_branch(
+                branch_name,
+                BranchTarget {
+                    local_target: Some(target.clone()),
+                    remote_targets: Default::default(),
+                },
+            );
+        }
+    }
+    result
+}
+
 /// Reads the last seen state of git refs from a file, updates it with the
 /// provided function, and writes the result back to disk.
 ///
@@ -438,6 +474,7 @@ fn export_branches_since_old_view(
 /// of the repo is that it must not be affected by `jj undo`.
 fn with_last_seen_refs<Ret, Err, Err2: From<OpStoreError> + From<Err>>(
     repo_path: PathBuf,
+    default_view: View,
     f: impl FnOnce(&View) -> Result<(View, Ret), Err>,
 ) -> Result<Ret, Err2> {
     // TODO 1: Modification of this file, as well as the git refs in the git
@@ -457,9 +494,9 @@ fn with_last_seen_refs<Ret, Err, Err2: From<OpStoreError> + From<Err>>(
     // large degree.
     let last_seen_refs_path = repo_path.join("git_last_seen_refs");
     let old_view = crate::simple_op_store::read_view_from_file(last_seen_refs_path.clone())
-        // Short-term TODO: the default is changed in a subsequent commit.
-        .unwrap_or(crate::op_store::View::default());
-    let (new_view, ret) = f(&View::new(old_view))?;
+        .map(View::new)
+        .unwrap_or(default_view);
+    let (new_view, ret) = f(&old_view)?;
     crate::simple_op_store::write_view_to_file(new_view.store_view(), last_seen_refs_path)?;
     Ok(ret)
 }
