@@ -73,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * The progress display on `jj git clone/fetch` now includes the downloaded size.
 
 * The formatter now supports a "default" color that can override another color
-  defined by a parent style.
+
+* `jj obslog` and `jj log` now show abandoned commits as obsolete.
 
 ### Fixed bugs
 

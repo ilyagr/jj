@@ -14,6 +14,7 @@
 "rest" = "bright black"
 "divergent rest" = "red"
 "divergent prefix" = {fg = "red", underline=true}
+"obsolete prefix" = {fg = "default", underline=true}
 
 "email" = "yellow"
 "timestamp" = "cyan"
@@ -25,6 +26,7 @@
 "git_head" = "magenta"
 "divergent" = "red"
 "divergent change_id"="red"
+"obsolete change_id"="default"
 "conflict" = "red"
 "empty" = "green"
 
@@ -42,6 +44,7 @@
 "working_copy git_refs" = "bright magenta"
 "working_copy divergent" =  "bright red"
 "working_copy divergent change_id"="bright red"
+"working_copy obsolete change_id"="default"  # Not currently achievable
 "working_copy conflict" = "bright red"
 "working_copy empty" = "bright green"
 "diff header" = "yellow"
