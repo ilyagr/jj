@@ -91,6 +91,16 @@ fn view_from_proto(proto: GitRefViewProto) -> GitRefView {
     view
 }
 
+/* TODO: Consider moving this to git.rs
+fn not_found_to_store_error(err: std::io::Error) -> GitRefViewError {
+    if err.kind() == ErrorKind::NotFound {
+        GitRefViewError::NotFound
+    } else {
+        GitRefViewError::from(err)
+    }
+}
+*/
+
 #[cfg(test)]
 mod tests {
 
