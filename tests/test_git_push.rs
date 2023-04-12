@@ -273,6 +273,11 @@ fn test_git_push_changes() {
         &workspace_root,
         &["git", "push", "--change", "@", "--change", "@"],
     );
+    /*  code=1
+       stdout=""
+       stderr="Error: Branch push-yostqsxwqrlt@origin is conflicted\n"
+       ', /rustc/6664087f2d11a7bcb44fcb4dba552bf42d0df3f1/library/core/src/ops/function.rs:250:5
+    */
     insta::assert_snapshot!(stdout, @r###"
     Branch changes to push to origin:
       Force branch push-yostqsxwqrlt from 48d8c7948133 to b5f030322b1d

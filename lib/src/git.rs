@@ -111,6 +111,8 @@ pub fn import_some_refs(
     })
 }
 
+// TODO: Undo branch move-and-deletion to show necessity for next TODO
+
 // TODO: At the moment, this function still relies on git refs from the View
 // object for the conflict base when merging branch locations. The
 // `old_git_view` argument is mostly ignored, except for producing the return
@@ -127,14 +129,16 @@ fn import_some_refs_and_update_view(
 ) -> Result<(GitRefView, ()), GitImportError> {
     let old_git_view = old_git_view.unwrap_or_else(|| get_default_git_ref_view(mut_repo));
     let store = mut_repo.store().clone();
-    let mut existing_git_refs = mut_repo.view().git_refs().clone();
+    let mut previously_known_git_refs = old_git_view.refs.clone();
+    let mut currently_present_git_refs = BTreeSet::default();
+
     let mut old_git_heads = vec![];
     let mut new_git_heads = HashSet::new();
-    for (ref_name, old_target) in &existing_git_refs {
+    for (ref_name, old_target) in &previously_known_git_refs {
         if git_ref_filter(ref_name) {
-            old_git_heads.extend(old_target.adds());
+            old_git_heads.push(old_target.clone());
         } else {
-            new_git_heads.extend(old_target.adds());
+            new_git_heads.insert(old_target.clone());
         }
     }
     if let Some(old_git_head) = mut_repo.view().git_head() {
@@ -188,10 +192,11 @@ fn import_some_refs_and_update_view(
         if !git_ref_filter(&full_name) {
             continue;
         }
+        currently_present_git_refs.insert(full_name.clone());
         // TODO: Make it configurable which remotes are publishing and update public
         // heads here.
-        let old_target = existing_git_refs.remove(&full_name);
-        let new_target = Some(RefTarget::Normal(id.clone()));
+        let old_target = previously_known_git_refs.remove(&full_name);
+        let new_target = Some(id.clone());
         if let Some(RefName::LocalBranch(_)) = parse_git_ref(&full_name) {
             // Record the location of the branch in git repo into our view. Note that the
             // branch may still become conflicted in jj below. Regardless we need to record
@@ -207,7 +212,7 @@ fn import_some_refs_and_update_view(
             changed_git_refs.insert(full_name, (old_target, new_target));
         }
     }
-    for (full_name, target) in existing_git_refs {
+    for (full_name, target) in previously_known_git_refs {
         if git_ref_filter(&full_name) {
             mut_repo.remove_git_ref(&full_name);
             // TODO: Write a test showing that the next line is necessary. A
@@ -222,8 +227,14 @@ fn import_some_refs_and_update_view(
     }
     for (full_name, (old_git_target, new_git_target)) in changed_git_refs {
         if let Some(ref_name) = parse_git_ref(&full_name) {
+            let old_git_ref_target = old_git_target.map(RefTarget::Normal);
+            let new_git_ref_target = new_git_target.map(RefTarget::Normal);
             // Apply the change that happened in git since last time we imported refs
-            mut_repo.merge_single_ref(&ref_name, old_git_target.as_ref(), new_git_target.as_ref());
+            mut_repo.merge_single_ref(
+                &ref_name,
+                old_git_ref_target.as_ref(),
+                new_git_ref_target.as_ref(),
+            );
             // If a git remote-tracking branch changed, apply the change to the local branch
             // as well
             if !git_settings.auto_local_branch {
@@ -232,10 +243,17 @@ fn import_some_refs_and_update_view(
             if let RefName::RemoteBranch { branch, remote: _ } = ref_name {
                 mut_repo.merge_single_ref(
                     &RefName::LocalBranch(branch),
-                    old_git_target.as_ref(),
-                    new_git_target.as_ref(),
+                    old_git_ref_target.as_ref(),
+                    new_git_ref_target.as_ref(),
                 );
             }
+        }
+    }
+    // Get rid of the git refs we don't see anymore
+    let previously_stored_refs = mut_repo.view().git_refs().keys().cloned().collect_vec();
+    for ref_name in previously_stored_refs.into_iter() {
+        if git_ref_filter(&ref_name) && !currently_present_git_refs.contains(&ref_name) {
+            mut_repo.remove_git_ref(&ref_name);
         }
     }
 

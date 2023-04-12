@@ -453,6 +453,10 @@ fn test_import_some_refs() {
     // feature2, feature3, and feature3 should exist.
     let view = repo.view();
     assert_eq!(view.branches().len(), 3);
+    // BUG: Get 4 instead of 3
+    // The problem is that a remote branch that should be deleted isn't. This might
+    // be because what I called `previously_knwon_git_refs` contains only
+    // branches, but parts of the import code expect it to contain all refs.
     assert_eq!(*view.heads(), expected_heads);
 
     // Import feature3: this should cause the branch to be deleted, but
