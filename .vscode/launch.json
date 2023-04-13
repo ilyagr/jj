@@ -1,0 +1,53 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Attach to gdbserver",
+            "target": ":28750",
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Attach to PID",
+            "target": "32340",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText"
+        },
+        {
+            "name": "Rust-Gdb on target",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceRoot}/target/debug/${workspaceRootFolderName}",
+            "cwd": "${workspaceRoot}",
+            "gdbpath": "rust-gdb",
+            "valuesFormatting": "prettyPrinters",
+        },
+        {
+            "name": "Rust-Gdb on target without autorun",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceRoot}/target/debug/${workspaceRootFolderName}",
+            "cwd": "${workspaceRoot}",
+            "gdbpath": "rust-gdb",
+            "valuesFormatting": "prettyPrinters",
+            "stopAtEntry": true,
+        },
+        {
+            "name": "test_git",
+            "type": "gdb",
+            "request": "launch",
+            "target": "target/debug/deps/test_git-df0d0f6c093e0a82",
+            "cwd": "${workspaceRoot}",
+            "gdbpath": "rust-gdb",
+            "valuesFormatting": "prettyPrinters"
+        }
+    ]
+}
