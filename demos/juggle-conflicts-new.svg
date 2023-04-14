@@ -1,0 +1,130 @@
+<!-- Created with term-transcript v0.3.0-beta.1 (https://github.com/slowli/term-transcript) -->
+<svg viewBox="0 0 720 1650" width="720" height="1650" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .container {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      line-height: 18px;
+    }
+    .input,.output,.output-bg {
+      white-space: pre;
+    }
+    .input-bg { fill: #fff; fill-opacity: 0.1; }
+    .output-bg { user-select: none; text-rendering: geometricPrecision; stroke-width: 0.1; }
+    .bold,.prompt { font-weight: 600; }
+    .italic { font-style: italic; }
+    .underline { text-decoration: underline; }
+    .dimmed { fill-opacity: 0.7; }
+    .hard-br { font-size: 16px; fill-opacity: 0.8; user-select: none; }
+    .fg0 { fill: #1c1c1c; } .output-bg .fg0 { stroke: #1c1c1c; }
+    .fg1 { fill: #ff005b; } .output-bg .fg1 { stroke: #ff005b; }
+    .fg2 { fill: #cee318; } .output-bg .fg2 { stroke: #cee318; }
+    .fg3 { fill: #ffe755; } .output-bg .fg3 { stroke: #ffe755; }
+    .fg4 { fill: #048ac7; } .output-bg .fg4 { stroke: #048ac7; }
+    .fg5 { fill: #833c9f; } .output-bg .fg5 { stroke: #833c9f; }
+    .fg6 { fill: #0ac1cd; } .output-bg .fg6 { stroke: #0ac1cd; }
+    .fg7 { fill: #e5e5e5; } .output-bg .fg7 { stroke: #e5e5e5; }
+    .fg8 { fill: #666666; } .output-bg .fg8 { stroke: #666666; }
+    .fg9 { fill: #ff00a0; } .output-bg .fg9 { stroke: #ff00a0; }
+    .fg10 { fill: #ccff00; } .output-bg .fg10 { stroke: #ccff00; }
+    .fg11 { fill: #ff9f00; } .output-bg .fg11 { stroke: #ff9f00; }
+    .fg12 { fill: #48c6ff; } .output-bg .fg12 { stroke: #48c6ff; }
+    .fg13 { fill: #be67e1; } .output-bg .fg13 { stroke: #be67e1; }
+    .fg14 { fill: #63e7f0; } .output-bg .fg14 { stroke: #63e7f0; }
+    .fg15 { fill: #f3f3f3; } .output-bg .fg15 { stroke: #f3f3f3; }
+  </style>
+  <rect width="100%" height="100%" y="0" rx="4.5" style="fill: #1c1c1c;" />
+    <svg x="0" y="10" width="720" height="1630" viewBox="0 0 720 1630">
+      <g class="input-bg"><rect x="0" y="0" width="100%" height="22"></rect></g>
+      <text class="container fg7"><tspan xml:space="preserve" x="10" y="16" class="input"><tspan x="10" y="16"><tspan class="prompt">$</tspan> ./demo_juggle_conflicts.sh
+</tspan></tspan><tspan xml:space="preserve" x="10" y="42" class="output">Initialized repo in "."
+</tspan><tspan xml:space="preserve" x="10" y="60" class="output">Working copy now at: <tspan class="bold fg4">d</tspan><tspan class="fg8">5805a</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="78" class="output">Working copy now at: <tspan class="bold fg4">93</tspan><tspan class="fg8">af0e</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="96" class="output">Working copy now at: <tspan class="bold fg4">2</tspan><tspan class="fg8">bd940</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="114" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="132" class="output"><tspan class="fg2"># We are in a repo with three commits, all</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="150" class="output"><tspan class="fg2"># editing the same line:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="168" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="186" class="output">$ jj-old log
+</tspan><tspan xml:space="preserve" x="10" y="204" class="output">@  <tspan class="bold fg13">NK</tspan><tspan class="bold fg8">TOTL</tspan><tspan class="bold"> </tspan><tspan class="bold fg3">ilyagr@</tspan><tspan class="bold"> </tspan><tspan class="bold fg14">now</tspan><tspan class="bold"> </tspan><tspan class="bold fg12">2</tspan><tspan class="bold fg8">bd940</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="222" class="output">│  <tspan class="bold fg10">(empty)</tspan><tspan class="bold"> (no description set)</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="240" class="output">●  <tspan class="bold fg5">Q</tspan><tspan class="fg8">OQXZS</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">third</tspan> <tspan class="bold fg4">06</tspan><tspan class="fg8">0e2b</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="258" class="output">│  third
+</tspan><tspan xml:space="preserve" x="10" y="276" class="output">●  <tspan class="bold fg5">K</tspan><tspan class="fg8">PXUUW</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">second</tspan> <tspan class="bold fg4">d3</tspan><tspan class="fg8">eacf</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="294" class="output">│  second
+</tspan><tspan xml:space="preserve" x="10" y="312" class="output">●  <tspan class="bold fg5">NO</tspan><tspan class="fg8">VOXL</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">first</tspan> <tspan class="bold fg4">50</tspan><tspan class="fg8">df58</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="330" class="output">│  first
+</tspan><tspan xml:space="preserve" x="10" y="348" class="output">●  <tspan class="bold fg5">Z</tspan><tspan class="fg8">ZZZZZ</tspan> <tspan class="fg3">@</tspan> <tspan class="fg6">53 years ago</tspan> <tspan class="bold fg4">00</tspan><tspan class="fg8">0000</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="366" class="output">   <tspan class="fg2">(empty)</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="384" class="output">$ jj diff -r first
+</tspan><tspan xml:space="preserve" x="10" y="402" class="output"><tspan class="fg3">Added regular file file:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="420" class="output">     <tspan class="fg2">   1</tspan>: <tspan class="fg2">first</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="438" class="output">$ jj diff -r second
+</tspan><tspan xml:space="preserve" x="10" y="456" class="output"><tspan class="fg3">Modified regular file file:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="474" class="output"><tspan class="fg1">   1</tspan> <tspan class="fg2">   1</tspan>: <tspan class="fg1">first</tspan><tspan class="fg2">second</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="492" class="output">$ jj diff -r third
+</tspan><tspan xml:space="preserve" x="10" y="510" class="output"><tspan class="fg3">Modified regular file file:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="528" class="output"><tspan class="fg1">   1</tspan> <tspan class="fg2">   1</tspan>: <tspan class="fg1">second</tspan><tspan class="fg2">third</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="546" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="564" class="output"><tspan class="fg2"># Let's reorder the second and third commits:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="582" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="600" class="output">$ jj rebase -s third -d first
+</tspan><tspan xml:space="preserve" x="10" y="618" class="output">Rebased 2 commits
+</tspan><tspan xml:space="preserve" x="10" y="636" class="output">Working copy now at: <tspan class="bold fg4">1</tspan><tspan class="fg8">3c256</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="654" class="output">Added 0 files, modified 1 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="672" class="output">$ jj rebase -s second -d third
+</tspan><tspan xml:space="preserve" x="10" y="690" class="output">Rebased 1 commits
+</tspan><tspan xml:space="preserve" x="10" y="708" class="output">$ jj log
+</tspan><tspan xml:space="preserve" x="10" y="726" class="output">◉  <tspan class="bold fg5">K</tspan><tspan class="fg8">PXUUW</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">second</tspan> <tspan class="bold fg4">1e</tspan><tspan class="fg8">0529</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="744" class="output">│  second
+</tspan><tspan xml:space="preserve" x="10" y="762" class="output">│ @  <tspan class="bold fg13">NK</tspan><tspan class="bold fg8">TOTL</tspan><tspan class="bold"> </tspan><tspan class="bold fg3">ilyagr@</tspan><tspan class="bold"> </tspan><tspan class="bold fg14">now</tspan><tspan class="bold"> </tspan><tspan class="bold fg12">13</tspan><tspan class="bold fg8">c256</tspan><tspan class="bold"> </tspan><tspan class="bold fg9">conflict</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="780" class="output">├─╯  <tspan class="bold fg10">(empty)</tspan><tspan class="bold"> (no description set)</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="798" class="output">◉  <tspan class="bold fg5">Q</tspan><tspan class="fg8">OQXZS</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">third</tspan> <tspan class="bold fg4">fa</tspan><tspan class="fg8">b226</tspan> <tspan class="fg1">conflict</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="816" class="output">│  third
+</tspan><tspan xml:space="preserve" x="10" y="834" class="output">◉  <tspan class="bold fg5">NO</tspan><tspan class="fg8">VOXL</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">first</tspan> <tspan class="bold fg4">50</tspan><tspan class="fg8">df58</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="852" class="output">│  first
+</tspan><tspan xml:space="preserve" x="10" y="870" class="output">◉  <tspan class="bold fg5">Z</tspan><tspan class="fg8">ZZZZZ</tspan> <tspan class="fg3">@</tspan> <tspan class="fg6">53 years ago</tspan> <tspan class="bold fg4">00</tspan><tspan class="fg8">0000</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="888" class="output">   <tspan class="fg2">(empty)</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="906" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="924" class="output"><tspan class="fg2"># The commit labeled "third" has a conflict,</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="942" class="output"><tspan class="fg2"># as expected. What's more interesting is</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="960" class="output"><tspan class="fg2"># that the top commit has no conflict! That's</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="978" class="output"><tspan class="fg2"># because it has the changes from all three</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="996" class="output"><tspan class="fg2"># commits applied to it.</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1014" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1032" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1050" class="output"><tspan class="fg2"># Let's verify that by looking at its contents:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1068" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1086" class="output">$ jj co second
+</tspan><tspan xml:space="preserve" x="10" y="1104" class="output">Working copy now at: <tspan class="bold fg4">b</tspan><tspan class="fg8">1817f</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="1122" class="output">Added 0 files, modified 1 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="1140" class="output">$ cat file
+</tspan><tspan xml:space="preserve" x="10" y="1158" class="output">third
+</tspan><tspan xml:space="preserve" x="10" y="1176" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1194" class="output"><tspan class="fg2"># Let's now instead make "second" and "third"</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1212" class="output"><tspan class="fg2"># sibling and merge them:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1230" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1248" class="output">$ jj rebase -s second -d first
+</tspan><tspan xml:space="preserve" x="10" y="1266" class="output">Rebased 2 commits
+</tspan><tspan xml:space="preserve" x="10" y="1284" class="output">Working copy now at: <tspan class="bold fg4">7</tspan><tspan class="fg8">6f41e</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="1302" class="output">Added 0 files, modified 1 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="1320" class="output">$ jj merge second third -m merged
+</tspan><tspan xml:space="preserve" x="10" y="1338" class="output">Working copy now at: <tspan class="bold fg4">e</tspan><tspan class="fg8">c09ea</tspan> merged
+</tspan><tspan xml:space="preserve" x="10" y="1356" class="output">Added 0 files, modified 1 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="1374" class="output">$ jj-old log
+</tspan><tspan xml:space="preserve" x="10" y="1392" class="output">@    <tspan class="bold fg13">X</tspan><tspan class="bold fg8">YTYOU</tspan><tspan class="bold"> </tspan><tspan class="bold fg3">ilyagr@</tspan><tspan class="bold"> </tspan><tspan class="bold fg14">now</tspan><tspan class="bold"> </tspan><tspan class="bold fg12">e</tspan><tspan class="bold fg8">c09ea</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1410" class="output">├─╮  <tspan class="bold fg10">(empty)</tspan><tspan class="bold"> merged</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1428" class="output">● │  <tspan class="bold fg5">K</tspan><tspan class="fg8">PXUUW</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">second</tspan> <tspan class="bold fg4">9f</tspan><tspan class="fg8">55a5</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1446" class="output">│ │  second
+</tspan><tspan xml:space="preserve" x="10" y="1464" class="output">│ ●  <tspan class="bold fg5">Q</tspan><tspan class="fg8">OQXZS</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">third</tspan> <tspan class="bold fg4">fa</tspan><tspan class="fg8">b226</tspan> <tspan class="fg1">conflict</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1482" class="output">├─╯  third
+</tspan><tspan xml:space="preserve" x="10" y="1500" class="output">●  <tspan class="bold fg5">N</tspan><tspan class="fg8">OVOXL</tspan> <tspan class="fg3">ilyagr@</tspan> <tspan class="fg6">now</tspan> <tspan class="fg5">first</tspan> <tspan class="bold fg4">50</tspan><tspan class="fg8">df58</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1518" class="output">│  first
+</tspan><tspan xml:space="preserve" x="10" y="1536" class="output">●  <tspan class="bold fg5">Z</tspan><tspan class="fg8">ZZZZZ</tspan> <tspan class="fg3">@</tspan> <tspan class="fg6">53 years ago</tspan> <tspan class="bold fg4">00</tspan><tspan class="fg8">0000</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1554" class="output">   <tspan class="fg2">(empty)</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="1572" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="1590" class="output"><tspan class="fg2"># Again, because the merge commit has the</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1608" class="output"><tspan class="fg2"># changes from all three commits, it has no</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="1626" class="output"><tspan class="fg2"># conflict.</tspan>
+</tspan></text>
+    </svg>
+</svg>

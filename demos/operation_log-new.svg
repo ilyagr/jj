@@ -1,0 +1,86 @@
+<!-- Created with term-transcript v0.3.0-beta.1 (https://github.com/slowli/term-transcript) -->
+<svg viewBox="0 0 720 858" width="720" height="858" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .container {
+      font: 14px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+      line-height: 18px;
+    }
+    .input,.output,.output-bg {
+      white-space: pre;
+    }
+    .input-bg { fill: #fff; fill-opacity: 0.1; }
+    .output-bg { user-select: none; text-rendering: geometricPrecision; stroke-width: 0.1; }
+    .bold,.prompt { font-weight: 600; }
+    .italic { font-style: italic; }
+    .underline { text-decoration: underline; }
+    .dimmed { fill-opacity: 0.7; }
+    .hard-br { font-size: 16px; fill-opacity: 0.8; user-select: none; }
+    .fg0 { fill: #1c1c1c; } .output-bg .fg0 { stroke: #1c1c1c; }
+    .fg1 { fill: #ff005b; } .output-bg .fg1 { stroke: #ff005b; }
+    .fg2 { fill: #cee318; } .output-bg .fg2 { stroke: #cee318; }
+    .fg3 { fill: #ffe755; } .output-bg .fg3 { stroke: #ffe755; }
+    .fg4 { fill: #048ac7; } .output-bg .fg4 { stroke: #048ac7; }
+    .fg5 { fill: #833c9f; } .output-bg .fg5 { stroke: #833c9f; }
+    .fg6 { fill: #0ac1cd; } .output-bg .fg6 { stroke: #0ac1cd; }
+    .fg7 { fill: #e5e5e5; } .output-bg .fg7 { stroke: #e5e5e5; }
+    .fg8 { fill: #666666; } .output-bg .fg8 { stroke: #666666; }
+    .fg9 { fill: #ff00a0; } .output-bg .fg9 { stroke: #ff00a0; }
+    .fg10 { fill: #ccff00; } .output-bg .fg10 { stroke: #ccff00; }
+    .fg11 { fill: #ff9f00; } .output-bg .fg11 { stroke: #ff9f00; }
+    .fg12 { fill: #48c6ff; } .output-bg .fg12 { stroke: #48c6ff; }
+    .fg13 { fill: #be67e1; } .output-bg .fg13 { stroke: #be67e1; }
+    .fg14 { fill: #63e7f0; } .output-bg .fg14 { stroke: #63e7f0; }
+    .fg15 { fill: #f3f3f3; } .output-bg .fg15 { stroke: #f3f3f3; }
+  </style>
+  <rect width="100%" height="100%" y="0" rx="4.5" style="fill: #1c1c1c;" />
+    <svg x="0" y="10" width="720" height="838" viewBox="0 0 720 838">
+      <g class="input-bg"><rect x="0" y="0" width="100%" height="22"></rect></g>
+      <text class="container fg7"><tspan xml:space="preserve" x="10" y="16" class="input"><tspan x="10" y="16"><tspan class="prompt">$</tspan> ./demo_operation_log.sh
+</tspan></tspan><tspan xml:space="preserve" x="10" y="42" class="output">Fetching into new repo in "/tmp/tmp.5rjh019Ydx/Hello-World"
+</tspan><tspan xml:space="preserve" x="10" y="60" class="output">Working copy now at: <tspan class="bold fg4">b1e</tspan><tspan class="fg8">fda</tspan> (no description set)
+</tspan><tspan xml:space="preserve" x="10" y="78" class="output">Added 1 files, modified 0 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="96" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="114" class="output"><tspan class="fg2"># We are in the octocat/Hello-World repo.</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="132" class="output"><tspan class="fg2"># The "operation log" shows the operations</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="150" class="output"><tspan class="fg2"># so far:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="168" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="186" class="output">$ jj op log
+</tspan><tspan xml:space="preserve" x="10" y="204" class="output">@  <tspan class="bold fg12">084b81cf4f9e</tspan><tspan class="bold"> </tspan><tspan class="bold fg3">ilyagr@dragon</tspan><tspan class="bold"> </tspan><tspan class="bold fg14">now, lasted less than a microsecond</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="222" class="output">│  <tspan class="bold">check out git remote's default branch</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="240" class="output">│  <tspan class="bold fg5">args: jj git clone https://github.com/octocat/Hello-World</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="258" class="output">◉  <tspan class="fg4">54b106f458a1</tspan> <tspan class="fg3">ilyagr@dragon</tspan> <tspan class="fg6">now, lasted 481 milliseconds</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="276" class="output">│  fetch from git remote into empty repo
+</tspan><tspan xml:space="preserve" x="10" y="294" class="output">│  <tspan class="fg5">args: jj git clone https://github.com/octocat/Hello-World</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="312" class="output">◉  <tspan class="fg4">24d3634b3b88</tspan> <tspan class="fg3">ilyagr@dragon</tspan> <tspan class="fg6">now, lasted less than a microsecond</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="330" class="output">│  add workspace 'default'
+</tspan><tspan xml:space="preserve" x="10" y="348" class="output">◉  <tspan class="fg4">1a3c3b5dc00c</tspan> <tspan class="fg3">ilyagr@dragon</tspan> <tspan class="fg6">now, lasted less than a microsecond</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="366" class="output">   initialize repo
+</tspan><tspan xml:space="preserve" x="10" y="384" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="402" class="output"><tspan class="fg2"># We are going to make some changes to show</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="420" class="output"><tspan class="fg2"># how the operation log works.</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="438" class="output"><tspan class="fg2"># We are currently working off of the "master"</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="456" class="output"><tspan class="fg2"># branch:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="474" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="492" class="output">$ jj log
+</tspan><tspan xml:space="preserve" x="10" y="510" class="output">@  <tspan class="bold fg13">NP</tspan><tspan class="bold fg8">WSYV</tspan><tspan class="bold"> </tspan><tspan class="bold fg3">ilyagr@</tspan><tspan class="bold"> </tspan><tspan class="bold fg14">now</tspan><tspan class="bold"> </tspan><tspan class="bold fg12">b1e</tspan><tspan class="bold fg8">fda</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="528" class="output">│  <tspan class="bold fg10">(empty)</tspan><tspan class="bold"> (no description set)</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="546" class="output">◉  <tspan class="bold fg5">O</tspan><tspan class="fg8">RRKOS</tspan> <tspan class="fg3">octocat@</tspan> <tspan class="fg6">11 years ago</tspan> <tspan class="fg5">master</tspan> <tspan class="bold fg4">7f</tspan><tspan class="fg8">d1a6</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="564" class="output">│  <tspan class="fg2">(empty)</tspan> Merge pull request #6 from Spaceghost/patch-1
+</tspan><tspan xml:space="preserve" x="10" y="582" class="output">~
+</tspan><tspan xml:space="preserve" x="10" y="600" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="618" class="output"><tspan class="fg2"># Let's add a file, set a description, and</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="636" class="output"><tspan class="fg2"># rebase onto the "test" branch:</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="654" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="672" class="output">$ echo stuff &gt; new-file
+</tspan><tspan xml:space="preserve" x="10" y="690" class="output">$ jj describe -m stuff
+</tspan><tspan xml:space="preserve" x="10" y="708" class="output">Working copy now at: <tspan class="bold fg4">bc</tspan><tspan class="fg8">2e05</tspan> stuff
+</tspan><tspan xml:space="preserve" x="10" y="726" class="output">$ jj rebase -d test
+</tspan><tspan xml:space="preserve" x="10" y="744" class="output">Rebased 1 commits
+</tspan><tspan xml:space="preserve" x="10" y="762" class="output">Working copy now at: <tspan class="bold fg4">94</tspan><tspan class="fg8">d1ac</tspan> stuff
+</tspan><tspan xml:space="preserve" x="10" y="780" class="output">Added 1 files, modified 0 files, removed 0 files
+</tspan><tspan xml:space="preserve" x="10" y="798" class="output">
+</tspan><tspan xml:space="preserve" x="10" y="816" class="output"><tspan class="fg2"># We are now going to make another change off of</tspan>
+</tspan><tspan xml:space="preserve" x="10" y="834" class="output"><tspan class="fg2"># master:</tspan>
+</tspan></text>
+    </svg>
+</svg>
