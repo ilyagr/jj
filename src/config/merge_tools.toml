@@ -18,3 +18,8 @@ merge-tool-edits-conflict-markers = true
 # the DirDiff Vim plugin for a better experience, see
 # https://gist.github.com/ilyagr/5d6339fb7dac5e7ab06fe1561ec62d45
 edit-args = ["-f", "-d", "$left", "$right"]
+
+[merge-tools.code]
+program = "code"
+merge-args = ["--wait", "--merge", "$left", "$right", "$base", "$output"]
+use_tmp_dir_under_workspace= true

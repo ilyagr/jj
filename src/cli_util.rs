@@ -741,6 +741,10 @@ impl WorkspaceCommandHelper {
         self.workspace.working_copy()
     }
 
+    pub fn tmp_dir(&self) -> &Path {
+        self.workspace.tmp_dir()
+    }
+
     pub fn unsafe_start_working_copy_mutation(
         &mut self,
     ) -> Result<(LockedWorkingCopy, Commit), CommandError> {
@@ -1240,7 +1244,11 @@ impl WorkspaceCommandTransaction<'_> {
     ) -> Result<TreeId, CommandError> {
         let settings = &self.helper.settings;
         Ok(crate::merge_tools::run_mergetool(
-            ui, tree, repo_path, settings,
+            ui,
+            tree,
+            repo_path,
+            self.helper.tmp_dir(),
+            settings,
         )?)
     }
 
@@ -1258,6 +1266,7 @@ impl WorkspaceCommandTransaction<'_> {
             left_tree,
             right_tree,
             instructions,
+            self.helper.tmp_dir(),
             base_ignores,
             settings,
         )?)
@@ -1280,6 +1289,7 @@ impl WorkspaceCommandTransaction<'_> {
                 left_tree,
                 right_tree,
                 instructions,
+                self.helper.tmp_dir(),
                 base_ignores,
                 settings,
             )?)

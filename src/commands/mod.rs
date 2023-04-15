@@ -21,7 +21,7 @@ mod operation;
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, io};
 
@@ -1800,7 +1800,7 @@ fn rebase_to_dest_parent(
 }
 
 fn edit_description(
-    repo: &ReadonlyRepo,
+    tmp_dir: &Path,
     description: &str,
     settings: &UserSettings,
 ) -> Result<String, CommandError> {
@@ -1808,7 +1808,7 @@ fn edit_description(
         let mut file = tempfile::Builder::new()
             .prefix("editor-")
             .suffix(".jjdescription")
-            .tempfile_in(repo.repo_path())?;
+            .tempfile_in(tmp_dir)?;
         file.write_all(description.as_bytes())?;
         file.write_all(b"\nJJ: Lines starting with \"JJ: \" (like this one) will be removed.\n")?;
         let (_, path) = file.keep().map_err(|e| e.error)?;
@@ -1817,7 +1817,7 @@ fn edit_description(
     .map_err(|e| {
         user_error(format!(
             r#"Failed to create description file in "{path}": {e}"#,
-            path = repo.repo_path().display()
+            path = tmp_dir.display()
         ))
     })?;
 
@@ -1859,7 +1859,7 @@ fn cmd_describe(
         commit.description().to_owned()
     } else {
         let template = description_template_for_commit(&workspace_command, &commit)?;
-        edit_description(workspace_command.repo(), &template, command.settings())?
+        edit_description(workspace_command.tmp_dir(), &template, command.settings())?
     };
     if description == *commit.description() && !args.reset_author {
         ui.write("Nothing changed.\n")?;
@@ -1891,7 +1891,7 @@ fn cmd_commit(ui: &mut Ui, command: &CommandHelper, args: &CommitArgs) -> Result
         message.into()
     } else {
         let template = description_template_for_commit(&workspace_command, &commit)?;
-        edit_description(workspace_command.repo(), &template, command.settings())?
+        edit_description(workspace_command.tmp_dir(), &template, command.settings())?
     };
 
     let mut tx = workspace_command.start_transaction(&format!("commit {}", commit.id().hex()));
@@ -2190,7 +2190,7 @@ fn cmd_new(ui: &mut Ui, command: &CommandHelper, args: &NewArgs) -> Result<(), C
 }
 
 fn combine_messages(
-    repo: &ReadonlyRepo,
+    tmp_dir: &Path,
     source: &Commit,
     destination: &Commit,
     settings: &UserSettings,
@@ -2207,7 +2207,7 @@ fn combine_messages(
                 + destination.description()
                 + "\nJJ: Description from the source commit:\n"
                 + source.description();
-            edit_description(repo, &combined, settings)?
+            edit_description(tmp_dir, &combined, settings)?
         }
     } else {
         destination.description().to_string()
@@ -2226,6 +2226,7 @@ fn cmd_move(ui: &mut Ui, command: &CommandHelper, args: &MoveArgs) -> Result<(),
     workspace_command.check_rewritable(&source)?;
     workspace_command.check_rewritable(&destination)?;
     let matcher = workspace_command.matcher_from_values(&args.paths)?;
+    let tmp_dir = workspace_command.tmp_dir().to_owned();
     let mut tx = workspace_command.start_transaction(&format!(
         "move changes from {} to {}",
         source.id().hex(),
@@ -2288,7 +2289,7 @@ from the source will be moved into the destination.
     // Apply the selected changes onto the destination
     let new_destination_tree_id = merge_trees(&destination.tree(), &parent_tree, &new_parent_tree)?;
     let description = combine_messages(
-        tx.base_repo(),
+        &tmp_dir,
         &source,
         &destination,
         command.settings(),
@@ -2314,6 +2315,7 @@ fn cmd_squash(ui: &mut Ui, command: &CommandHelper, args: &SquashArgs) -> Result
     let parent = &parents[0];
     workspace_command.check_rewritable(parent)?;
     let matcher = workspace_command.matcher_from_values(&args.paths)?;
+    let tmp_dir = workspace_command.tmp_dir().to_owned();
     let mut tx =
         workspace_command.start_transaction(&format!("squash commit {}", commit.id().hex()));
     let instructions = format!(
@@ -2364,13 +2366,7 @@ from the source will be moved into the parent.
     let description = if let Some(m) = &args.message {
         m.into()
     } else {
-        combine_messages(
-            tx.base_repo(),
-            &commit,
-            parent,
-            command.settings(),
-            abandon_child,
-        )?
+        combine_messages(&tmp_dir, &commit, parent, command.settings(), abandon_child)?
     };
     let mut_repo = tx.mut_repo();
     let new_parent = mut_repo
@@ -2399,6 +2395,7 @@ fn cmd_unsquash(
 ) -> Result<(), CommandError> {
     let mut workspace_command = command.workspace_helper(ui)?;
     let commit = workspace_command.resolve_single_rev(&args.revision)?;
+    let tmp_dir = workspace_command.tmp_dir().to_owned();
     workspace_command.check_rewritable(&commit)?;
     let parents = commit.parents();
     if parents.len() != 1 {
@@ -2437,8 +2434,7 @@ aborted.
     // case).
     if &new_parent_tree_id == parent_base_tree.id() {
         tx.mut_repo().record_abandoned_commit(parent.id().clone());
-        let description =
-            combine_messages(tx.base_repo(), parent, &commit, command.settings(), true)?;
+        let description = combine_messages(&tmp_dir, parent, &commit, command.settings(), true)?;
         // Commit the new child on top of the parent's parents.
         tx.mut_repo()
             .rewrite_commit(command.settings(), &commit)
@@ -2780,6 +2776,7 @@ fn cmd_split(ui: &mut Ui, command: &CommandHelper, args: &SplitArgs) -> Result<(
     let commit = workspace_command.resolve_single_rev(&args.revision)?;
     workspace_command.check_rewritable(&commit)?;
     let matcher = workspace_command.matcher_from_values(&args.paths)?;
+    let tmp_dir = workspace_command.tmp_dir().to_owned();
     let mut tx =
         workspace_command.start_transaction(&format!("split commit {}", commit.id().hex()));
     let base_tree = merge_commit_trees(tx.repo(), &commit.parents());
@@ -2824,7 +2821,7 @@ don't make any changes, then the operation will be aborted.
         &base_tree,
         &middle_tree,
     )?;
-    let first_description = edit_description(tx.base_repo(), &first_template, command.settings())?;
+    let first_description = edit_description(&tmp_dir, &first_template, command.settings())?;
     let first_commit = tx
         .mut_repo()
         .rewrite_commit(command.settings(), &commit)
@@ -2838,8 +2835,7 @@ don't make any changes, then the operation will be aborted.
         &middle_tree,
         &commit.tree(),
     )?;
-    let second_description =
-        edit_description(tx.base_repo(), &second_template, command.settings())?;
+    let second_description = edit_description(&tmp_dir, &second_template, command.settings())?;
     let second_commit = tx
         .mut_repo()
         .rewrite_commit(command.settings(), &commit)
