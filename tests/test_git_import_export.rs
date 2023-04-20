@@ -104,6 +104,7 @@ fn test_git_export_undo() {
 
     // "git export" can't be undone.
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["op", "undo"]), @r###"
+    Nothing changed.
     "###);
     insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
     [
@@ -118,7 +119,9 @@ fn test_git_export_undo() {
 
     // This would re-export branch "a" as the internal state has been rolled back.
     // It might be better to preserve the state, and say "Nothing changed" here.
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @r###"
+    Nothing changed.
+    "###);
 }
 
 #[test]
@@ -150,10 +153,10 @@ fn test_git_import_undo() {
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 
     // Try "git import" again, which should re-import the branch "a".
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @"");
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    a: 230dd059e1b0 (no description set)
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @r###"
+    Nothing changed.
     "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 }
 
 #[test]
@@ -208,10 +211,10 @@ fn test_git_import_move_export_undo() {
 
     // The last branch "a" state is imported from git. No idea what's the most
     // intuitive result here.
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @"");
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    a: 096dc80da670 (no description set)
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @r###"
+    Nothing changed.
     "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 }
 
 #[test]
@@ -230,16 +233,10 @@ fn test_git_push_undo() {
     test_env.jj_cmd_success(&repo_path, &["undo"]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v3"]);
     test_env.jj_cmd_success(&repo_path, &["git", "fetch"]);
-    // TODO: This should probably not be considered a conflict. It currently is
-    // because the undo made us forget that the remote was at v2, so the fetch
-    // made us think it updated from v1 to v2 (instead of the no-op it could
-    // have been).
+    // There should be no conflict
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    main (conflicted):
-      - 367d4f2f6deb v1
-      + cb20e76758a0 v3
-      + ebba8fecca7e v2
-      @origin (behind by 1 commits): ebba8fecca7e v2
+    main: cb20e76758a0 v3
+      @origin (ahead by 1 commits, behind by 1 commits): 367d4f2f6deb v1
     "###);
 }
 
