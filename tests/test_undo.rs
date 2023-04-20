@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use std::path::Path;
 
 use crate::common::TestEnvironment;
 
@@ -45,4 +46,36 @@ fn test_undo_rewrite_with_child() {
     ◉  initial
     ◉
     "###);
+}
+#[test]
+fn test_git_push_undo() {
+    let test_env = TestEnvironment::default();
+    let git_repo_path = test_env.env_root().join("git-repo");
+    git2::Repository::init_bare(git_repo_path).unwrap();
+    test_env.jj_cmd_success(test_env.env_root(), &["git", "clone", "git-repo", "repo"]);
+    let repo_path = test_env.env_root().join("repo");
+
+    test_env.jj_cmd_success(&repo_path, &["branch", "create", "main"]);
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v1"]);
+    test_env.jj_cmd_success(&repo_path, &["git", "push"]);
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v2"]);
+    test_env.jj_cmd_success(&repo_path, &["git", "push"]);
+    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v3"]);
+    test_env.jj_cmd_success(&repo_path, &["git", "fetch"]);
+    // TODO: This should probably not be considered a conflict. It currently is
+    // because the undo made us forget that the remote was at v2, so the fetch
+    // made us think it updated from v1 to v2 (instead of the no-op it could
+    // have been).
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    main (conflicted):
+      - 367d4f2f6deb v1
+      + cb20e76758a0 v3
+      + ebba8fecca7e v2
+      @origin (behind by 1 commits): ebba8fecca7e v2
+    "###);
+}
+
+fn get_branch_output(test_env: &TestEnvironment, repo_path: &Path) -> String {
+    test_env.jj_cmd_success(repo_path, &["branch", "list"])
 }
