@@ -104,6 +104,7 @@ fn test_git_export_undo() {
 
     // "git export" can't be undone.
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["op", "undo"]), @r###"
+    Nothing changed.
     "###);
     insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
     [
@@ -118,7 +119,9 @@ fn test_git_export_undo() {
 
     // This would re-export branch "a" as the internal state has been rolled back.
     // It might be better to preserve the state, and say "Nothing changed" here.
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @r###"
+    Nothing changed.
+    "###);
 }
 
 #[test]
@@ -147,12 +150,18 @@ fn test_git_import_undo() {
     // "git import" can be undone.
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["op", "undo"]), @r###"
     "###);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    a (deleted)
+      @git: 230dd059e1b0 (no description set)
+    "###);
 
     // Try "git import" again, which should re-import the branch "a".
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @r###"
+    Nothing changed.
+    "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    a: 230dd059e1b0 (no description set)
+    a (deleted)
+      @git: 230dd059e1b0 (no description set)
     "###);
 }
 
@@ -194,7 +203,10 @@ fn test_git_import_move_export_undo() {
     Working copy now at: 230dd059e1b0 (no description set)
     Parent commit      : 000000000000 (no description set)
     "###);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    a (deleted)
+      @git: 096dc80da670 (no description set)
+    "###);
     insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
     [
         (
@@ -208,9 +220,12 @@ fn test_git_import_move_export_undo() {
 
     // The last branch "a" state is imported from git. No idea what's the most
     // intuitive result here.
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "import"]), @r###"
+    Nothing changed.
+    "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    a: 096dc80da670 (no description set)
+    a (deleted)
+      @git: 096dc80da670 (no description set)
     "###);
 }
 

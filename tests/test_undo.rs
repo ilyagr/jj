@@ -68,11 +68,8 @@ fn test_git_push_undo() {
     // made us think it updated from v1 to v2 (instead of the no-op it could
     // have been).
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    main (conflicted):
-      - 367d4f2f6deb v1
-      + cb20e76758a0 v3
-      + ebba8fecca7e v2
-      @origin (behind by 1 commits): ebba8fecca7e v2
+    main: cb20e76758a0 v3
+      @origin (ahead by 1 commits, behind by 1 commits): 367d4f2f6deb v1
     "###);
 }
 
