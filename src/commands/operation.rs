@@ -113,6 +113,17 @@ fn cmd_op_log(
     Ok(())
 }
 
+/// After restoring a view, we need to update it with the portions of the
+/// current view we cannot undo.
+fn update_view_with_current_remote_state(
+    view: &jujutsu_lib::op_store::View,
+    current_view: &jujutsu_lib::op_store::View,
+) -> jujutsu_lib::op_store::View {
+    let mut new_view = view.clone();
+    new_view.git_refs = current_view.git_refs.clone();
+    new_view
+}
+
 pub fn cmd_op_undo(
     ui: &mut Ui,
     command: &CommandHelper,
@@ -134,8 +145,10 @@ pub fn cmd_op_undo(
     let bad_repo = repo_loader.load_at(&bad_op);
     let parent_repo = repo_loader.load_at(&parent_ops[0]);
     tx.mut_repo().merge(&bad_repo, &parent_repo);
-    let mut new_view = tx.repo().view().store_view().clone();
-    new_view.git_refs = tx.base_repo().view().store_view().git_refs.clone();
+    let new_view = update_view_with_current_remote_state(
+        tx.repo().view().store_view(),
+        tx.base_repo().view().store_view(),
+    );
     tx.mut_repo().set_view(new_view);
     tx.finish(ui)?;
 
@@ -152,8 +165,10 @@ fn cmd_op_restore(
     let mut tx = workspace_command
         .start_transaction(&format!("restore to operation {}", target_op.id().hex()));
     tx.mut_repo().set_view(target_op.view().take_store_view());
-    let mut new_view = tx.repo().view().store_view().clone();
-    new_view.git_refs = tx.base_repo().view().store_view().git_refs.clone();
+    let new_view = update_view_with_current_remote_state(
+        tx.repo().view().store_view(),
+        tx.base_repo().view().store_view(),
+    );
     tx.mut_repo().set_view(new_view);
     tx.finish(ui)?;
 
