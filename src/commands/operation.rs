@@ -1,4 +1,7 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use clap::Subcommand;
+use jujutsu_lib::op_store::BranchTarget;
 use jujutsu_lib::operation;
 use jujutsu_lib::repo::Repo;
 
@@ -116,11 +119,31 @@ fn cmd_op_log(
 /// After restoring a view, we need to update it with the portions of the
 /// current view we cannot undo.
 fn update_view_with_current_remote_state(
-    view: &jujutsu_lib::op_store::View,
+    view_being_restored: &jujutsu_lib::op_store::View,
     current_view: &jujutsu_lib::op_store::View,
 ) -> jujutsu_lib::op_store::View {
-    let mut new_view = view.clone();
+    let mut new_view = view_being_restored.clone();
     new_view.git_refs = current_view.git_refs.clone();
+    let mut branch_names: BTreeSet<_> = view_being_restored.branches.keys().collect();
+    branch_names.append(&mut current_view.branches.keys().collect());
+    let mut new_branches = BTreeMap::default();
+    for branch_name in branch_names {
+        new_branches.insert(
+            branch_name.to_string(),
+            BranchTarget {
+                local_target: view_being_restored
+                    .branches
+                    .get(branch_name)
+                    .and_then(|br| br.local_target.clone()),
+                remote_targets: current_view
+                    .branches
+                    .get(branch_name)
+                    .map(|br| br.remote_targets.clone())
+                    .unwrap_or_default(),
+            },
+        );
+    }
+    new_view.branches = new_branches;
     new_view
 }
 

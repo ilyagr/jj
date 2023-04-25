@@ -248,7 +248,7 @@ fn test_git_push_undo() {
     // There should be no conflict
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     main: cb20e76758a0 v3
-      @origin (ahead by 1 commits, behind by 1 commits): 367d4f2f6deb v1
+      @origin (ahead by 1 commits, behind by 1 commits): ebba8fecca7e v2
     "###);
 }
 
