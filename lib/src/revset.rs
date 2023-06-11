@@ -1636,6 +1636,7 @@ fn resolve_branch(repo: &dyn Repo, symbol: &str) -> Option<Vec<CommitId>> {
                 .map(|target| target.adds())
                 .unwrap_or_default(),
         );
+        // TODO: Hint here
     }
     if let Some((name, remote_name)) = symbol.split_once('@') {
         if let Some(branch_target) = repo.view().branches().get(name) {
@@ -1816,6 +1817,7 @@ impl SymbolResolver for DefaultSymbolResolver<'_> {
                 name: symbol.to_owned(),
                 candidates: {
                     let branch_names = self.repo.view().branches().keys().collect_vec();
+                    // TODO: Or here
                     collect_similar(symbol, &branch_names)
                 },
             })
