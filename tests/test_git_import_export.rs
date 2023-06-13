@@ -128,6 +128,21 @@ fn test_git_import_remote_only_branch() {
     feature1: 9f01a0e04879 message
     "###);
 
+    // Forget the branch
+    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "feature1"]);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+    // Since the branch is forgotten (rather than deleted), `jj git push` at this
+    // point is a no-op. Now, try re-importing the forgotten branch
+    // TODO: Fix this BUG. It should be possible to fetch `feature1` again.
+    // TODO: Having a push and/or export before and after the forgetting wouldn't
+    // make any difference.
+    // TODO: Move this test somewhere this can be more naturally shown?
+    let stdout = test_env.jj_cmd_success(&repo_path, &["git", "fetch", "--remote=origin"]);
+    insta::assert_snapshot!(stdout, @r###"
+    Nothing changed.
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+
     // Import using git.auto_local_branch = false
     git_repo
         .commit(
@@ -142,7 +157,6 @@ fn test_git_import_remote_only_branch() {
     test_env.add_config("git.auto-local-branch = false");
     test_env.jj_cmd_success(&repo_path, &["git", "fetch", "--remote=origin"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    feature1: 9f01a0e04879 message
     feature2 (deleted)
       @origin: 9f01a0e04879 message
     "###);
