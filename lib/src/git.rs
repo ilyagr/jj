@@ -60,6 +60,12 @@ fn local_branch_name_to_ref_name(branch: &str) -> String {
     format!("refs/heads/{branch}")
 }
 
+fn ref_name_to_remote_and_branch_name(ref_name: &str) -> Option<(&str, &str)> {
+    ref_name
+        .strip_prefix("refs/remotes/")
+        .and_then(|n| n.split_once('/'))
+}
+
 // TODO: Eventually, git-tracking branches should no longer be stored in
 // git_refs but with the other remote-tracking branches in BranchTarget. Note
 // that there are important but subtle differences in behavior for, e.g. `jj
@@ -271,6 +277,7 @@ pub enum GitExportError {
 /// We do not export tags and other refs at the moment, since these aren't
 /// supposed to be modified by JJ. For them, the Git state is considered
 /// authoritative.
+// TODO(!!!) Explain about forgetting of remote-tracking branches
 // TODO: Also indicate why we failed to export these branches
 pub fn export_refs(
     mut_repo: &mut MutableRepo,
@@ -278,7 +285,7 @@ pub fn export_refs(
 ) -> Result<Vec<String>, GitExportError> {
     // First find the changes we want need to make without modifying mut_repo
     let mut branches_to_update = BTreeMap::new();
-    let mut branches_to_delete = BTreeMap::new();
+    let mut refs_to_delete = BTreeMap::new();
     let mut failed_branches = vec![];
     let view = mut_repo.view();
     let all_local_branch_names: HashSet<&str> = view
@@ -315,8 +322,34 @@ pub fn export_refs(
                 }
             }
         } else {
-            branches_to_delete.insert(branch_name.to_owned(), old_oid.unwrap());
+            refs_to_delete.insert(
+                local_branch_name_to_ref_name(branch_name),
+                (branch_name.to_owned(), old_oid.unwrap()),
+            );
         }
+    }
+    // Export remote-tracking branch deletion
+    for ((remote, branch_name), refname, old_branch) in
+        view.git_refs().iter().filter_map(|(r, v)| {
+            ref_name_to_remote_and_branch_name(r).map(|parsed_name| (parsed_name, r, v))
+        })
+    {
+        if view.get_remote_branch(remote, branch_name).is_some() {
+            // Only process branch deletions on forget
+            continue;
+        }
+        let errormsg_branchname = format!("{remote}/{branch_name}");
+        let old_oid = match old_branch {
+            RefTarget::Normal(id) => Oid::from_bytes(id.as_bytes()).unwrap(),
+            RefTarget::Conflict { .. } => {
+                // The old git ref should only be a conflict if there were
+                // concurrent import operations
+                // while the value changed. Don't overwrite these values.
+                failed_branches.push(errormsg_branchname);
+                continue;
+            }
+        };
+        refs_to_delete.insert(refname.to_owned(), (errormsg_branchname, old_oid));
     }
     // TODO: Also check other worktrees' HEAD.
     if let Ok(head_ref) = git_repo.find_reference("HEAD") {
@@ -328,7 +361,7 @@ pub fn export_refs(
                     if let Some((_old_oid, new_oid)) = branches_to_update.get(branch_name) {
                         *new_oid != current_git_commit.id()
                     } else {
-                        branches_to_delete.contains_key(branch_name)
+                        refs_to_delete.contains_key(head_git_ref)
                     };
                 if detach_head {
                     git_repo.set_head_detached(current_git_commit.id())?;
@@ -336,8 +369,7 @@ pub fn export_refs(
             }
         }
     }
-    for (branch_name, old_oid) in branches_to_delete {
-        let git_ref_name = local_branch_name_to_ref_name(&branch_name);
+    for (git_ref_name, (errormsg_branchname, old_oid)) in refs_to_delete {
         let success = if let Ok(mut git_ref) = git_repo.find_reference(&git_ref_name) {
             if git_ref.target() == Some(old_oid) {
                 // The branch has not been updated by git, so go ahead and delete it
@@ -353,7 +385,7 @@ pub fn export_refs(
         if success {
             mut_repo.remove_git_ref(&git_ref_name);
         } else {
-            failed_branches.push(branch_name);
+            failed_branches.push(errormsg_branchname);
         }
     }
     for (branch_name, (old_oid, new_oid)) in branches_to_update {

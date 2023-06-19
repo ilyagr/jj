@@ -301,8 +301,12 @@ fn test_git_colocated_fetch_deleted_or_moved_branch() {
     // "original C" and "B_to_delete" are abandoned, as the corresponding branches
     // were deleted or moved on the remote (#864)
     insta::assert_snapshot!(get_log_output(&test_env, &clone_path), @r###"
-    ◉  04fd29df05638156b20044b3b6136b42abcb09ab C_to_move moved C
+    ◉  04fd29df05638156b20044b3b6136b42abcb09ab C_to_move?? moved C
     │ @  0335878796213c3a701f1c9c34dcae242bee4131
+    ├─╯
+    │ ◉  8d4e006fd63547965fbc3a26556a9aa531076d32 C_to_move?? original C
+    ├─╯
+    │ ◉  929e298ae9edf969b405a304c75c10457c47d52c B_to_delete B_to_delete
     ├─╯
     ◉  a86754f975f953fa25da4265764adc0c62e9ce6b A master HEAD@git A
     ◉  0000000000000000000000000000000000000000
