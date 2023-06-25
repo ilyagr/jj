@@ -60,9 +60,13 @@ fn test_git_push_undo() {
     test_env.jj_cmd_success(&repo_path, &["git", "push"]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v2"]);
     test_env.jj_cmd_success(&repo_path, &["git", "push"]);
+    insta::assert_snapshot!(get_debug_op(&test_env, &repo_path), @r###""###);
     test_env.jj_cmd_success(&repo_path, &["undo"]);
+    insta::assert_snapshot!(get_debug_op(&test_env, &repo_path), @r###""###);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "v3"]);
+    insta::assert_snapshot!(get_debug_op(&test_env, &repo_path), @r###""###);
     test_env.jj_cmd_success(&repo_path, &["git", "fetch"]);
+    insta::assert_snapshot!(get_debug_op(&test_env, &repo_path), @r###""###);
     // TODO: This should probably not be considered a conflict. It currently is
     // because the undo made us forget that the remote was at v2, so the fetch
     // made us think it updated from v1 to v2 (instead of the no-op it could
@@ -78,4 +82,8 @@ fn test_git_push_undo() {
 
 fn get_branch_output(test_env: &TestEnvironment, repo_path: &Path) -> String {
     test_env.jj_cmd_success(repo_path, &["branch", "list"])
+}
+
+fn get_debug_op(test_env: &TestEnvironment, repo_path: &Path) -> String {
+    test_env.jj_cmd_success(repo_path, &["debug", "operation"])
 }
