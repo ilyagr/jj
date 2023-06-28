@@ -79,6 +79,15 @@ pub struct BranchListArgs {
 ///
 /// A forgotten branch will not impact remotes on future pushes. It will be
 /// recreated on future pulls if it still exists in the remote.
+///
+/// When exporting the forgetting of a branch in colocated repositories or
+/// during a `jj git export`, jj will delete the corresponding git repo branch
+/// if it exists at the expected position.
+///
+/// If you'd like to instead override jj's branch with the git repo's branch,
+/// you can use `jj git import --reset`. That command can also be used in rare
+/// cases where a race condition causes the sync between git branches and jj
+/// branches to fail because of conflicts.
 #[derive(clap::Args, Clone, Debug)]
 pub struct BranchForgetArgs {
     /// The branches to forget.

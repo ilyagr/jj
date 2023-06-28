@@ -38,7 +38,7 @@ pub enum GitImportError {
     InternalGitError(#[from] git2::Error),
 }
 
-fn parse_git_ref(ref_name: &str) -> Option<RefName> {
+pub fn parse_git_ref(ref_name: &str) -> Option<RefName> {
     if let Some(branch_name) = ref_name.strip_prefix("refs/heads/") {
         Some(RefName::LocalBranch(branch_name.to_string()))
     } else if let Some(remote_and_branch) = ref_name.strip_prefix("refs/remotes/") {
@@ -622,13 +622,6 @@ pub fn fetch(
     // Apart from `jj branch forget`, jj doesn't provide commands to manipulate
     // remote-tracking branches, and local git branches don't affect fetch
     // behaviors. So, it's unnecessary to export anything else.
-    //
-    // TODO: Create a command the user can use to reset jj's
-    // branch state to the git repo's state. In this case, `jj branch forget`
-    // doesn't work as it tries to delete the latter. One possible name is `jj
-    // git import --reset BRANCH`.
-    // TODO: Once the command described above exists, it should be mentioned in `jj
-    // help branch forget`.
     let nonempty_branches: HashSet<_> = mut_repo
         .view()
         .branches()

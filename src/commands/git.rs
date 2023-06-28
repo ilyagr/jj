@@ -10,7 +10,9 @@ use std::time::Instant;
 use clap::{ArgGroup, Subcommand};
 use itertools::Itertools;
 use jj_lib::backend::{CommitId, ObjectId, TreeValue};
-use jj_lib::git::{self, parse_gitmodules, GitFetchError, GitPushError, GitRefUpdate};
+use jj_lib::git::{
+    self, parse_git_ref, parse_gitmodules, GitFetchError, GitPushError, GitRefUpdate,
+};
 use jj_lib::git_backend::GitBackend;
 use jj_lib::op_store::{BranchTarget, RefTarget};
 use jj_lib::refs::{classify_branch_push_action, BranchPushAction, BranchPushUpdate};
@@ -19,7 +21,7 @@ use jj_lib::repo_path::RepoPath;
 use jj_lib::revset::{self, RevsetIteratorExt as _};
 use jj_lib::settings::{ConfigResultExt as _, UserSettings};
 use jj_lib::store::Store;
-use jj_lib::view::View;
+use jj_lib::view::{RefName, View};
 use jj_lib::workspace::Workspace;
 use maplit::hashset;
 
@@ -153,7 +155,30 @@ pub struct GitPushArgs {
 
 /// Update repo with changes made in the underlying Git repo
 #[derive(clap::Args, Clone, Debug)]
-pub struct GitImportArgs {}
+pub struct GitImportArgs {
+    /// Destroy jj's record of BRANCH and then, if possible, restore it from the
+    /// git repo (can be repeated)
+    ///
+    /// The state of BRANCH and its remote-tracking branches that was previously
+    /// recorded in jj is lost. If the git repo has corresponding branches or
+    /// remote-tracking branches, that state will then be imported into jj.
+    ///
+    /// Branches other than BRANCH are not imported when --reset is specified.
+    ///
+    /// This command can be used for recovery if the remote-tracking branches or
+    /// git-tracking branches become conflicted (this can happen, for example,
+    /// due to a data race).
+    ///
+    /// If you'd like to destroy git's record of the BRANCH as well as jj's, do
+    /// `jj git import --reset BRANCH && jj branch forget BRANCH && jj git
+    /// export`. This should work even if a plain `jj branch forget BRANCH
+    /// && jj git export` doesn't work due to conflicts.
+    //
+    // We could provide an operation that only destroys jj's record of BRANCH, but it would have
+    // confusingly different behavior in colocated and non-colocated repos.
+    #[arg(long, value_name = "BRANCH")]
+    reset: Vec<String>,
+}
 
 /// Update the underlying Git repo with changes made in the repo
 #[derive(clap::Args, Clone, Debug)]
@@ -958,13 +983,39 @@ fn classify_branch_update(
 fn cmd_git_import(
     ui: &mut Ui,
     command: &CommandHelper,
-    _args: &GitImportArgs,
+    args: &GitImportArgs,
 ) -> Result<(), CommandError> {
     let mut workspace_command = command.workspace_helper(ui)?;
-    let repo = workspace_command.repo();
+    let repo = workspace_command.repo().clone();
     let git_repo = get_git_repo(repo.store())?;
-    let mut tx = workspace_command.start_transaction("import git refs");
-    git::import_refs(tx.mut_repo(), &git_repo, &command.settings().git_settings())?;
+    let mut tx;
+    if args.reset.is_empty() {
+        tx = workspace_command.start_transaction("import git refs");
+        git::import_refs(tx.mut_repo(), &git_repo, &command.settings().git_settings())?;
+    } else {
+        tx = workspace_command.start_transaction("git import --reset");
+        for branch in args.reset.iter() {
+            tx.mut_repo().remove_branch(branch);
+        }
+        let git_ref_filter = |ref_name: &RefName| match ref_name {
+            RefName::LocalBranch(branch) => args.reset.contains(branch),
+            RefName::RemoteBranch { branch, .. } => args.reset.contains(branch),
+            _ => false,
+        };
+        for git_tracking_ref in repo.view().git_refs().keys() {
+            if let Some(ref_name) = parse_git_ref(git_tracking_ref) {
+                if git_ref_filter(&ref_name) {
+                    tx.mut_repo().remove_git_ref(git_tracking_ref);
+                }
+            }
+        }
+        git::import_some_refs(
+            tx.mut_repo(),
+            &git_repo,
+            &command.settings().git_settings(),
+            git_ref_filter,
+        )?;
+    }
     tx.finish(ui)?;
     Ok(())
 }

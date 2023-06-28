@@ -263,6 +263,83 @@ fn test_git_import_move_export_with_default_undo() {
     "###);
 }
 
+#[test]
+fn test_git_import_resert_conflcited_git_tracking() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_success(test_env.env_root(), &["init", "repo", "--git"]);
+    let repo_path = test_env.env_root().join("repo");
+    let git_repo = git2::Repository::open(repo_path.join(".jj/repo/store/git")).unwrap();
+
+    test_env.jj_cmd_success(&repo_path, &["branch", "create", "br"]);
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m=a"]);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: 812679adcf38 a
+    "###);
+    // Export a branch `br` when it's at `a`
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    let opid_with_git_tracking_at_a = current_operation_id(&test_env, &repo_path);
+
+    test_env.jj_cmd_success(&repo_path, &["describe", "-m=b"]);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: b4a6b8c586dd b
+      @git (ahead by 1 commits, behind by 1 commits): 812679adcf38 a
+    "###);
+    // Export a branch `br` when it's at `b`
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+
+    // Now, the git repo is at b. We create a conflict by importing at a point of
+    // time where jj thinks the branch is at a.
+    let stdout = test_env.jj_cmd_success(
+        &repo_path,
+        &["--at-op", &opid_with_git_tracking_at_a, "git", "import"],
+    );
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    Concurrent modification detected, resolving automatically.
+    br: b4a6b8c586dd b
+    "###);
+
+    // Now we are stuck, export is broken. Forgetting the branch only forgets the
+    // local branch, and exporting does not work nor fix the git-tracking branches.
+    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
+    [
+        (
+            "refs/heads/br",
+            CommitId(
+                "b4a6b8c586ddf9e89264f164bbcf5c47219a5e5a",
+            ),
+        ),
+    ]
+    "###);
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    // Same as before
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @"[]");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+
+    // import --reset removes the conflict
+    test_env.jj_cmd_success(&repo_path, &["git", "import", "--reset=br"]);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
+
+    // After import --reset, `branch forget` works properly
+    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    // Same as before
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
+    [
+        (
+            "refs/heads/a",
+            CommitId(
+                "230dd059e1b059aefc0da06a2e5a7dbf22362f22",
+            ),
+        ),
+    ]
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    a: 230dd059e1b0 (no description set)
+    "###);
+}
+
 fn get_branch_output(test_env: &TestEnvironment, repo_path: &Path) -> String {
     test_env.jj_cmd_success(repo_path, &["branch", "list"])
 }
