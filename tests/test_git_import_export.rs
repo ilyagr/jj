@@ -270,33 +270,96 @@ fn test_git_import_resert_conflcited_git_tracking() {
     let repo_path = test_env.env_root().join("repo");
     let git_repo = git2::Repository::open(repo_path.join(".jj/repo/store/git")).unwrap();
 
-    test_env.jj_cmd_success(&repo_path, &["branch", "create", "br"]);
-    test_env.jj_cmd_success(&repo_path, &["describe", "-m=a"]);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    br: 812679adcf38 a
-    "###);
-    // Export a branch `br` when it's at `a`
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
-    let opid_with_git_tracking_at_a = current_operation_id(&test_env, &repo_path);
+    // test_env.jj_cmd_success(&repo_path, &["branch", "create", "br"]);
+    // test_env.jj_cmd_success(&repo_path, &["describe", "-m=base"]);
+    // insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git",
+    // "export"]), @""); insta::assert_snapshot!(get_branch_output(&test_env,
+    // &repo_path), @r###" br: 7597521eab0f base
+    // "###);
+    let opid_before_imports = current_operation_id(&test_env, &repo_path);
 
-    test_env.jj_cmd_success(&repo_path, &["describe", "-m=b"]);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    br: b4a6b8c586dd b
-      @git (ahead by 1 commits, behind by 1 commits): 812679adcf38 a
+    // Create commit A in the git repo and put the branch there
+    let signature =
+        git2::Signature::new("Some One", "some.one@example.com", &git2::Time::new(0, 0)).unwrap();
+    let mut tree_builder = git_repo.treebuilder(None).unwrap();
+    let file_oid = git_repo.blob(b"content").unwrap();
+    tree_builder
+        .insert("file", file_oid, git2::FileMode::Blob.into())
+        .unwrap();
+    let tree_oid = tree_builder.write().unwrap();
+    let tree = git_repo.find_tree(tree_oid).unwrap();
+    let first_git_repo_commit = git_repo
+        .commit(
+            Some("refs/heads/br"),
+            &signature,
+            &signature,
+            "A",
+            &tree,
+            &[],
+        )
+        .unwrap();
+    insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
+    [
+        (
+            "refs/heads/br",
+            CommitId(
+                "f30254c7f587e6f08d1fbf9919437799866abf62",
+            ),
+        ),
+    ]
     "###);
-    // Export a branch `br` when it's at `b`
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    let stdout = test_env.jj_cmd_success(&repo_path, &["git", "import"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: f30254c7f587 A
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: f30254c7f587 A
+    "###);
 
-    // Now, the git repo is at b. We create a conflict by importing at a point of
-    // time where jj thinks the branch is at a.
+    // Create commit B in the git repo and put the branch there
+    let signature =
+        git2::Signature::new("Some One", "some.one@example.com", &git2::Time::new(0, 0)).unwrap();
+    let mut tree_builder = git_repo.treebuilder(None).unwrap();
+    let file_oid = git_repo.blob(b"content").unwrap();
+    tree_builder
+        .insert("file", file_oid, git2::FileMode::Blob.into())
+        .unwrap();
+    let tree_oid = tree_builder.write().unwrap();
+    let tree = git_repo.find_tree(tree_oid).unwrap();
+    git_repo
+        .commit(
+            Some("refs/heads/br"),
+            &signature,
+            &signature,
+            "B",
+            &tree,
+            &[&git_repo.find_commit(first_git_repo_commit).unwrap()],
+        )
+        .unwrap();
+    insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
+    [
+        (
+            "refs/heads/br",
+            CommitId(
+                "5472ec5463f1e2149b20646ac223ef00cc5f9798",
+            ),
+        ),
+    ]
+    "###);
+
+    // Simulate a race condition, creating a conflict in git-tracking branches
     let stdout = test_env.jj_cmd_success(
         &repo_path,
-        &["--at-op", &opid_with_git_tracking_at_a, "git", "import"],
+        &["--at-op", &opid_before_imports, "git", "import"],
     );
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     Concurrent modification detected, resolving automatically.
-    br: b4a6b8c586dd b
+    br: 5472ec5463f1 B
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: 5472ec5463f1 B
     "###);
 
     // Now we are stuck, export is broken. Forgetting the branch only forgets the
@@ -307,7 +370,7 @@ fn test_git_import_resert_conflcited_git_tracking() {
         (
             "refs/heads/br",
             CommitId(
-                "b4a6b8c586ddf9e89264f164bbcf5c47219a5e5a",
+                "5472ec5463f1e2149b20646ac223ef00cc5f9798",
             ),
         ),
     ]
