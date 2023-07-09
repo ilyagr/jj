@@ -264,7 +264,7 @@ fn test_git_import_move_export_with_default_undo() {
 }
 
 #[test]
-fn test_git_import_resert_conflcited_git_tracking() {
+fn test_git_import_reset_conflcited_git_tracking() {
     let test_env = TestEnvironment::default();
     test_env.jj_cmd_success(test_env.env_root(), &["init", "repo", "--git"]);
     let repo_path = test_env.env_root().join("repo");
@@ -277,6 +277,7 @@ fn test_git_import_resert_conflcited_git_tracking() {
     // &repo_path), @r###" br: 7597521eab0f base
     // "###);
     let opid_before_imports = current_operation_id(&test_env, &repo_path);
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @"[]");
 
     // Create commit A in the git repo and put the branch there
     let signature =
@@ -298,7 +299,7 @@ fn test_git_import_resert_conflcited_git_tracking() {
             &[],
         )
         .unwrap();
-    insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
     [
         (
             "refs/heads/br",
@@ -313,8 +314,12 @@ fn test_git_import_resert_conflcited_git_tracking() {
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     br: f30254c7f587 A
     "###);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    br: f30254c7f587 A
+    let opid_after_imports = current_operation_id(&test_env, &repo_path);
+    let stdout = test_env.jj_cmd_success(&repo_path, &["log", "-r=br@git"]);
+    insta::assert_snapshot!(stdout, @r###"
+    ◉  vtkmuttyqqll some.one@example.com 1970-01-01 00:00:00.000 +00:00 br f30254c7f587
+    │  A
+    ~
     "###);
 
     // Create commit B in the git repo and put the branch there
@@ -337,7 +342,7 @@ fn test_git_import_resert_conflcited_git_tracking() {
             &[&git_repo.find_commit(first_git_repo_commit).unwrap()],
         )
         .unwrap();
-    insta::assert_debug_snapshot!(get_git_refs(&git_repo), @r###"
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
     [
         (
             "refs/heads/br",
@@ -347,15 +352,33 @@ fn test_git_import_resert_conflcited_git_tracking() {
         ),
     ]
     "###);
+    let stdout = test_env.jj_cmd_success(&repo_path, &["log", "-r=br@git"]);
+    insta::assert_snapshot!(stdout, @r###"
+    ◉  vtkmuttyqqll some.one@example.com 1970-01-01 00:00:00.000 +00:00 br f30254c7f587
+    │  A
+    ~
+    "###);
 
     // Simulate a race condition, creating a conflict in git-tracking branches
+    // let stdout = test_env.jj_cmd_success(
+    //     &repo_path,
+    //     &["--at-op", &opid_after_imports, "git", "import"],
+    // );
+    // insta::assert_snapshot!(stdout, @"");
     let stdout = test_env.jj_cmd_success(
         &repo_path,
-        &["--at-op", &opid_before_imports, "git", "import"],
+        &["--at-op", &opid_before_imports,"git", "import"],
     );
     insta::assert_snapshot!(stdout, @"");
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    let stdout = test_env.jj_cmd_success(
+        &repo_path,
+        &[ "branch", "list"],
+    );
+    insta::assert_snapshot!(stdout, @r###"
     Concurrent modification detected, resolving automatically.
+    br: 5472ec5463f1 B
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     br: 5472ec5463f1 B
     "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
@@ -364,7 +387,7 @@ fn test_git_import_resert_conflcited_git_tracking() {
 
     // Now we are stuck, export is broken. Forgetting the branch only forgets the
     // local branch, and exporting does not work nor fix the git-tracking branches.
-    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
+    // test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
     insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
     [
         (
@@ -375,32 +398,36 @@ fn test_git_import_resert_conflcited_git_tracking() {
         ),
     ]
     "###);
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
-    // Same as before
-    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @"[]");
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
-
-    // import --reset removes the conflict
-    test_env.jj_cmd_success(&repo_path, &["git", "import", "--reset=br"]);
-    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
-
-    // After import --reset, `branch forget` works properly
-    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
-    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @r###"
+    Nothing changed.
+    "###);
     // Same as before
     insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @r###"
     [
         (
-            "refs/heads/a",
+            "refs/heads/br",
             CommitId(
-                "230dd059e1b059aefc0da06a2e5a7dbf22362f22",
+                "5472ec5463f1e2149b20646ac223ef00cc5f9798",
             ),
         ),
     ]
     "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    a: 230dd059e1b0 (no description set)
+    br: 5472ec5463f1 B
     "###);
+
+    // import --reset removes the conflict
+    test_env.jj_cmd_success(&repo_path, &["git", "import", "--reset=br"]);
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
+    br: 5472ec5463f1 B
+    "###);
+
+    // After import --reset, `branch forget` works properly
+    test_env.jj_cmd_success(&repo_path, &["branch", "forget", "br"]);
+    insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["git", "export"]), @"");
+    // Same as before
+    insta::assert_debug_snapshot!(get_git_repo_refs(&git_repo), @"[]");
+    insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 }
 
 fn get_branch_output(test_env: &TestEnvironment, repo_path: &Path) -> String {

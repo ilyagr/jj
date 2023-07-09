@@ -288,7 +288,8 @@ impl View {
         if base_target != other_target {
             let self_target = self.get_ref(ref_name);
             let new_target =
-                merge_ref_targets(index, self_target.as_ref(), base_target, other_target);
+                merge_ref_targets(index, dbg!(self_target.as_ref()), dbg!(base_target), dbg!(other_target));
+            dbg!(&new_target);
             if new_target != self_target {
                 self.set_or_remove_ref(ref_name.clone(), new_target);
             }

@@ -1129,14 +1129,17 @@ impl MutableRepo {
         }
 
         for ref_name in maybe_changed_ref_names {
-            let base_target = base.get_ref(&ref_name);
-            let other_target = other.get_ref(&ref_name);
+            // RUST_BACKTRACE=1 JJ_DEBUG_ALLOW_STDERR=1 cargo test --test test_git_import_export -- test_git_import_reset --show-output
+            let base_target = dbg!(base.get_ref(dbg!(&ref_name)));
+            let other_target = dbg!(other.get_ref(&ref_name));
+            dbg!(self.view().get_ref(&ref_name));
             self.view.get_mut().merge_single_ref(
                 self.index.as_index(),
                 &ref_name,
                 base_target.as_ref(),
                 other_target.as_ref(),
             );
+            dbg!(self.view().get_ref(&ref_name));
         }
 
         if let Some(new_git_head) = merge_ref_targets(

@@ -170,7 +170,10 @@ mod tests {
             BranchPushAction::AlreadyMatches
         );
     }
-
+    #[test]
+    fn test_merge() {
+        dbg!(merge_ref_targets(index, left, base, right))
+    }
     #[test]
     fn test_classify_branch_push_action_added() {
         let commit_id1 = CommitId::from_hex("11");
