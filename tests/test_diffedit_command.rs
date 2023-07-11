@@ -150,7 +150,7 @@ fn test_diffedit_merge() {
     insta::assert_snapshot!(stdout, @r###"
     Created a70eded7af9e merge
     Rebased 1 descendant commits
-    Working copy now at: a5f1ce845f74 (no description set)
+    Working copy now at: a5f1ce845f74 (empty) (no description set)
     Parent commit      : a70eded7af9e merge
     Added 0 files, modified 0 files, removed 1 files
     "###);

@@ -43,7 +43,7 @@ fn test_edit() {
     let stdout = test_env.jj_cmd_success(&repo_path, &["edit", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
     Working copy now at: f41390a5efbf first
-    Parent commit      : 000000000000 (no description set)
+    Parent commit      : 000000000000 (empty) (no description set)
     Added 0 files, modified 1 files, removed 0 files
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
@@ -117,5 +117,7 @@ fn test_edit_root() {
     test_env.jj_cmd_success(test_env.env_root(), &["init", "repo", "--git"]);
     let repo_path = test_env.env_root().join("repo");
     let stderr = test_env.jj_cmd_failure(&repo_path, &["edit", "root"]);
-    insta::assert_snapshot!(stderr, @"Error: Cannot rewrite the root commit");
+    insta::assert_snapshot!(stderr, @r###"
+    Error: Cannot rewrite the root commit
+    "###);
 }

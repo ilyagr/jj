@@ -2,7 +2,11 @@
 commit_summary = '''
 separate(" ",
   format_short_commit_id(commit_id),
-  if(description, description.first_line(), description_placeholder),
+  if(empty, label("empty", "(empty)")),
+  separate(label("separator", " |"),
+    if(description, description.first_line(), description_placeholder),
+    branches,
+  ),
 )
 '''
 

@@ -35,8 +35,8 @@ fn test_restore() {
     // Restores from parent by default
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created b05f8b84f2fc (no description set)
-    Working copy now at: b05f8b84f2fc (no description set)
+    Created b05f8b84f2fc (empty) (no description set)
+    Working copy now at: b05f8b84f2fc (empty) (no description set)
     Parent commit      : 1a986a275de6 (no description set)
     Added 1 files, modified 1 files, removed 1 files
     "###);
@@ -63,7 +63,7 @@ fn test_restore() {
     insta::assert_snapshot!(stdout, @r###"
     Created 5ed06151e039 (no description set)
     Rebased 1 descendant commits
-    Working copy now at: ca6c95b68bd2 (no description set)
+    Working copy now at: ca6c95b68bd2 (empty) (no description set)
     Parent commit      : 5ed06151e039 (no description set)
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["diff", "-s"]);
@@ -81,7 +81,7 @@ fn test_restore() {
     insta::assert_snapshot!(stdout, @r###"
     Created c83e17dc46fd (no description set)
     Rebased 1 descendant commits
-    Working copy now at: df9fb6892f99 (no description set)
+    Working copy now at: df9fb6892f99 (empty) (no description set)
     Parent commit      : c83e17dc46fd (no description set)
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["diff", "-s"]);
@@ -159,10 +159,10 @@ fn test_restore_conflicted_merge() {
     // ...and restore it back again.
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "file"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created 63198ca2e4aa conflict
-    Working copy now at: 63198ca2e4aa conflict
-    Parent commit      : aa493daf6659 a
-    Parent commit      : db6a4daf6ee7 b
+    Created 63198ca2e4aa (empty) conflict
+    Working copy now at: 63198ca2e4aa (empty) conflict |conflict
+    Parent commit      : aa493daf6659 a |a
+    Parent commit      : db6a4daf6ee7 b |b
     Added 0 files, modified 1 files, removed 0 files
     "###);
     insta::assert_snapshot!(
@@ -197,10 +197,10 @@ fn test_restore_conflicted_merge() {
     // ... and restore it back again.
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created d955febceac1 conflict
-    Working copy now at: d955febceac1 conflict
-    Parent commit      : aa493daf6659 a
-    Parent commit      : db6a4daf6ee7 b
+    Created d955febceac1 (empty) conflict
+    Working copy now at: d955febceac1 (empty) conflict |conflict
+    Parent commit      : aa493daf6659 a |a
+    Parent commit      : db6a4daf6ee7 b |b
     Added 0 files, modified 1 files, removed 0 files
     "###);
     insta::assert_snapshot!(

@@ -88,9 +88,9 @@ fn test_split_by_paths() {
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
     First part: 31425b568fcf (no description set)
-    Second part: af0963926ac3 (no description set)
+    Second part: af0963926ac3 (empty) (no description set)
     Working copy now at: 28d4ec20efa9 (no description set)
-    Parent commit      : af0963926ac3 (no description set)
+    Parent commit      : af0963926ac3 (empty) (no description set)
     "###);
 
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
@@ -113,7 +113,7 @@ fn test_split_by_paths() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["split", "-r", "@-", "nonexistent"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
-    First part: 0647b2cbd0da (no description set)
+    First part: 0647b2cbd0da (empty) (no description set)
     Second part: d5d77af65446 (no description set)
     Working copy now at: 86f228dc3a50 (no description set)
     Parent commit      : d5d77af65446 (no description set)
