@@ -1467,6 +1467,31 @@ fn cmd_status(
         formatter.write_str("No working copy\n")?;
     }
 
+    formatter.write_str("\n")?;
+    if let Some(wc_commit) = &maybe_wc_commit {
+        let parent_tree = merge_commit_trees(repo.as_ref(), &wc_commit.parents())?;
+        let tree = wc_commit.tree();
+        if tree.id() == parent_tree.id() {
+            formatter.write_str("The working copy is clean\n")?;
+        } else {
+            formatter.write_str("Working copy changes:\n")?;
+            diff_util::show_diff_summary(
+                formatter,
+                &workspace_command,
+                parent_tree.diff(&tree, &EverythingMatcher),
+            )?;
+        }
+
+        let conflicts = tree.conflicts();
+        if !conflicts.is_empty() {
+            writeln!(
+                formatter.labeled("conflict"),
+                "There are unresolved conflicts at these paths:"
+            )?;
+            print_conflicted_paths(&conflicts, &tree, formatter, &workspace_command)?
+        }
+    }
+
     let mut conflicted_local_branches = vec![];
     let mut conflicted_remote_branches = vec![];
     for (branch_name, branch_target) in repo.view().branches() {
@@ -1511,30 +1536,6 @@ fn cmd_status(
             formatter,
             "  Use `jj branch list` to see details. Use `jj git fetch` to resolve."
         )?;
-    }
-
-    if let Some(wc_commit) = &maybe_wc_commit {
-        let parent_tree = merge_commit_trees(repo.as_ref(), &wc_commit.parents())?;
-        let tree = wc_commit.tree();
-        if tree.id() == parent_tree.id() {
-            formatter.write_str("The working copy is clean\n")?;
-        } else {
-            formatter.write_str("Working copy changes:\n")?;
-            diff_util::show_diff_summary(
-                formatter,
-                &workspace_command,
-                parent_tree.diff(&tree, &EverythingMatcher),
-            )?;
-        }
-
-        let conflicts = tree.conflicts();
-        if !conflicts.is_empty() {
-            writeln!(
-                formatter.labeled("conflict"),
-                "There are unresolved conflicts at these paths:"
-            )?;
-            print_conflicted_paths(&conflicts, &tree, formatter, &workspace_command)?
-        }
     }
 
     Ok(())

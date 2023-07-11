@@ -159,6 +159,7 @@ fn test_resolve_workspace_directory() {
     insta::assert_snapshot!(stdout, @r###"
     Working copy : 230dd059e1b0 (no description set)
     Parent commit: 000000000000 (no description set)
+
     The working copy is clean
     "###);
 
@@ -173,6 +174,7 @@ fn test_resolve_workspace_directory() {
     insta::assert_snapshot!(stdout, @r###"
     Working copy : 230dd059e1b0 (no description set)
     Parent commit: 000000000000 (no description set)
+
     The working copy is clean
     "###);
 
