@@ -236,7 +236,7 @@ fn test_git_fetch_conflicting_branches() {
     test_env.jj_cmd_success(&repo_path, &["new", "root"]);
     test_env.jj_cmd_success(&repo_path, &["branch", "create", "rem1"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    rem1: fcdbbd731496 (no description set)
+    rem1: fcdbbd731496 (empty) (no description set)
     "###);
 
     test_env.jj_cmd_success(
@@ -246,7 +246,7 @@ fn test_git_fetch_conflicting_branches() {
     // This should result in a CONFLICTED branch
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     rem1 (conflicted):
-      + fcdbbd731496 (no description set)
+      + fcdbbd731496 (empty) (no description set)
       + 6a21102783e8 message
       @rem1 (behind by 1 commits): 6a21102783e8 message
     "###);
@@ -266,7 +266,7 @@ fn test_git_fetch_conflicting_branches_colocated() {
     test_env.jj_cmd_success(&repo_path, &["new", "root"]);
     test_env.jj_cmd_success(&repo_path, &["branch", "create", "rem1"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    rem1: f652c32197cf (no description set)
+    rem1: f652c32197cf (empty) (no description set)
     "###);
 
     test_env.jj_cmd_success(
@@ -277,9 +277,9 @@ fn test_git_fetch_conflicting_branches_colocated() {
     // See https://github.com/martinvonz/jj/pull/1146#discussion_r1112372340 for the bug this tests for.
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     rem1 (conflicted):
-      + f652c32197cf (no description set)
+      + f652c32197cf (empty) (no description set)
       + 6a21102783e8 message
-      @git (behind by 1 commits): f652c32197cf (no description set)
+      @git (behind by 1 commits): f652c32197cf (empty) (no description set)
       @rem1 (behind by 1 commits): 6a21102783e8 message
     "###);
 }
@@ -748,7 +748,7 @@ fn test_fetch_undo_what() {
       @origin: c7d4bdcbc215 descr_for_b
       (this branch will be *deleted permanently* on the remote on the
        next `jj git push`. Use `jj branch forget` to prevent this)
-    newbranch: 230dd059e1b0 (no description set)
+    newbranch: 230dd059e1b0 (empty) (no description set)
     "###);
     // Restoring just the remote-tracking state will not affect `newbranch`, but
     // will eliminate `b@origin`.
@@ -764,7 +764,7 @@ fn test_fetch_undo_what() {
     );
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    newbranch: 230dd059e1b0 (no description set)
+    newbranch: 230dd059e1b0 (empty) (no description set)
     "###);
 }
 
@@ -777,13 +777,13 @@ fn test_git_fetch_remove_fetch() {
 
     test_env.jj_cmd_success(&repo_path, &["branch", "set", "origin"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    origin: 230dd059e1b0 (no description set)
+    origin: 230dd059e1b0 (empty) (no description set)
     "###);
 
     test_env.jj_cmd_success(&repo_path, &["git", "fetch"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     origin (conflicted):
-      + 230dd059e1b0 (no description set)
+      + 230dd059e1b0 (empty) (no description set)
       + ffecd2d67827 message
       @origin (behind by 1 commits): ffecd2d67827 message
     "###);
@@ -791,7 +791,7 @@ fn test_git_fetch_remove_fetch() {
     test_env.jj_cmd_success(&repo_path, &["git", "remote", "remove", "origin"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     origin (conflicted):
-      + 230dd059e1b0 (no description set)
+      + 230dd059e1b0 (empty) (no description set)
       + ffecd2d67827 message
     "###);
 
@@ -802,7 +802,7 @@ fn test_git_fetch_remove_fetch() {
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     origin (conflicted):
-      + 230dd059e1b0 (no description set)
+      + 230dd059e1b0 (empty) (no description set)
       + ffecd2d67827 message
       @origin (behind by 1 commits): ffecd2d67827 message
     "###);
@@ -817,13 +817,13 @@ fn test_git_fetch_rename_fetch() {
 
     test_env.jj_cmd_success(&repo_path, &["branch", "set", "origin"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    origin: 230dd059e1b0 (no description set)
+    origin: 230dd059e1b0 (empty) (no description set)
     "###);
 
     test_env.jj_cmd_success(&repo_path, &["git", "fetch"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     origin (conflicted):
-      + 230dd059e1b0 (no description set)
+      + 230dd059e1b0 (empty) (no description set)
       + ffecd2d67827 message
       @origin (behind by 1 commits): ffecd2d67827 message
     "###);
@@ -834,7 +834,7 @@ fn test_git_fetch_rename_fetch() {
     );
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     origin (conflicted):
-      + 230dd059e1b0 (no description set)
+      + 230dd059e1b0 (empty) (no description set)
       + ffecd2d67827 message
       @upstream (behind by 1 commits): ffecd2d67827 message
     "###);

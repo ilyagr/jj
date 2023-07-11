@@ -2,6 +2,7 @@
 commit_summary = '''
 separate(" ",
   format_short_commit_id(commit_id),
+  if(empty, label("empty", "(empty)")),
   if(description, description.first_line(), description_placeholder),
 )
 '''

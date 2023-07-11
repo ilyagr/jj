@@ -30,8 +30,8 @@ fn test_checkout() {
     // Check out current commit
     let stdout = test_env.jj_cmd_success(&repo_path, &["checkout", "@"]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy now at: 05ce7118568d (no description set)
-    Parent commit      : 5c52832c3483 second
+    Working copy now at: 05ce7118568d (empty) (no description set)
+    Parent commit      : 5c52832c3483 (empty) second
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
     @  05ce7118568d3007efc9163b055f9cb4a6becfde
@@ -67,11 +67,11 @@ fn test_checkout_not_single_rev() {
     insta::assert_snapshot!(stderr, @r###"
     Error: Revset "root..@" resolved to more than one revision
     Hint: The revset "root..@" resolved to these revisions:
-    2f8593712db5 (no description set)
-    5c1afd8b074f fifth
-    009f88bf7141 fourth
-    3fa8931e7b89 third
-    5c52832c3483 second
+    2f8593712db5 (empty) (no description set)
+    5c1afd8b074f (empty) fifth
+    009f88bf7141 (empty) fourth
+    3fa8931e7b89 (empty) third
+    5c52832c3483 (empty) second
     ...
     "###);
 
@@ -79,19 +79,19 @@ fn test_checkout_not_single_rev() {
     insta::assert_snapshot!(stderr, @r###"
     Error: Revset "root..@-" resolved to more than one revision
     Hint: The revset "root..@-" resolved to these revisions:
-    5c1afd8b074f fifth
-    009f88bf7141 fourth
-    3fa8931e7b89 third
-    5c52832c3483 second
-    69542c1984c1 first
+    5c1afd8b074f (empty) fifth
+    009f88bf7141 (empty) fourth
+    3fa8931e7b89 (empty) third
+    5c52832c3483 (empty) second
+    69542c1984c1 (empty) first
     "###);
 
     let stderr = test_env.jj_cmd_failure(&repo_path, &["checkout", "@-|@--"]);
     insta::assert_snapshot!(stderr, @r###"
     Error: Revset "@-|@--" resolved to more than one revision
     Hint: The revset "@-|@--" resolved to these revisions:
-    5c1afd8b074f fifth
-    009f88bf7141 fourth
+    5c1afd8b074f (empty) fifth
+    009f88bf7141 (empty) fourth
     "###);
 
     let stderr = test_env.jj_cmd_failure(&repo_path, &["checkout", "none()"]);

@@ -157,10 +157,8 @@ fn test_resolve_workspace_directory() {
     // Ancestor of cwd
     let stdout = test_env.jj_cmd_success(&subdir, &["status"]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy : 230dd059e1b0 (no description set)
-    Parent commit: 000000000000 (no description set)
-
-    The working copy is clean
+    Working copy : 230dd059e1b0 (empty) (no description set)
+    Parent commit: 000000000000 (empty) (no description set)
     "###);
 
     // Explicit subdirectory path
@@ -172,10 +170,8 @@ fn test_resolve_workspace_directory() {
     // Valid explicit path
     let stdout = test_env.jj_cmd_success(&subdir, &["status", "-R", "../.."]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy : 230dd059e1b0 (no description set)
-    Parent commit: 000000000000 (no description set)
-
-    The working copy is clean
+    Working copy : 230dd059e1b0 (empty) (no description set)
+    Parent commit: 000000000000 (empty) (no description set)
     "###);
 
     // "../../..".ancestors() contains "../..", but it should never be looked up.

@@ -43,7 +43,7 @@ fn test_squash() {
     // Squashes the working copy into the parent by default
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash"]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy now at: b9280a9898cb (no description set)
+    Working copy now at: b9280a9898cb (empty) (no description set)
     Parent commit      : 6ca29c9d2e7c (no description set)
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
@@ -108,7 +108,7 @@ fn test_squash() {
     std::fs::write(repo_path.join("file1"), "e\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash"]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy now at: 959145c11426 (no description set)
+    Working copy now at: 959145c11426 (empty) (no description set)
     Parent commit      : 80960125bb96 (no description set)
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
@@ -359,8 +359,8 @@ fn test_squash_empty() {
 
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash"]);
     insta::assert_snapshot!(stdout, @r###"
-    Working copy now at: e45abe2cd9a9 (no description set)
-    Parent commit      : 1265289bbbbf parent
+    Working copy now at: e45abe2cd9a9 (empty) (no description set)
+    Parent commit      : 1265289bbbbf (empty) parent
     "###);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
     parent
