@@ -1470,14 +1470,15 @@ fn cmd_status(
     let mut formatter = ui.stdout_formatter();
     let formatter = formatter.as_mut();
     if let Some(wc_commit) = &maybe_wc_commit {
+        // Compare to WorkspaceCommandHelper::update_working_copy.
+        formatter.write_str("Working copy : ")?;
+        workspace_command.write_commit_summary(formatter, wc_commit)?;
+        formatter.write_str("\n")?;
         for parent in wc_commit.parents() {
             formatter.write_str("Parent commit: ")?;
             workspace_command.write_commit_summary(formatter, &parent)?;
             formatter.write_str("\n")?;
         }
-        formatter.write_str("Working copy : ")?;
-        workspace_command.write_commit_summary(formatter, wc_commit)?;
-        formatter.write_str("\n")?;
     } else {
         formatter.write_str("No working copy\n")?;
     }
