@@ -21,17 +21,20 @@ $ cd Hello-World
 ```
 
 Running `jj st` (short for`jj status`) now yields something like this:
-```shell script
+```
 $ jj st
-Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1
-Working copy : d7439b06fbef (no description set)
-The working copy is clean
+Working copy : d7439b06fbef (empty) (no description set)
+Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1 |master
 ```
 
 We can see from the output above that our working copy is a real commit with a
 commit ID (`d7439b06fbef` in the example). When you make a change in the working
 copy, the working-copy commit gets automatically amended by the next `jj`
-command.
+command. For now, it is marked as `(empty)` because it doesn't have any changes
+compared to its parent commit.
+
+We are also told that the `master` branch is pointing to the parent revision of
+the working copy. We will discuss branches later.
 
 ## Creating our first change
 
@@ -42,7 +45,8 @@ commit message) so we don't forget what we're working on:
 # This will bring up $EDITOR (or `pico` by default). Enter something like
 # "Say goodbye" in the editor and then save the file and close the editor.
 $ jj describe
-Working copy now at: e427edcfd0ba Say goodbye
+Working copy now at: e427edcfd0ba (empty) Say goodbye
+Parent commit      : 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1 |master
 ```
 
 Now make the change in the README:
@@ -50,8 +54,8 @@ Now make the change in the README:
 # Adjust as necessary for compatibility with your flavor of `sed`
 $ sed -i 's/Hello/Goodbye/' README
 $ jj st
-Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1
 Working copy : 5d39e19dac36 Say goodbye
+Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1 |master
 Working copy changes:
 M README
 ```
@@ -88,11 +92,8 @@ for `jj new` (you can specify a destination for `jj new` as well).
 So, let's say we're now done with this change, so we create a new change:
 ```shell script
 $ jj new
-Working copy now at: aef4df99ea11 (no description set)
-$ jj st
-Parent commit: 5d39e19dac36 Say goodbye
-Working copy : aef4df99ea11 (no description set)
-The working copy is clean
+Working copy now at: aef4df99ea11 (empty) (no description set)
+Parent commit      : 5d39e19dac36 Say goodbye
 ```
 
 If we later realize that we want to make further changes, we can make them
@@ -231,12 +232,11 @@ top of B2. Once we've resolved the conflict, we'll squash the conflict
 resolution into the conflicted B2. That might look like this:
 ```shell script
 $ jj new puqltuttrvzp  # Replace the ID by what you have for B2
-Working copy now at: c7068d1c23fd (no description set)
+Working copy now at: c7068d1c23fd (empty) (no description set)
 Added 0 files, modified 0 files, removed 1 files
 $ jj st
+Working copy : c7068d1c23fd (empty) (no description set)
 Parent commit: f7fb5943ee41 B2
-Working copy : c7068d1c23fd (no description set)
-The working copy is clean
 There are unresolved conflicts at these paths:
 file1    2-sided conflict
 $ cat file1
