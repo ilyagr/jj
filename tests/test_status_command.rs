@@ -36,6 +36,5 @@ fn test_status_merge() {
     Working copy : c965365c98d2 (empty) (no description set)
     Parent commit: 9ae48ddba058 (empty) left |left
     Parent commit: 29b991e938dd right
-    The working copy is clean
     "###);
 }

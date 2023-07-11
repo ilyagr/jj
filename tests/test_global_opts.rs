@@ -159,7 +159,6 @@ fn test_resolve_workspace_directory() {
     insta::assert_snapshot!(stdout, @r###"
     Working copy : 230dd059e1b0 (empty) (no description set)
     Parent commit: 000000000000 (empty) (no description set)
-    The working copy is clean
     "###);
 
     // Explicit subdirectory path
@@ -173,7 +172,6 @@ fn test_resolve_workspace_directory() {
     insta::assert_snapshot!(stdout, @r###"
     Working copy : 230dd059e1b0 (empty) (no description set)
     Parent commit: 000000000000 (empty) (no description set)
-    The working copy is clean
     "###);
 
     // "../../..".ancestors() contains "../..", but it should never be looked up.

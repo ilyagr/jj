@@ -1530,9 +1530,7 @@ fn cmd_status(
     if let Some(wc_commit) = &maybe_wc_commit {
         let parent_tree = merge_commit_trees(repo.as_ref(), &wc_commit.parents())?;
         let tree = wc_commit.tree();
-        if tree.id() == parent_tree.id() {
-            formatter.write_str("The working copy is clean\n")?;
-        } else {
+        if tree.id() != parent_tree.id() {
             formatter.write_str("Working copy changes:\n")?;
             diff_util::show_diff_summary(
                 formatter,
