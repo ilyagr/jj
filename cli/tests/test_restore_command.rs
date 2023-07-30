@@ -43,7 +43,7 @@ fn test_restore() {
     // Restores from parent by default
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created kkmpptxz ed1678e3 (empty) (no description set)
+    Created kkmpptxz?? ed1678e3 (empty) (no description set)
     Working copy now at: kkmpptxz ed1678e3 (empty) (no description set)
     Parent commit      : rlvkpnrz 1a986a27 (no description set)
     Added 1 files, modified 1 files, removed 1 files
@@ -59,7 +59,7 @@ fn test_restore() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "-c=@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz e25100af (empty) (no description set)
+    Created rlvkpnrz?? e25100af (empty) (no description set)
     Rebased 1 descendant commits
     Working copy now at: kkmpptxz fd42591e (conflict) (no description set)
     Parent commit      : rlvkpnrz e25100af (empty) (no description set)
@@ -78,7 +78,7 @@ fn test_restore() {
     test_env.jj_cmd_success(&repo_path, &["undo"]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--from", "@--"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created kkmpptxz 237116e2 (no description set)
+    Created kkmpptxz?? 237116e2 (no description set)
     Working copy now at: kkmpptxz 237116e2 (no description set)
     Parent commit      : rlvkpnrz 1a986a27 (no description set)
     Added 1 files, modified 0 files, removed 2 files
@@ -92,7 +92,7 @@ fn test_restore() {
     test_env.jj_cmd_success(&repo_path, &["undo"]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--to", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz 887f8f96 (no description set)
+    Created rlvkpnrz?? 887f8f96 (no description set)
     Rebased 1 descendant commits
     Working copy now at: kkmpptxz d2725e6e (empty) (no description set)
     Parent commit      : rlvkpnrz 887f8f96 (no description set)
@@ -110,7 +110,7 @@ fn test_restore() {
     test_env.jj_cmd_success(&repo_path, &["undo"]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--from", "@", "--to", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz 50c1fe09 (no description set)
+    Created rlvkpnrz?? 50c1fe09 (no description set)
     Rebased 1 descendant commits
     Working copy now at: kkmpptxz c63aab8e (empty) (no description set)
     Parent commit      : rlvkpnrz 50c1fe09 (no description set)
@@ -128,7 +128,7 @@ fn test_restore() {
     test_env.jj_cmd_success(&repo_path, &["undo"]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "file2", "file3"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created kkmpptxz 48f89f52 (no description set)
+    Created kkmpptxz?? 48f89f52 (no description set)
     Working copy now at: kkmpptxz 48f89f52 (no description set)
     Parent commit      : rlvkpnrz 1a986a27 (no description set)
     Added 0 files, modified 1 files, removed 1 files
@@ -190,7 +190,7 @@ fn test_restore_conflicted_merge() {
     // ...and restore it back again.
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "file"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created vruxwmqv 63198ca2 (conflict) (empty) conflict
+    Created vruxwmqv?? 63198ca2 (conflict) (empty) conflict
     Working copy now at: vruxwmqv 63198ca2 (conflict) (empty) conflict
     Parent commit      : zsuskuln aa493daf a
     Parent commit      : royxmykx db6a4daf b
@@ -228,7 +228,7 @@ fn test_restore_conflicted_merge() {
     // ... and restore it back again.
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created vruxwmqv d955febc (conflict) (empty) conflict
+    Created vruxwmqv?? d955febc (conflict) (empty) conflict
     Working copy now at: vruxwmqv d955febc (conflict) (empty) conflict
     Parent commit      : zsuskuln aa493daf a
     Parent commit      : royxmykx db6a4daf b

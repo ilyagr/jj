@@ -403,7 +403,7 @@ fn test_git_fetch_all() {
     a1: nknoxmzm 359a9a02 descr_for_a1
     a2: qkvnknrk decaa396 descr_for_a2
     b: vpupmnsl 061eddbb new_descr_for_b_to_create_conflict
-      @origin (ahead by 1 commits, behind by 1 commits): vpupmnsl c7d4bdcb descr_for_b
+      @origin (ahead by 1 commits, behind by 1 commits): (hidden) vpupmnsl c7d4bdcb descr_for_b
     master: zowqyktl ff36dc55 descr_for_trunk1
     trunk1: zowqyktl ff36dc55 descr_for_trunk1
     "###);
@@ -412,7 +412,7 @@ fn test_git_fetch_all() {
     a1: quxllqov 0424f6df descr_for_a1
     a2: osusxwst 91e46b4b descr_for_a2
     b (conflicted):
-      - vpupmnsl c7d4bdcb descr_for_b
+      - (hidden) vpupmnsl c7d4bdcb descr_for_b
       + vpupmnsl 061eddbb new_descr_for_b_to_create_conflict
       + vktnwlsu babc4922 descr_for_b
       @origin (behind by 1 commits): vktnwlsu babc4922 descr_for_b
@@ -578,7 +578,7 @@ fn test_git_fetch_some_of_many_branches() {
     a1: kmuktwqx 6f4e1c4d descr_for_a1
     a2: qkvnknrk decaa396 descr_for_a2
     b (conflicted):
-      - vpupmnsl c7d4bdcb descr_for_b
+      - (hidden) vpupmnsl c7d4bdcb descr_for_b
       + vpupmnsl 2be688d8 new_descr_for_b_to_create_conflict
       + twmruqrv 13ac0328 descr_for_b
       @origin (behind by 1 commits): twmruqrv 13ac0328 descr_for_b
@@ -608,7 +608,7 @@ fn test_git_fetch_some_of_many_branches() {
     a1: kmuktwqx 6f4e1c4d descr_for_a1
     a2: xwxurvnt 010977d6 descr_for_a2
     b (conflicted):
-      - vpupmnsl c7d4bdcb descr_for_b
+      - (hidden) vpupmnsl c7d4bdcb descr_for_b
       + vpupmnsl 2be688d8 new_descr_for_b_to_create_conflict
       + twmruqrv 13ac0328 descr_for_b
       @origin (behind by 1 commits): twmruqrv 13ac0328 descr_for_b
@@ -735,7 +735,7 @@ fn test_fetch_undo_what() {
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     b (deleted)
-      @origin: vpupmnsl c7d4bdcb descr_for_b
+      @origin: (hidden) vpupmnsl c7d4bdcb descr_for_b
       (this branch will be *deleted permanently* on the remote on the
        next `jj git push`. Use `jj branch forget` to prevent this)
     "###);
@@ -745,7 +745,7 @@ fn test_fetch_undo_what() {
     test_env.jj_cmd_success(&repo_path, &["branch", "c", "newbranch"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     b (deleted)
-      @origin: vpupmnsl c7d4bdcb descr_for_b
+      @origin: (hidden) vpupmnsl c7d4bdcb descr_for_b
       (this branch will be *deleted permanently* on the remote on the
        next `jj git push`. Use `jj branch forget` to prevent this)
     newbranch: qpvuntsm 230dd059 (empty) (no description set)

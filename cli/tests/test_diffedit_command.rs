@@ -63,7 +63,7 @@ fn test_diffedit() {
     std::fs::write(&edit_script, "reset file2").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created kkmpptxz 1930da4a (no description set)
+    Created kkmpptxz?? 1930da4a (no description set)
     Working copy now at: kkmpptxz 1930da4a (no description set)
     Parent commit      : rlvkpnrz 613028a4 (no description set)
     Added 0 files, modified 1 files, removed 0 files
@@ -78,7 +78,7 @@ fn test_diffedit() {
     std::fs::write(&edit_script, "write file3\nmodified\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "-r", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz c03ae967 (no description set)
+    Created rlvkpnrz?? c03ae967 (no description set)
     Rebased 1 descendant commits
     Working copy now at: kkmpptxz 2a4dc204 (no description set)
     Parent commit      : rlvkpnrz c03ae967 (no description set)
@@ -98,7 +98,7 @@ fn test_diffedit() {
     .unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@--"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created kkmpptxz 15f2c966 (no description set)
+    Created kkmpptxz?? 15f2c966 (no description set)
     Working copy now at: kkmpptxz 15f2c966 (no description set)
     Parent commit      : rlvkpnrz 613028a4 (no description set)
     Added 0 files, modified 0 files, removed 1 files
@@ -148,7 +148,7 @@ fn test_diffedit_merge() {
     .unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "-r", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created royxmykx a70eded7 (conflict) merge
+    Created royxmykx?? a70eded7 (conflict) merge
     Rebased 1 descendant commits
     Working copy now at: yqosqzyt a5f1ce84 (conflict) (empty) (no description set)
     Parent commit      : royxmykx a70eded7 (conflict) merge
@@ -215,7 +215,7 @@ fn test_diffedit_old_restore_interactive_tests() {
     std::fs::write(&edit_script, "reset file2\0reset file3").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz abdbf627 (no description set)
+    Created rlvkpnrz?? abdbf627 (no description set)
     Working copy now at: rlvkpnrz abdbf627 (no description set)
     Parent commit      : qpvuntsm 2375fa16 (no description set)
     Added 0 files, modified 1 files, removed 1 files
@@ -230,7 +230,7 @@ fn test_diffedit_old_restore_interactive_tests() {
     std::fs::write(&edit_script, "write file3\nunrelated\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
-    Created rlvkpnrz e31f7f33 (no description set)
+    Created rlvkpnrz?? e31f7f33 (no description set)
     Working copy now at: rlvkpnrz e31f7f33 (no description set)
     Parent commit      : qpvuntsm 2375fa16 (no description set)
     Added 0 files, modified 1 files, removed 0 files

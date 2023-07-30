@@ -1,7 +1,12 @@
 [templates]
 commit_summary = '''
 separate(" ",
-  format_short_change_id(change_id),
+  label(
+    separate(" ", if(divergent, "divergent"), if(hidden, "hidden")),
+    separate(" ",
+      if(hidden, "(hidden)"),
+      format_short_change_id(change_id) ++ if(divergent, "??"),
+    )),
   format_short_commit_id(commit_id),
   if(conflict, label("conflict", "(conflict)")),
   if(empty, label("empty", "(empty)")),
