@@ -74,7 +74,7 @@ fn test_git_push_current_branch() {
     let stdout = test_env.jj_cmd_success(&workspace_root, &["branch", "list"]);
     insta::assert_snapshot!(stdout, @r###"
     branch1: lzmmnrxq 19e00bf6 (empty) modified branch1 commit
-      @origin (ahead by 1 commits, behind by 1 commits): (hidden) lzmmnrxq 45a3aa29 (empty) description 1
+      @origin (ahead by 1 commits, behind by 1 commits): (lzmmnrxq) 45a3aa29 (empty) description 1
     branch2: yostqsxw 10ee3363 (empty) foo
       @origin (behind by 1 commits): rlzusymt 8476341e (empty) description 2
     my-branch: yostqsxw 10ee3363 (empty) foo
@@ -96,7 +96,7 @@ fn test_git_push_current_branch() {
     let stdout = test_env.jj_cmd_success(&workspace_root, &["branch", "list"]);
     insta::assert_snapshot!(stdout, @r###"
     branch1: lzmmnrxq 19e00bf6 (empty) modified branch1 commit
-      @origin (ahead by 1 commits, behind by 1 commits): (hidden) lzmmnrxq 45a3aa29 (empty) description 1
+      @origin (ahead by 1 commits, behind by 1 commits): (lzmmnrxq) 45a3aa29 (empty) description 1
     branch2: yostqsxw 10ee3363 (empty) foo
     my-branch: yostqsxw 10ee3363 (empty) foo
     "###);
