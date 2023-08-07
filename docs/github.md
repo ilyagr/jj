@@ -91,7 +91,7 @@ $ jj commit -m 'address pr comments'
 $ # Update the branch to point to the new commit.
 $ jj branch set your-feature -r @-
 $ # Push it to your remote
-$ jj git push.
+$ jj git push
 ```
 
 ### Rewriting commits
