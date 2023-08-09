@@ -10,6 +10,7 @@ If you haven't already, make sure you
 ## Cloning a Git repo
 
 Let's start by cloning GitHub's Hello-World repo using `jj`:
+
 ```shell script
 # Note the "git" before "clone" (there is no support for cloning native jj
 # repos yet)
@@ -21,6 +22,7 @@ $ cd Hello-World
 ```
 
 Running `jj st` (short for`jj status`) now yields something like this:
+
 ```shell script
 $ jj st
 Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1
@@ -36,8 +38,9 @@ command.
 ## Creating our first change
 
 Now let's say we want to edit the `README` file in the repo to say "Goodbye"
-instead of "Hello". Let's start by describing the change (adding a
-commit message) so we don't forget what we're working on:
+instead of "Hello". Let's start by describing the change (adding a commit
+message) so we don't forget what we're working on:
+
 ```shell script
 # This will bring up $EDITOR (or `pico` by default). Enter something like
 # "Say goodbye" in the editor and then save the file and close the editor.
@@ -46,6 +49,7 @@ Working copy now at: e427edcfd0ba Say goodbye
 ```
 
 Now make the change in the README:
+
 ```shell script
 # Adjust as necessary for compatibility with your flavor of `sed`
 $ sed -i 's/Hello/Goodbye/' README
@@ -55,12 +59,14 @@ Working copy : 5d39e19dac36 Say goodbye
 Working copy changes:
 M README
 ```
+
 Note that you didn't have to tell Jujutsu to add the change like you would with
 `git add`. You actually don't even need to tell it when you add new files or
 remove existing files. To untrack a path, add it to your `.gitignore` and run
 `jj untrack <path>`.
 
 To see the diff, run `jj diff`:
+
 ```shell script
 $ jj diff --git  # Feel free to skip the `--git` flag
 diff --git a/README b/README
@@ -71,6 +77,7 @@ index 980a0d5f19...1ce3f81130 100644
 -Hello World!
 +Goodbye World!
 ```
+
 Jujutsu's diff format currently defaults to inline coloring of the diff (like
 `git diff --color-words`), so we used `--git` above to make the diff readable in
 this tutorial.
@@ -86,6 +93,7 @@ VCSs, there is also a `jj checkout/co` command, which is practically a synonym
 for `jj new` (you can specify a destination for `jj new` as well).
 
 So, let's say we're now done with this change, so we create a new change:
+
 ```shell script
 $ jj new
 Working copy now at: aef4df99ea11 (no description set)
@@ -95,8 +103,8 @@ Working copy : aef4df99ea11 (no description set)
 The working copy is clean
 ```
 
-If we later realize that we want to make further changes, we can make them
-in the working copy and then run `jj squash`. That command squashes the changes
+If we later realize that we want to make further changes, we can make them in
+the working copy and then run `jj squash`. That command squashes the changes
 from a given commit into its parent commit. Like most commands, it acts on the
 working-copy commit by default. When run on the working-copy commit, it behaves
 very similar to `git commit --amend`, and `jj amend` is in fact an alias for
@@ -107,12 +115,13 @@ working copy. Any further changes in the working copy will then amend the
 commit. Whether you choose to checkout-and-squash or to edit typically depends
 on how done you are with the change; if the change is almost done, it makes
 sense to use `jj checkout` so you can easily review your adjustments with
-`jj diff` before running `jj squash`. 
+`jj diff` before running `jj squash`.
 
 ## The log command and "revsets"
 
 You're probably familiar with `git log`. Jujutsu has very similar functionality
 in its `jj log` command:
+
 ```shell script
 $ jj log
 @  mpqrykypylvy martinvonz@google.com 2023-02-12 15:00:22.000 -08:00 aef4df99ea11
@@ -124,22 +133,22 @@ $ jj log
 ~
 ```
 
-The `@` indicates the working-copy commit. The first ID on a line
-(e.g. "mpqrykypylvy" above) is the "change ID", which is an ID that follows the
-commit as it's rewritten (similar to Gerrit's Change-Id). The second ID is the
-commit ID, which changes when you rewrite the commit. You can give either ID
-to commands that take revisions as arguments. We will generally prefer change
-IDs because they stay the same when the commit is rewritten.
+The `@` indicates the working-copy commit. The first ID on a line (e.g.
+"mpqrykypylvy" above) is the "change ID", which is an ID that follows the commit
+as it's rewritten (similar to Gerrit's Change-Id). The second ID is the commit
+ID, which changes when you rewrite the commit. You can give either ID to
+commands that take revisions as arguments. We will generally prefer change IDs
+because they stay the same when the commit is rewritten.
 
 By default, `jj log` lists your local commits, with some remote commits added
-for context.  The `~` indicates that the commit has parents that are not
-included in the graph. We can use the `-r` flag to select a different set of
-revisions to list. The flag accepts a ["revset"](revsets.md), which is an
-expression in a simple language for specifying revisions. For example, `@`
-refers to the working-copy commit, `root` refers to the root commit,
-`branches()` refers to all commits pointed to by branches. We can combine
-expressions with `|` for union, `&` for intersection and `~` for difference. For
-example:
+for context. The `~` indicates that the commit has parents that are not included
+in the graph. We can use the `-r` flag to select a different set of revisions to
+list. The flag accepts a ["revset"](revsets.md), which is an expression in a
+simple language for specifying revisions. For example, `@` refers to the
+working-copy commit, `root` refers to the root commit, `branches()` refers to
+all commits pointed to by branches. We can combine expressions with `|` for
+union, `&` for intersection and `~` for difference. For example:
+
 ```shell script
 $ jj log -r '@ | root | branches()'
 @  mpqrykypylvy martinvonz@google.com 2023-02-12 15:00:22.000 -08:00 aef4df99ea11
@@ -168,6 +177,7 @@ input set if they're ancestors of other revisions in the set.
 
 Now let's see how Jujutsu deals with merge conflicts. We'll start by making some
 commits:
+
 ```shell script
 # Start creating a chain of commits off of the `master` branch
 $ jj new master -m A; echo a > file1
@@ -197,6 +207,7 @@ $ jj log
 
 We now have a few commits, where A, B1, and B2 modify the same file, while C
 modifies a different file. Let's now rebase B2 directly onto A:
+
 ```shell script
 $ jj rebase -s puqltuttrvzp -d nuvyytnqlquo
 Rebased 2 commits
@@ -221,14 +232,15 @@ $ jj log
 There are several things worth noting here. First, the `jj rebase` command said
 "Rebased 2 commits". That's because we asked it to rebase commit B2 with the
 `-s` option, which also rebases descendants (commit C in this case). Second,
-because B2 modified the same file (and word) as B1, rebasing
-it resulted in conflicts, as the `jj log` output indicates. Third, the conflicts
-did not prevent the rebase from completing successfully, nor did it prevent C
-from getting rebased on top.
+because B2 modified the same file (and word) as B1, rebasing it resulted in
+conflicts, as the `jj log` output indicates. Third, the conflicts did not
+prevent the rebase from completing successfully, nor did it prevent C from
+getting rebased on top.
 
 Now let's resolve the conflict in B2. We'll do that by creating a new commit on
 top of B2. Once we've resolved the conflict, we'll squash the conflict
 resolution into the conflicted B2. That might look like this:
+
 ```shell script
 $ jj new puqltuttrvzp  # Replace the ID by what you have for B2
 Working copy now at: c7068d1c23fd (no description set)
@@ -272,15 +284,16 @@ $ jj log
 Note that commit C automatically got rebased on top of the resolved B2, and that
 C is also resolved (since it modified only a different file).
 
-By the way, if we want to get rid of B1 now, we can run `jj abandon
-ovknlmrokpkl`. That will hide the commit from the log output and will rebase any
-descendants to its parent.
+By the way, if we want to get rid of B1 now, we can run
+`jj abandon ovknlmrokpkl`. That will hide the commit from the log output and
+will rebase any descendants to its parent.
 
 ## The operation log
 
 Jujutsu keeps a record of all changes you've made to the repo in what's called
 the "operation log". Use the `jj op` (short for `jj operation`) family of
 commands to interact with it. To list the operations, use `jj op log`:
+
 ```shell script
 $ jj op log
 @  d3b77addea49 martinvonz@vonz.svl.corp.google.com 2023-02-12 19:34:09.549 -08:00 - 2023-02-12 19:34:09.552 -08:00
@@ -299,6 +312,7 @@ $ jj op log
 
 The most useful command is `jj undo` (alias for `jj op undo`), which will undo
 an operation. By default, it will undo the most recent operation. Let's try it:
+
 ```shell script
 $ jj undo
 Working copy now at: 63874fe6c4fb (no description set)
@@ -319,24 +333,27 @@ $ jj log
 │  (empty) Merge pull request #6 from Spaceghost/patch-1
 ~
 ```
+
 As you can perhaps see, that undid the `jj squash` invocation we used for
 squashing the conflict resolution into commit B2 earlier. Notice that it also
 updated the working copy.
 
 You can also view the repo the way it looked after some earlier operation. For
-example, if you want to see `jj log` output right after the `jj rebase` operation,
-try `jj log --at-op=367400773f87` but use the hash from your own `jj op log`.
+example, if you want to see `jj log` output right after the `jj rebase`
+operation, try `jj log --at-op=367400773f87` but use the hash from your own
+`jj op log`.
 
 ## Moving content changes between commits
 
 You have already seen how `jj squash` can combine the changes from two commits
 into one. There are several other commands for changing the contents of existing
 commits. These commands assume that you have `meld` installed. If you prefer a
-terminal-based diff editor, you
-can [configure `scm-diff-editor`](config.md#setting-up-scm-diff-editor) instead.
+terminal-based diff editor, you can
+[configure `scm-diff-editor`](config.md#setting-up-scm-diff-editor) instead.
 
 We'll need some more complex content to test these commands, so let's create a
 few more commits:
+
 ```shell script
 $ jj new master -m abc; printf 'a\nb\nc\n' > file
 Working copy now at: f94e49cf2547 abc
@@ -364,15 +381,18 @@ that by running `jj squash -i` (short for `jj squash --interactive`) on the
 third commit. Remember that `jj squash` moves all the changes from one commit
 into its parent. `jj squash -i` moves only part of the changes into its parent.
 Now try that:
+
 ```shell script
 $ jj squash -i
 Using default editor 'meld'; you can change this by setting ui.diff-editor
 Working copy now at: 52a6c7fda1e3 ABCD
 ```
+
 That will bring up Meld with a diff of the changes in the "ABCD" commit. Modify
 the right side of the diff to have the desired end state in "ABC" by removing
 the "D" line. Then save the changes and close Meld. If we look at the diff of
 the second commit, we now see that all three lines got capitalized:
+
 ```shell script
 $ jj diff -r @-
 Modified regular file file:
@@ -381,7 +401,7 @@ Modified regular file file:
    3    3: cC
 ```
 
-The child change ("ABCD" in our case) will have the same content *state* after
+The child change ("ABCD" in our case) will have the same content _state_ after
 the `jj squash` command. That means that you can move any changes you want into
 the parent change, even if they touch the same word, and it won't cause any
 conflicts.
@@ -389,6 +409,7 @@ conflicts.
 Let's try one final command for changing the contents of an exiting commit. That
 command is `jj diffedit`, which lets you edit the contents of a commit without
 checking it out.
+
 ```shell script
 $ jj diffedit -r @-
 Using default editor 'meld'; you can change this by setting ui.diff-editor
@@ -397,6 +418,7 @@ Rebased 1 descendant commits
 Working copy now at: 1c72cd50525d ABCD
 Added 0 files, modified 1 files, removed 0 files
 ```
+
 When Meld starts, edit the right side by e.g. adding something to the first
 line. Then save the changes and close Meld. You can now inspect the rewritten
 commit with `jj diff -r @-` again and you should see your addition to the first
@@ -404,7 +426,7 @@ line. Unlike `jj squash -i`, which left the content state of the commit
 unchanged, `jj diffedit` (typically) results in a different state, which means
 that descendant commits may have conflicts.
 
-Other commands for rewriting contents of existing commits are `jj split`, `jj
-unsquash -i` and `jj move -i`. Now that you've seen how `jj squash -i` and `jj
-diffedit` work, you can hopefully figure out how those work (with the help of
-the instructions in the diff).
+Other commands for rewriting contents of existing commits are `jj split`,
+`jj unsquash -i` and `jj move -i`. Now that you've seen how `jj squash -i` and
+`jj diffedit` work, you can hopefully figure out how those work (with the help
+of the instructions in the diff).

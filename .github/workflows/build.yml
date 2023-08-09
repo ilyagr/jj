@@ -20,22 +20,26 @@ jobs:
         os: [ubuntu-latest, macos-13, windows-latest]
         cargo_flags: [""]
         include:
-        - os: ubuntu-latest
-          cargo_flags: "--all-features"
+          - os: ubuntu-latest
+            cargo_flags: "--all-features"
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@0e66bd3e6b38ec0ad5312288c83e47c143e6b09e
-      with:
-        toolchain:  1.71
-    - name: Build
-      run: cargo build --workspace --all-targets --verbose ${{ matrix.cargo_flags }}
-    - name: Test
-      run: cargo test --workspace --all-targets --verbose ${{ matrix.cargo_flags }}
-      env:
-        RUST_BACKTRACE: 1
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@0e66bd3e6b38ec0ad5312288c83e47c143e6b09e
+        with:
+          toolchain: 1.71
+      - name: Build
+        run:
+          cargo build --workspace --all-targets --verbose ${{ matrix.cargo_flags
+          }}
+      - name: Test
+        run:
+          cargo test --workspace --all-targets --verbose ${{ matrix.cargo_flags
+          }}
+        env:
+          RUST_BACKTRACE: 1
 
   check-protos:
     name: Check protos
@@ -74,10 +78,10 @@ jobs:
     continue-on-error: ${{ matrix.checks == 'advisories' }}
 
     steps:
-    - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
-    - uses: EmbarkStudios/cargo-deny-action@a50c7d5f86370e02fae8472c398f15a36e517bb8
-      with:
-        command: check ${{ matrix.checks }}
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+      - uses: EmbarkStudios/cargo-deny-action@a50c7d5f86370e02fae8472c398f15a36e517bb8
+        with:
+          command: check ${{ matrix.checks }}
 
   clippy-check:
     name: Clippy check
@@ -90,4 +94,6 @@ jobs:
         with:
           toolchain: stable
           components: clippy
-      - run: cargo +stable clippy --all-features --workspace --all-targets -- -D warnings
+      - run:
+          cargo +stable clippy --all-features --workspace --all-targets -- -D
+          warnings

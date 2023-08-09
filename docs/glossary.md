@@ -25,8 +25,8 @@ such as the "operation store backend" for storing
 A branch is a named pointer to a [commit](#commit). They automatically follow
 the commit if it gets [rewritten](#rewrite). Branches are sometimes called
 "named branches" to distinguish them from
-[anonymous branches](#anonymous-branch), but note that they are more similar
-to Git's branches than to
+[anonymous branches](#anonymous-branch), but note that they are more similar to
+Git's branches than to
 [Mercurial's named branches](https://www.mercurial-scm.org/wiki/Branch#Named_branches).
 See [here](branches.md) for details.
 
@@ -50,8 +50,8 @@ the parents, the commits form a
 [Directed Acyclic Graph (DAG)](https://en.wikipedia.org/wiki/Directed_acyclic_graph)
 .
 
-Note that even though commits are stored as snapshots, they are often treated
-as differences between snapshots, namely compared to their parent's snapshot. If
+Note that even though commits are stored as snapshots, they are often treated as
+differences between snapshots, namely compared to their parent's snapshot. If
 they have more than one parent, then the difference is computed against the
 result of merging the parents. For example, `jj diff` will show the differences
 introduced by a commit compared to its parent(s), and `jj rebase` will apply
@@ -79,17 +79,17 @@ See [here](git-compatibility.md#co-located-jujutsugit-repos) for details.
 
 Conflicts can occur in many places. The most common type is conflicts in files.
 Those are the conflicts that users coming from other VCSs are usually familiar
-with. You can see them in `jj status` and in `jj log` (the red "conflict"
-label at the end of the line). See [here](conflicts.md) for details.
+with. You can see them in `jj status` and in `jj log` (the red "conflict" label
+at the end of the line). See [here](conflicts.md) for details.
 
 Conflicts can also occur in [branches](#branch). For example, if you moved a
-branch locally, and it was also moved on the remote, then the branch will be
-in a conflicted state after you pull from the remote.
-See [here](branches.md#conflicts) for details.
+branch locally, and it was also moved on the remote, then the branch will be in
+a conflicted state after you pull from the remote. See
+[here](branches.md#conflicts) for details.
 
-Similar to a branch conflict, when a [change](#change) is rewritten locally
-and remotely, for example, then the change will be in a conflicted state. We
-call that a [divergent change](#divergent-change).
+Similar to a branch conflict, when a [change](#change) is rewritten locally and
+remotely, for example, then the change will be in a conflicted state. We call
+that a [divergent change](#divergent-change).
 
 ## Divergent change
 
@@ -101,9 +101,9 @@ A divergent change is a [change](#change) that has more than one
 A head is a commit with no descendants. The context in which it has no
 descendants varies. For example, the `heads(X)`
 [revset function](revsets.md#functions) returns commits that have no descendants
-within the set `X` itself. The [view](#view) records which
-anonymous heads (heads without a branch pointing to them) are visible at a
-given [operation](#operation). Note that this is quite different from Git's
+within the set `X` itself. The [view](#view) records which anonymous heads
+(heads without a branch pointing to them) are visible at a given
+[operation](#operation). Note that this is quite different from Git's
 [HEAD](https://git-scm.com/book/en/v2/Git-Internals-Git-References#ref_the_ref).
 
 ## Operation
@@ -174,9 +174,9 @@ Ancestors of a visible commit are implicitly visible.
 
 ## View
 
-A view is a snapshot of branches and their targets, anonymous heads,
-and working-copy commits. The anonymous heads define which commits
-are [visible](#visible-commits).
+A view is a snapshot of branches and their targets, anonymous heads, and
+working-copy commits. The anonymous heads define which commits are
+[visible](#visible-commits).
 
 A view object is similar to a [tree](#tree) object in that it represents a
 snapshot without history, and an [operation](#operation) object is similar to a
@@ -184,11 +184,11 @@ snapshot without history, and an [operation](#operation) object is similar to a
 
 ## Workspace
 
-A workspace is a [working copy](#working-copy) and an
-associated [repository](#repository). There can be multiple workspaces for a
-single repository. Each workspace has a `.jj/` directory, but the
-[commits](#commit) and [operations](#operation) will be stored in the initial
-workspace; the other workspaces will have pointers to the initial workspace. See
+A workspace is a [working copy](#working-copy) and an associated
+[repository](#repository). There can be multiple workspaces for a single
+repository. Each workspace has a `.jj/` directory, but the [commits](#commit)
+and [operations](#operation) will be stored in the initial workspace; the other
+workspaces will have pointers to the initial workspace. See
 [here](working-copy.md#workspaces) for details.
 
 This is what Git calls a "worktree".
@@ -206,6 +206,6 @@ This is what Git calls a "working tree".
 
 ## Working-copy commit
 
-A commit that corresponds to the current state of the working copy. There is
-one working-copy commit per [workspace](#workspace). The current working-copy
+A commit that corresponds to the current state of the working copy. There is one
+working-copy commit per [workspace](#workspace). The current working-copy
 commits are tracked in the [operation log](#operation-log).

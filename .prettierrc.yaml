@@ -1,0 +1,7 @@
+proseWrap: always
+# I wanted to use the following, but see
+# https://github.com/prettier/prettier/issues/13539
+# editorconfig: true
+#
+# See also https://prettier.io/docs/en/configuration.html#editorconfig for
+# non-standard editorconfig options.

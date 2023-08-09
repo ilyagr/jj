@@ -13,8 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
-        mode: [ "flake check", "build" ]
+        os: [ubuntu-latest]
+        mode: ["flake check", "build"]
     runs-on: ${{ matrix.os }}
     name: nix-build
     timeout-minutes: 20
