@@ -1,8 +1,12 @@
 # Jujutsu VCS
 
-![](https://img.shields.io/github/license/martinvonz/jj) ![](https://img.shields.io/github/v/release/martinvonz/jj) ![](https://img.shields.io/github/release-date/martinvonz/jj) ![](https://img.shields.io/crates/v/jj-cli)
-<br/>
-![](https://github.com/martinvonz/jj/workflows/build/badge.svg) ![](https://img.shields.io/codefactor/grade/github/martinvonz/jj/main) ![](https://img.shields.io/librariesio/github/martinvonz/jj)
+![](https://img.shields.io/github/license/martinvonz/jj)
+![](https://img.shields.io/github/v/release/martinvonz/jj)
+![](https://img.shields.io/github/release-date/martinvonz/jj)
+![](https://img.shields.io/crates/v/jj-cli) <br/>
+![](https://github.com/martinvonz/jj/workflows/build/badge.svg)
+![](https://img.shields.io/codefactor/grade/github/martinvonz/jj/main)
+![](https://img.shields.io/librariesio/github/martinvonz/jj)
 
 - [Disclaimer](#disclaimer)
 - [Introduction](#introduction)
@@ -29,11 +33,10 @@ features from Git (data model,
 [speed](https://github.com/martinvonz/jj/discussions/49)), Mercurial (anonymous
 branching, simple CLI [free from "the index"](docs/git-comparison.md#the-index),
 [revsets](docs/revsets.md), powerful history-rewriting), and Pijul/Darcs
-([first-class conflicts](docs/conflicts.md)), with features not found in most
-of them ([working-copy-as-a-commit](docs/working-copy.md),
+([first-class conflicts](docs/conflicts.md)), with features not found in most of
+them ([working-copy-as-a-commit](docs/working-copy.md),
 [undo functionality](docs/operation-log.md), automatic rebase,
-[safe replication via `rsync`, Dropbox, or distributed file
-system](docs/technical/concurrency.md)).
+[safe replication via `rsync`, Dropbox, or distributed file system](docs/technical/concurrency.md)).
 
 The command-line tool is called `jj` for now because it's easy to type and easy
 to replace (rare in English). The project is called "Jujutsu" because it matches
@@ -53,10 +56,6 @@ backend (the other is a native one [^native-backend]). This lets you use Jujutsu
 as an alternative interface to Git. The commits you create will look like
 regular Git commits. You can always switch back to Git. The Git support uses the
 [libgit2](https://libgit2.org/) C library.
-
-[^native-backend]: At this time, there's practically no reason to use the native
-backend. The backend exists mainly to make sure that it's possible to eventually
-add functionality that cannot easily be added to the Git backend.
 
 <img src="demos/git_compat.png" />
 
@@ -124,16 +123,16 @@ updated. So will the working copy if it points to a rebased commit.
 
 Besides the usual rebase command, there's `jj describe` for editing the
 description (commit message) of an arbitrary commit. There's also `jj diffedit`,
-which lets you edit the changes in a commit without checking it out. To split
-a commit into two, use `jj split`. You can even move part of the changes in a
+which lets you edit the changes in a commit without checking it out. To split a
+commit into two, use `jj split`. You can even move part of the changes in a
 commit to any other commit using `jj move`.
 
 ## Status
 
 The tool is quite feature-complete, but some important features like (the
-equivalent of) `git blame` are not yet supported. There
-are also several performance bugs. It's also likely that workflows and setups
-different from what the core developers use are not well supported.
+equivalent of) `git blame` are not yet supported. There are also several
+performance bugs. It's also likely that workflows and setups different from what
+the core developers use are not well supported.
 
 I (Martin von Zweigbergk) have almost exclusively used `jj` to develop the
 project itself since early January 2021. I haven't had to re-clone from source
@@ -172,15 +171,15 @@ cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jj-cl
 
 #### Nix OS
 
-If you're on Nix OS you can use the flake for this repository.
-For example, if you want to run `jj` loaded from the flake, use:
+If you're on Nix OS you can use the flake for this repository. For example, if
+you want to run `jj` loaded from the flake, use:
 
 ```shell script
 nix run 'github:martinvonz/jj'
 ```
 
-You can also add this flake url to your system input flakes. Or you can
-install the flake to your user profile:
+You can also add this flake url to your system input flakes. Or you can install
+the flake to your user profile:
 
 ```shell script
 nix profile install 'github:martinvonz/jj'
@@ -206,8 +205,8 @@ brew install jj
 
 #### MacPorts
 
-You can also install `jj` via [MacPorts](https://www.macports.org) (as
-the `jujutsu` port):
+You can also install `jj` via [MacPorts](https://www.macports.org) (as the
+`jujutsu` port):
 
 ```shell script
 sudo port install jujutsu
@@ -243,8 +242,7 @@ cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jj-cl
 ## Initial configuration
 
 You may want to configure your name and email so commits are made in your name.
-Create a file at `~/.jjconfig.toml` and make it look something like
-this:
+Create a file at `~/.jjconfig.toml` and make it look something like this:
 
 ```shell script
 $ cat ~/.jjconfig.toml
@@ -256,8 +254,8 @@ email = "martinvonz@google.com"
 ## Command-line completion
 
 To set up command-line completion, source the output of
-`jj util completion --bash/--zsh/--fish` (called `jj debug completion` in
-jj <= 0.7.0). Exactly how to source it depends on your shell.
+`jj util completion --bash/--zsh/--fish` (called `jj debug completion` in jj \<=
+0.7.0). Exactly how to source it depends on your shell.
 
 ### Bash
 
@@ -265,7 +263,7 @@ jj <= 0.7.0). Exactly how to source it depends on your shell.
 source <(jj util completion)  # --bash is the default
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell script
 source <(jj debug completion)  # --bash is the default
@@ -279,7 +277,7 @@ compinit
 source <(jj util completion --zsh)
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell script
 autoload -U compinit
@@ -293,7 +291,7 @@ source <(jj debug completion --zsh)
 jj util completion --fish | source
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell script
 jj debug completion --fish | source
@@ -305,7 +303,7 @@ jj debug completion --fish | source
 source-bash $(jj util completion)
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell script
 source-bash $(jj debug completion)
@@ -315,8 +313,8 @@ source-bash $(jj debug completion)
 
 The best way to get started is probably to go through
 [the tutorial](docs/tutorial.md). Also see the
-[Git comparison](docs/git-comparison.md), which includes a table of
-`jj` vs. `git` commands.
+[Git comparison](docs/git-comparison.md), which includes a table of `jj` vs.
+`git` commands.
 
 As you become more familiar with Jujutsu, the [FAQ](docs/FAQ.md) may help.
 
@@ -324,3 +322,7 @@ As you become more familiar with Jujutsu, the [FAQ](docs/FAQ.md) may help.
 
 There are several tools trying to solve similar problems as Jujutsu. See
 [related work](docs/related-work.md) for details.
+
+[^native-backend]: At this time, there's practically no reason to use the native backend. The
+    backend exists mainly to make sure that it's possible to eventually add
+    functionality that cannot easily be added to the Git backend.

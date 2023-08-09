@@ -2,8 +2,8 @@
 
 ## Objective
 
-Decide what approach(es) to Git submodule storage we should pursue.
-The decision will be recorded in [./git-submodules.md](./git-submodules.md).
+Decide what approach(es) to Git submodule storage we should pursue. The decision
+will be recorded in [./git-submodules.md](./git-submodules.md).
 
 ## Use cases to consider
 
@@ -49,9 +49,9 @@ cyclical submodules.) that might surprise users.
 ### Supporting future extensions
 
 There are certain extensions we may want to make in the future, but we don't
-have a timeline for them today. Proposed approaches should take these
-extensions into account (e.g. the approach should be theoretically extensible),
-but a full proposal for implementing them is not necessary.
+have a timeline for them today. Proposed approaches should take these extensions
+into account (e.g. the approach should be theoretically extensible), but a full
+proposal for implementing them is not necessary.
 
 These extensions are:
 

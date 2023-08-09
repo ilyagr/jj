@@ -6,9 +6,9 @@ Expressions in this language are called "revsets" (the idea comes from
 consists of symbols, operators, and functions.
 
 Most `jj` commands accept a revset (or multiple). Many commands, such as
-`jj diff -r <revset>` expect the revset to resolve to a single commit; it is
-an error to pass a revset that resolves to more than one commit (or zero
-commits) to such commands.
+`jj diff -r <revset>` expect the revset to resolve to a single commit; it is an
+error to pass a revset that resolves to more than one commit (or zero commits)
+to such commands.
 
 The words "revisions" and "commits" are used interchangeably in this document.
 
@@ -32,8 +32,8 @@ typically only one visible commit with a given change ID). A unique prefix of
 the full change ID can also be used. It is an error to use a non-unique prefix.
 
 Use double quotes to prevent a symbol from being interpreted as an expression.
-For example, `"x-"` is the symbol `x-`, not the parents of symbol `x`.
-Taking shell quoting into account, you may need to use something like
+For example, `"x-"` is the symbol `x-`, not the parents of symbol `x`. Taking
+shell quoting into account, you may need to use something like
 `jj log -r '"x-"'`.
 
 ### Priority
@@ -52,23 +52,23 @@ Jujutsu attempts to resolve a symbol in the following order:
 The following operators are supported. `x` and `y` below can be any revset, not
 only symbols.
 
-* `x & y`: Revisions that are in both `x` and `y`.
-* `x | y`: Revisions that are in either `x` or `y` (or both).
-* `x ~ y`: Revisions that are in `x` but not in `y`.
-* `~x`: Revisions that are not in `x`.
-* `x-`: Parents of `x`.
-* `x+`: Children of `x`.
-* `:x`: Ancestors of `x`, including the commits in `x` itself.
-* `x:`: Descendants of `x`, including the commits in `x` itself.
-* `x:y`: Descendants of `x` that are also ancestors of `y`. Equivalent
-   to `x: & :y`. This is what `git log` calls `--ancestry-path x..y`.
-* `::x`, `x::`, and `x::y`: New versions of for `:x`, `x:`, and `x:y` to be
+- `x & y`: Revisions that are in both `x` and `y`.
+- `x | y`: Revisions that are in either `x` or `y` (or both).
+- `x ~ y`: Revisions that are in `x` but not in `y`.
+- `~x`: Revisions that are not in `x`.
+- `x-`: Parents of `x`.
+- `x+`: Children of `x`.
+- `:x`: Ancestors of `x`, including the commits in `x` itself.
+- `x:`: Descendants of `x`, including the commits in `x` itself.
+- `x:y`: Descendants of `x` that are also ancestors of `y`. Equivalent to
+  `x: & :y`. This is what `git log` calls `--ancestry-path x..y`.
+- `::x`, `x::`, and `x::y`: New versions of for `:x`, `x:`, and `x:y` to be
   released in jj 0.9.0. We plan to delete the latter in jj 0.15+.
-* `x..y`: Ancestors of `y` that are not also ancestors of `x`. Equivalent to
+- `x..y`: Ancestors of `y` that are not also ancestors of `x`. Equivalent to
   `:y ~ :x`. This is what `git log` calls `x..y` (i.e. the same as we call it).
-* `..x`: Ancestors of `x`, including the commits in `x` itself. Equivalent to
+- `..x`: Ancestors of `x`, including the commits in `x` itself. Equivalent to
   `:x` and provided for consistency.
-* `x..`: Revisions that are not ancestors of `x`.
+- `x..`: Revisions that are not ancestors of `x`.
 
 You can use parentheses to control evaluation order, such as `(x & y) | z` or
 `x & (y | z)`.
@@ -78,62 +78,60 @@ You can use parentheses to control evaluation order, such as `(x & y) | z` or
 You can also specify revisions by using functions. Some functions take other
 revsets (expressions) as arguments.
 
-* `parents(x)`: Same as `x-`.
-* `children(x)`: Same as `x+`.
-* `ancestors(x)`: Same as `:x`.
-* `descendants(x)`: Same as `x:`.
-* `connected(x)`: Same as `x:x`. Useful when `x` includes several commits.
-* `all()`: All visible commits in the repo.
-* `none()`: No commits. This function is rarely useful; it is provided for
+- `parents(x)`: Same as `x-`.
+- `children(x)`: Same as `x+`.
+- `ancestors(x)`: Same as `:x`.
+- `descendants(x)`: Same as `x:`.
+- `connected(x)`: Same as `x:x`. Useful when `x` includes several commits.
+- `all()`: All visible commits in the repo.
+- `none()`: No commits. This function is rarely useful; it is provided for
   completeness.
-* `branches([needle])`: All local branch targets. If `needle` is specified,
+- `branches([needle])`: All local branch targets. If `needle` is specified,
   branches whose name contains the given string are selected. For example,
   `branches(push)` would match the branches `push-123` and `repushed` but not
   the branch `main`. If a branch is in a conflicted state, all its possible
   targets are included.
-* `remote_branches([branch_needle[, [remote=]remote_needle]])`: All remote
+- `remote_branches([branch_needle[, [remote=]remote_needle]])`: All remote
   branch targets across all remotes. If just the `branch_needle` is specified,
-  branches whose name contains the given string across all remotes are
-  selected. If both `branch_needle` and `remote_needle` are specified, the
-  selection is further restricted to just the remotes whose name contains
-  `remote_needle`. For example, `remote_branches(push, ri)` would match the
-  branches `push-123@origin` and `repushed@private` but not `push-123@upstream`
-  or `main@origin` or `main@upstream`. If a branch is in a conflicted state,
-  all its possible targets are included.
-* `tags()`: All tag targets. If a tag is in a conflicted state, all its
-  possible targets are included.
-* `git_refs()`:  All Git ref targets as of the last import. If a Git ref
-  is in a conflicted state, all its possible targets are included.
-* `git_head()`: The Git `HEAD` target as of the last import. Equivalent to
+  branches whose name contains the given string across all remotes are selected.
+  If both `branch_needle` and `remote_needle` are specified, the selection is
+  further restricted to just the remotes whose name contains `remote_needle`.
+  For example, `remote_branches(push, ri)` would match the branches
+  `push-123@origin` and `repushed@private` but not `push-123@upstream` or
+  `main@origin` or `main@upstream`. If a branch is in a conflicted state, all
+  its possible targets are included.
+- `tags()`: All tag targets. If a tag is in a conflicted state, all its possible
+  targets are included.
+- `git_refs()`: All Git ref targets as of the last import. If a Git ref is in a
+  conflicted state, all its possible targets are included.
+- `git_head()`: The Git `HEAD` target as of the last import. Equivalent to
   `present(HEAD@git)`.
-* `visible_heads()`: All visible heads (same as `heads(all())`).
-* `heads(x)`: Commits in `x` that are not ancestors of other commits in `x`.
+- `visible_heads()`: All visible heads (same as `heads(all())`).
+- `heads(x)`: Commits in `x` that are not ancestors of other commits in `x`.
   Note that this is different from
   [Mercurial's](https://repo.mercurial-scm.org/hg/help/revsets) `heads(x)`
   function, which is equivalent to `x ~ x-`.
-* `roots(x)`: Commits in `x` that are not descendants of other commits in `x`.
+- `roots(x)`: Commits in `x` that are not descendants of other commits in `x`.
   Note that this is different from
   [Mercurial's](https://repo.mercurial-scm.org/hg/help/revsets) `roots(x)`
   function, which is equivalent to `x ~ x+`.
-* `latest(x[, count])`: Latest `count` commits in `x`, based on committer
+- `latest(x[, count])`: Latest `count` commits in `x`, based on committer
   timestamp. The default `count` is 1.
-* `merges()`: Merge commits.
-* `description(needle)`: Commits with the given string in their
-  description.
-* `author(needle)`: Commits with the given string in the author's name or
+- `merges()`: Merge commits.
+- `description(needle)`: Commits with the given string in their description.
+- `author(needle)`: Commits with the given string in the author's name or email.
+- `committer(needle)`: Commits with the given string in the committer's name or
   email.
-* `committer(needle)`: Commits with the given string in the committer's
-  name or email.
-* `empty()`: Commits modifying no files. This also includes `merges()` without
+- `empty()`: Commits modifying no files. This also includes `merges()` without
   user modifications and `root`.
-* `file(pattern..)`: Commits modifying the paths specified by the `pattern..`.
+- `file(pattern..)`: Commits modifying the paths specified by the `pattern..`.
   Paths are relative to the directory `jj` was invoked from. A directory name
   will match all files in that directory and its subdirectories. For example,
   `file(foo)` will match files `foo`, `foo/bar`, `foo/bar/baz`, but not file
   `foobar`.
-* `conflict()`: Commits with conflicts.
-* `present(x)`: Same as `x`, but evaluated to `none()` if any of the commits
-  in `x` doesn't exist (e.g. is an unknown branch name.)
+- `conflict()`: Commits with conflicts.
+- `present(x)`: Same as `x`, but evaluated to `none()` if any of the commits in
+  `x` doesn't exist (e.g. is an unknown branch name.)
 
 ## Aliases
 
@@ -188,7 +186,6 @@ jj log -r 'tags() | branches()'
 
 Show local commits leading up to the working copy, as well as descendants of
 those commits:
-
 
 ```
 jj log -r '(remote_branches()..@):'

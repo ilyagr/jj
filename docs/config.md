@@ -2,24 +2,21 @@
 
 These are the config settings available to jj/Jujutsu.
 
-
 ## Config files and TOML
 
 The config settings are loaded from the following locations. Less common ways to
 specify `jj` config settings are discussed in a later section.
 
-* `~/.jjconfig.toml` (global)
-* `.jj/repo/config.toml` (per-repository)
+- `~/.jjconfig.toml` (global)
+- `.jj/repo/config.toml` (per-repository)
 
 See the [TOML site] and the [syntax guide] for a description of the syntax.
-
-[TOML site]: https://toml.io/en/
-[syntax guide]: https://toml.io/en/v1.0.0
 
 The first thing to remember is that the value of a setting (the part to the
 right of the `=` sign) should be surrounded in quotes if it's a string.
 
 ### Dotted style and headings
+
 In TOML, anything under a heading can be dotted instead. For example,
 `user.name = "YOUR NAME"` is equivalent to:
 
@@ -44,13 +41,12 @@ colors."commit_id prefix".bold = true
 ```
 
 Jujutsu favors the dotted style in these instructions, if only because it's
-easier to write down in an unconfusing way. If you are confident with TOML
-then use whichever suits you in your config. If you mix dotted keys and headings,
+easier to write down in an unconfusing way. If you are confident with TOML then
+use whichever suits you in your config. If you mix dotted keys and headings,
 **put the dotted keys before the first heading**.
 
 That's probably enough TOML to keep you out of trouble but the [syntax guide] is
 very short if you ever need to check.
-
 
 ## User settings
 
@@ -65,8 +61,8 @@ Don't forget to change these to your own details!
 
 ### Colorizing output
 
-Possible values are `always`, `never` and `auto` (default: `auto`).
-`auto` will use color only when writing to a terminal.
+Possible values are `always`, `never` and `auto` (default: `auto`). `auto` will
+use color only when writing to a terminal.
 
 This setting overrides the `NO_COLOR` environment variable (if set).
 
@@ -84,15 +80,15 @@ colors.commit_id = "green"
 
 The following colors are available:
 
-* black
-* red
-* green
-* yellow
-* blue
-* magenta
-* cyan
-* white
-* default
+- black
+- red
+- green
+- yellow
+- blue
+- magenta
+- cyan
+- white
+- default
 
 All of them but "default" come in a bright version too, e.g. "bright red". The
 "default" color can be used to override a color defined by a parent style
@@ -120,8 +116,8 @@ colors."working_copy commit_id" = { underline = true }
 Parts of the style that are not overridden - such as the foreground color in the
 example above - are inherited from the parent style.
 
-Which elements can be colored is not yet documented, but see
-the [default color configuration](https://github.com/martinvonz/jj/blob/main/src/config/colors.toml)
+Which elements can be colored is not yet documented, but see the
+[default color configuration](https://github.com/martinvonz/jj/blob/main/src/config/colors.toml)
 for some examples of what's possible.
 
 ### Default command
@@ -153,8 +149,8 @@ ui.diff.tool = ["difft", "--color=always", "$left", "$right"]
 ui.diff.tool = "<name>"
 ```
 
-The external diff tool can also be enabled by `diff --tool <name>` argument.
-For the tool named `<name>`, command arguments can be configured as follows.
+The external diff tool can also be enabled by `diff --tool <name>` argument. For
+the tool named `<name>`, command arguments can be configured as follows.
 
 ```toml
 [merge-tools.<name>]
@@ -184,8 +180,8 @@ ui.graph.style = "square"
 
 ### Wrap log content
 
-If enabled, `log`/`obslog`/`op log` content will be wrapped based on 
-the terminal width.
+If enabled, `log`/`obslog`/`op log` content will be wrapped based on the
+terminal width.
 
 ```toml
 ui.log-word-wrap = true
@@ -260,8 +256,8 @@ Can be customized by the `format_short_signature()` template alias.
 ## Pager
 
 The default pager is can be set via `ui.pager` or the `PAGER` environment
-variable. The priority is as follows (environment variables are marked with
-a `$`):
+variable. The priority is as follows (environment variables are marked with a
+`$`):
 
 `ui.pager` > `$PAGER`
 
@@ -289,8 +285,8 @@ aliases.l = ["log", "-r", "(main..@): | (main..@)-"]
 ## Editor
 
 The default editor is set via `ui.editor`, though there are several places to
-set it. The priority is as follows (environment variables are marked with
-a `$`):
+set it. The priority is as follows (environment variables are marked with a
+`$`):
 
 `$JJ_EDITOR` > `ui.editor` > `$VISUAL` > `$EDITOR`
 
@@ -353,10 +349,10 @@ merge-tools.kdiff3.edit-args = [
 
 ### Setting up `scm-diff-editor`
 
-`scm-diff-editor` is a terminal-based diff editor that is part of
-the [git-branchless](https://github.com/arxanas/git-branchless) suite of tools.
-It's a good alternative to Meld, especially if you don't have a graphical
-environment (e.g. when using SSH). To install it:
+`scm-diff-editor` is a terminal-based diff editor that is part of the
+[git-branchless](https://github.com/arxanas/git-branchless) suite of tools. It's
+a good alternative to Meld, especially if you don't have a graphical environment
+(e.g. when using SSH). To install it:
 
 ```shell
 cargo install --git https://github.com/arxanas/git-branchless scm-record --features scm-diff-editor
@@ -378,17 +374,13 @@ this file will be ignored. To suppress the creation of this file, set
 ### Using Vim as a diff editor
 
 Using `ui.diff-editor = "vimdiff"` is possible but not recommended. For a better
-experience, you can follow these [instructions] to configure
-the [`DirDiff` Vim plugin].
-
-[instructions]: https://gist.github.com/ilyagr/5d6339fb7dac5e7ab06fe1561ec62d45
-
-[`DirDiff` Vim plugin]: https://github.com/will133/vim-dirdiff
+experience, you can follow these [instructions] to configure the
+[`DirDiff` Vim plugin].
 
 ## 3-way merge tools for conflict resolution
 
-The `ui.merge-editor` key specifies the tool used for three-way merge tools
-by `jj resolve`. For example:
+The `ui.merge-editor` key specifies the tool used for three-way merge tools by
+`jj resolve`. For example:
 
 ```toml
 # Use merge-tools.meld.merge-args
@@ -402,9 +394,9 @@ they are installed.
 
 To use a different tool named `TOOL`, the arguments to pass to the tool MUST be
 specified either inline or in the `merge-tools.TOOL.merge-args` key. As an
-example of how to set this key and other tool configuration options, here is
-the out-of-the-box configuration of the three default tools. (There is no need
-to copy it to your config file verbatim, but you are welcome to customize it.)
+example of how to set this key and other tool configuration options, here is the
+out-of-the-box configuration of the three default tools. (There is no need to
+copy it to your config file verbatim, but you are welcome to customize it.)
 
 ```toml
 # merge-tools.kdiff3.program  = "kdiff3"     # Defaults to the name of the tool if not specified
@@ -433,16 +425,16 @@ merge-tools.vimdiff.merge-tool-edits-conflict-markers = true    # See below for 
 ### Editing conflict markers with a tool or a text editor
 
 By default, the merge tool starts with an empty output file. If the tool puts
-anything into the output file, and exits with the 0 exit code,
-`jj` assumes that the conflict is fully resolved. This is appropriate for most
-graphical merge tools.
+anything into the output file, and exits with the 0 exit code, `jj` assumes that
+the conflict is fully resolved. This is appropriate for most graphical merge
+tools.
 
 Some tools (e.g. `vimdiff`) can present a multi-way diff but don't resolve
-conflict themselves. When using such tools, `jj`
-can help you by populating the output file with conflict markers before starting
-the merge tool (instead of leaving the output file empty and letting the merge
-tool fill it in). To do that, set the
-`merge-tools.vimdiff.merge-tool-edits-conflict-markers = true` option.
+conflict themselves. When using such tools, `jj` can help you by populating the
+output file with conflict markers before starting the merge tool (instead of
+leaving the output file empty and letting the merge tool fill it in). To do
+that, set the `merge-tools.vimdiff.merge-tool-edits-conflict-markers = true`
+option.
 
 With this option set, if the output file still contains conflict markers after
 the conflict is done, `jj` assumes that the conflict was only partially resolved
@@ -453,32 +445,35 @@ conflict is considered fully resolved when there are no conflict markers left.
 
 ### Automatic local branch creation
 
-By default, when `jj` imports a remote-tracking branch from Git, it also
-creates a local branch with the same name. In some repositories, this
-may be undesirable, e.g.:
+By default, when `jj` imports a remote-tracking branch from Git, it also creates
+a local branch with the same name. In some repositories, this may be
+undesirable, e.g.:
 
-- There is a remote with a lot of historical branches that you don't
-  want to be exported to the co-located Git repo.
-- There are multiple remotes with conflicting views of that branch,
-  resulting in an unhelpful conflicted state.
+- There is a remote with a lot of historical branches that you don't want to be
+  exported to the co-located Git repo.
+- There are multiple remotes with conflicting views of that branch, resulting in
+  an unhelpful conflicted state.
 
-You can disable this behavior by setting `git.auto-local-branch` like
-so,
+You can disable this behavior by setting `git.auto-local-branch` like so,
 
-    git.auto-local-branch = false
+```
+git.auto-local-branch = false
+```
 
 Note that this setting may make it easier to accidentally delete remote
 branches. Since the local branch isn't created, the remote branch will be
-deleted if you push the branch with `jj git push --branch` or `jj git push
---all`.
+deleted if you push the branch with `jj git push --branch` or
+`jj git push --all`.
 
 ### Prefix for generated branches on push
 
 `jj git push --change` generates branch names with a prefix of "push-" by
-default. You can pick a different prefix by setting `git.push-branch-prefix`. For
-example:
+default. You can pick a different prefix by setting `git.push-branch-prefix`.
+For example:
 
-    git.push-branch-prefix = "martinvonz/push-"
+```
+git.push-branch-prefix = "martinvonz/push-"
+```
 
 ## Filesystem monitor
 
@@ -496,16 +491,16 @@ with the following invocation:
 cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jj-cli --features watchman
 ```
 
-To configure the Watchman filesystem monitor, set
-`core.fsmonitor = "watchman"`. Ensure that you have [installed the Watchman
-executable on your system](https://facebook.github.io/watchman/docs/install)).
+To configure the Watchman filesystem monitor, set `core.fsmonitor = "watchman"`.
+Ensure that you have
+[installed the Watchman executable on your system](https://facebook.github.io/watchman/docs/install)).
 
 Debugging commands are available under `jj debug watchman`.
 
 # Alternative ways to specify configuration settings
 
-Instead of `~/.jjconfig.toml`, the config settings can be located under
-a platform-specific directory. It is an error for both of these files to exist.
+Instead of `~/.jjconfig.toml`, the config settings can be located under a
+platform-specific directory. It is an error for both of these files to exist.
 
 | Platform | Value                                              | Example                                                   |
 | :------- | :------------------------------------------------- | :-------------------------------------------------------- |
@@ -513,10 +508,10 @@ a platform-specific directory. It is an error for both of these files to exist.
 | macOS    | `$HOME/Library/Application Support/jj/config.toml` | `/Users/Alice/Library/Application Support/jj/config.toml` |
 | Windows  | `{FOLDERID_RoamingAppData}\jj\config.toml`         | `C:\Users\Alice\AppData\Roaming\jj\config.toml`           |
 
-The location of the `jj` config file can also be overridden with the
-`JJ_CONFIG` environment variable. If it is not empty, it should contain the path
-to a TOML file that will be used instead of any configuration file in the
-default locations. For example,
+The location of the `jj` config file can also be overridden with the `JJ_CONFIG`
+environment variable. If it is not empty, it should contain the path to a TOML
+file that will be used instead of any configuration file in the default
+locations. For example,
 
 ```shell
 env JJ_CONFIG=/dev/null jj log       # Ignores any settings specified in the config file.
@@ -540,3 +535,8 @@ files with the config specified in `.jjconfig.toml`:
 ```shell
 jj --config-toml="$(cat extra-config.toml)" log
 ```
+
+[instructions]: https://gist.github.com/ilyagr/5d6339fb7dac5e7ab06fe1561ec62d45
+[syntax guide]: https://toml.io/en/v1.0.0
+[toml site]: https://toml.io/en/
+[`dirdiff` vim plugin]: https://github.com/will133/vim-dirdiff
