@@ -1,0 +1,42 @@
+.. Jujutsu docs documentation master file, created by
+   sphinx-quickstart on Sun Aug 13 23:00:43 2023.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to Jujutsu docs's documentation!
+========================================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   branches
+   code-of-conduct
+   config
+   conflicts
+   contributing
+   git-comparison
+   git-compatibility
+   github
+   glossary
+   operation-log
+   related-work
+   revsets
+   sapling-comparison
+   SUMMARY
+   templates
+   tutorial
+   working-copy
+   design/git-submodules
+   design/git-submodule-storage
+   technical/architecture
+   technical/concurrency
+   technical/conflicts
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
