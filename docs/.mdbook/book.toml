@@ -1,0 +1,9 @@
+[book]
+title = "Jujutsu docs"
+src=".."
+
+[build]
+build-dir="../../rendered-docs"
+
+# [output.html]
+# site-url=... # Need to set in script
