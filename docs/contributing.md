@@ -139,7 +139,7 @@ These are listed roughly in order of decreasing importance.
 
  - Install the `protoc` compiler. This usually means either `apt-get install
    protobuf-compiler` or downloading [an official release]. The
-   [`prost` library docs] have additional advice.
+   [`prost` library docs](prost docs) have additional advice.
  - Run `cargo run -p gen-protos` regularly (or after every edit to a `.proto`
    file). This is the same as running `cargo run` from `lib/gen-protos`. The
    `gen-protos` binary will use the `prost-build` library to compile the
@@ -148,7 +148,7 @@ These are listed roughly in order of decreasing importance.
    these files in `lib/gen-protos/src/main.rs`.
 
 [an official release]: https://github.com/protocolbuffers/protobuf/releases
-[`prost` library docs]: https://docs.rs/prost-build/latest/prost_build/#sourcing-protoc
+[prost docs]: https://docs.rs/prost-build/latest/prost_build/#sourcing-protoc
 
  The `.rs` files generated from `.proto` files are included in the repository,
  and there is a Github CI check that will complain if they do not match.
