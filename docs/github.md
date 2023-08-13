@@ -76,6 +76,12 @@ commits to your branch[^1]. Some projects (such as Jujutsu and LLVM) instead
 prefer that you keep your commits clean by rewriting them and then
 force-pushing[^2].
 
+[^1]: This is a GitHub Style review, as GitHub currently only is able to compare
+branches.
+
+[^2]: If you're wondering why we prefer clean commits in this project, see
+e.g. [this blog post][stacked]
+
 ### Adding new commits
 
 If your project prefers that you address review comments by adding commits on
@@ -154,11 +160,6 @@ Log all descendants of the current working copy, which aren't on a remote
 
 For a detailed overview, how Jujutsu handles conflicts, revisit
 the [tutorial][tut].
-
-[^1]: This is a GitHub Style review, as GitHub currently only is able to compare
-branches.
-[^2]: If you're wondering why we prefer clean commits in this project, see
-e.g.[this blog post][stacked]
 
 [detached]: https://git-scm.com/docs/git-checkout#_detached_head
 
