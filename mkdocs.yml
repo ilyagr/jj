@@ -1,0 +1,65 @@
+site_name: Jujutsu docs
+site_dir:  'rendered-docs'
+theme:
+  name: 'material'
+  language: 'en'
+# See https://jimandreas.github.io/mkdocs-material/setup/setting-up-versioning/
+# for upcoming features
+extra:
+  version:
+    provider: mike
+markdown_extensions:
+  - extra
+  - sane_lists
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - toc:
+      permalink: true
+  # - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+nav:
+- 'Introduction TODO': 'index.md'
+- 'Getting started':
+      - 'Tutorial and Birds-Eye View': 'tutorial.md'
+      - 'Working with Github': 'github.md'
+
+
+- Concepts:
+      - 'Working Copy': 'working-copy.md'
+      - 'Branches': 'branches.md'
+      - 'Conflicts': 'conflicts.md'
+      - 'Operation Log': 'operation-log.md'
+      - 'Reference material':
+          - 'Glossary': 'glossary.md'
+
+- 'Configuration':
+      - 'Settings': 'config.md'
+      - 'Revset language': 'revsets.md'
+      - 'Templating language': 'templates.md'
+
+- 'Comparisons':
+      - 'Git comparison': 'git-comparison.md'
+      - 'Git compatibility': 'git-compatibility.md'
+      - 'Sapling': 'sapling-comparison.md'
+      - 'Other related work': 'related-work.md'
+
+- 'Technical details':
+      - 'Architecture': 'technical/architecture.md'
+      - 'Concurrency': 'technical/concurrency.md'
+      - 'Conflicts': 'technical/conflicts.md'
+
+- Contributing:
+      - 'Guidelines and Setup': 'contributing.md'
+      - 'Code of conduct': 'code-of-conduct.md'
+      - 'Design docs': 
+          - 'git-submodules': 'design/git-submodules.md'
+          - 'git-submodule-storage': 'design/git-submodule-storage.md'
+
+

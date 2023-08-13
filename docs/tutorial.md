@@ -10,7 +10,7 @@ If you haven't already, make sure you
 ## Cloning a Git repo
 
 Let's start by cloning GitHub's Hello-World repo using `jj`:
-```shell script
+```shell
 # Note the "git" before "clone" (there is no support for cloning native jj
 # repos yet)
 $ jj git clone https://github.com/octocat/Hello-World
@@ -21,7 +21,7 @@ $ cd Hello-World
 ```
 
 Running `jj st` (short for`jj status`) now yields something like this:
-```shell script
+```shell
 $ jj st
 Parent commit: 7fd1a60b01f9 Merge pull request #6 from Spaceghost/patch-1
 Working copy : d7439b06fbef (no description set)
@@ -38,7 +38,7 @@ command.
 Now let's say we want to edit the `README` file in the repo to say "Goodbye"
 instead of "Hello". Let's start by describing the change (adding a
 commit message) so we don't forget what we're working on:
-```shell script
+```shell
 # This will bring up $EDITOR (or `pico` by default). Enter something like
 # "Say goodbye" in the editor and then save the file and close the editor.
 $ jj describe
@@ -46,7 +46,7 @@ Working copy now at: e427edcfd0ba Say goodbye
 ```
 
 Now make the change in the README:
-```shell script
+```shell
 # Adjust as necessary for compatibility with your flavor of `sed`
 $ sed -i 's/Hello/Goodbye/' README
 $ jj st
@@ -61,7 +61,7 @@ remove existing files. To untrack a path, add it to your `.gitignore` and run
 `jj untrack <path>`.
 
 To see the diff, run `jj diff`:
-```shell script
+```shell
 $ jj diff --git  # Feel free to skip the `--git` flag
 diff --git a/README b/README
 index 980a0d5f19...1ce3f81130 100644
@@ -86,7 +86,7 @@ VCSs, there is also a `jj checkout/co` command, which is practically a synonym
 for `jj new` (you can specify a destination for `jj new` as well).
 
 So, let's say we're now done with this change, so we create a new change:
-```shell script
+```shell
 $ jj new
 Working copy now at: aef4df99ea11 (no description set)
 $ jj st
@@ -113,7 +113,7 @@ sense to use `jj checkout` so you can easily review your adjustments with
 
 You're probably familiar with `git log`. Jujutsu has very similar functionality
 in its `jj log` command:
-```shell script
+```shell
 $ jj log
 @  mpqrykypylvy martinvonz@google.com 2023-02-12 15:00:22.000 -08:00 aef4df99ea11
 │  (empty) (no description set)
@@ -140,7 +140,7 @@ refers to the working-copy commit, `root` refers to the root commit,
 `branches()` refers to all commits pointed to by branches. We can combine
 expressions with `|` for union, `&` for intersection and `~` for difference. For
 example:
-```shell script
+```shell
 $ jj log -r '@ | root | branches()'
 @  mpqrykypylvy martinvonz@google.com 2023-02-12 15:00:22.000 -08:00 aef4df99ea11
 ╷  (empty) (no description set)
@@ -168,7 +168,7 @@ input set if they're ancestors of other revisions in the set.
 
 Now let's see how Jujutsu deals with merge conflicts. We'll start by making some
 commits:
-```shell script
+```shell
 # Start creating a chain of commits off of the `master` branch
 $ jj new master -m A; echo a > file1
 Working copy now at: 00a2aeed556a A
@@ -197,7 +197,7 @@ $ jj log
 
 We now have a few commits, where A, B1, and B2 modify the same file, while C
 modifies a different file. Let's now rebase B2 directly onto A:
-```shell script
+```shell
 $ jj rebase -s puqltuttrvzp -d nuvyytnqlquo
 Rebased 2 commits
 Working copy now at: 1978b53430cd C
@@ -229,7 +229,7 @@ from getting rebased on top.
 Now let's resolve the conflict in B2. We'll do that by creating a new commit on
 top of B2. Once we've resolved the conflict, we'll squash the conflict
 resolution into the conflicted B2. That might look like this:
-```shell script
+```shell
 $ jj new puqltuttrvzp  # Replace the ID by what you have for B2
 Working copy now at: c7068d1c23fd (no description set)
 Added 0 files, modified 0 files, removed 1 files
@@ -281,7 +281,7 @@ descendants to its parent.
 Jujutsu keeps a record of all changes you've made to the repo in what's called
 the "operation log". Use the `jj op` (short for `jj operation`) family of
 commands to interact with it. To list the operations, use `jj op log`:
-```shell script
+```shell
 $ jj op log
 @  d3b77addea49 martinvonz@vonz.svl.corp.google.com 2023-02-12 19:34:09.549 -08:00 - 2023-02-12 19:34:09.552 -08:00
 │  squash commit 63874fe6c4fba405ffc38b0dd926f03b715cf7ef
@@ -299,7 +299,7 @@ $ jj op log
 
 The most useful command is `jj undo` (alias for `jj op undo`), which will undo
 an operation. By default, it will undo the most recent operation. Let's try it:
-```shell script
+```shell
 $ jj undo
 Working copy now at: 63874fe6c4fb (no description set)
 $ jj log
@@ -337,7 +337,7 @@ can [configure `scm-diff-editor`](config.md#setting-up-scm-diff-editor) instead.
 
 We'll need some more complex content to test these commands, so let's create a
 few more commits:
-```shell script
+```shell
 $ jj new master -m abc; printf 'a\nb\nc\n' > file
 Working copy now at: f94e49cf2547 abc
 Added 0 files, modified 0 files, removed 1 files
@@ -364,7 +364,7 @@ that by running `jj squash -i` (short for `jj squash --interactive`) on the
 third commit. Remember that `jj squash` moves all the changes from one commit
 into its parent. `jj squash -i` moves only part of the changes into its parent.
 Now try that:
-```shell script
+```shell
 $ jj squash -i
 Using default editor 'meld'; you can change this by setting ui.diff-editor
 Working copy now at: 52a6c7fda1e3 ABCD
@@ -373,7 +373,7 @@ That will bring up Meld with a diff of the changes in the "ABCD" commit. Modify
 the right side of the diff to have the desired end state in "ABC" by removing
 the "D" line. Then save the changes and close Meld. If we look at the diff of
 the second commit, we now see that all three lines got capitalized:
-```shell script
+```shell
 $ jj diff -r @-
 Modified regular file file:
    1    1: aA
@@ -389,7 +389,7 @@ conflicts.
 Let's try one final command for changing the contents of an exiting commit. That
 command is `jj diffedit`, which lets you edit the contents of a commit without
 checking it out.
-```shell script
+```shell
 $ jj diffedit -r @-
 Using default editor 'meld'; you can change this by setting ui.diff-editor
 Created 70985eaa924f ABC

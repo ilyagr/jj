@@ -164,3 +164,12 @@ Can be installed with a package manager.
 PYTHON_KEYRING_BACKEND=keyring.backends.fail.Keyring poetry install
 poetry shell
 ```
+
+### Notes on `mkdocs` and `mike`
+
+Something like `jj co v0.8.0 && mike deploy v0.8.0 --prefix mkdocs` changes the
+`mkdocs` dir on the `gh-pages` branch.
+
+Mark one version as `latest` or `stable`, another as `main`.
+
+It's recommended to do this as `mike set-default --push latest`.
