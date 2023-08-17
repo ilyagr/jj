@@ -87,6 +87,9 @@ fn main() {
             ["print", message] => {
                 println!("{message}");
             }
+            ["print-file-contents", _filename] => {
+                unimplemented!();
+            }
             ["print-files-before"] => {
                 for base_name in files_recursively(&args.before).iter().sorted() {
                     println!("{base_name}");
