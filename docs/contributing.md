@@ -64,6 +64,9 @@ excellent resources at https://www.rust-lang.org/learn, we recommend the
 ["Comprehensive Rust" mini-course](https://google.github.io/comprehensive-rust/)
 for an overview, especially if you are familiar with C++.
 
+<!--- TODO: A section asking for people to report documentation bugs and
+ ---- asking them to check if the problem exists in the prerelease docs.
+ ---->
 
 ## Setting up a development environment
 
@@ -131,7 +134,116 @@ These are listed roughly in order of decreasing importance.
    use `nextest` with `insta`,
    use `cargo insta test --workspace --test-runner nextest`.
 
- ## Modifying protobuffers (this is not common)
+## Previewing the HTML documentation
+
+The documentation for `jj` is automatically published to the website
+<https://martinvonz.github.io/jj/>. At the moment, this is experimental,
+but we hope to advertise this website to our users soon.
+
+When editing documentation, we'd appreciate it if you checked that the
+result will look as expected when published to the website.
+
+### Prerequisites
+
+To build the website, you must have Python and `poetry` installed. If
+your distribution packages `poetry`, something like `apt install
+python3-poetry` is likely the best way to install it. Otherwise, you
+can download Python form <https://python.org> or follow the [Python
+installation instructions]. Finally, follow the [Poetry installation
+instructions].
+
+[Python installation instructions]: https://docs.python.org/3/using/index.html
+[Poetry installation instructions]: https://python-poetry.org/docs/#installation 
+
+Once you have `poetry` installed, it can install the rest of the required
+tools into a virtual environment by running
+
+    poetry install
+    
+If you get messages about unlocking a keyring, try the following instead:
+
+```shell
+# https://github.com/python-poetry/poetry/issues/1917
+PYTHON_KEYRING_BACKEND=keyring.backends.fail.Keyring poetry install
+```
+
+### Building the HTML docs for one `jj` commit with live reload
+
+The HTML docs are built with
+[MkDocs](https://github.com/mkdocs/mkdocs). After following the above
+steps, you should be able to open the docs in your browser by running:
+
+```shell
+# Note: this and all the commands below should be run from the root of
+# the `jj` source tree.
+poetry run -- mkdocs serve
+```
+
+and opening <https://128.0.0.1:8000> in your browser.
+
+As you edit the `md` files, the website should be rebuilt and reloaded
+in your browser automatically unless build errors occur (which would
+be reported in the terminal from which you ran `mkdocs serve`).
+
+### How to build the entire website (not usually necessary)
+
+The full `jj` website includes the documentation for several `jj` versions
+(`prerelease`, latest release, and the older releases). The top-level
+URL <https://martinvonz.github.io/jj> is hardcoded to redirect to
+<https://martinvonz.github.io/jj/latest>, which in turn redirects to
+the docs for the last stable version.
+
+The different versions of documentation are managed and deployed with
+[`mike`](https://github.com/jimporter/mike), which can be run with
+`poetry run -- mike`.
+
+On a POSIX system, one way to build the entire website is as follows (on
+Windows, you will have to understand the shell script and run the corresponding
+commands):
+
+1. Check out `jj` as a Git repository or a co-located `jj + git` repository
+(`jj clone --colocate`), cloned from your fork of `jj` (e.g. `jjfan.github.com/jj`).
+
+2. Make sure `jjfan.github.com/jj` includes the `gh-pages` branch of the jj repo
+and run `git fetch origin gh-pages`.
+
+3. Go to the Github repository settings, enable Github Pages, and configure them
+to use the `gh-pages` branch (this is usually the default).
+
+4. Run the same `sh` script that is used in Github CI (details below):
+
+    ```shell
+    .github/scripts/docs-build-deploy 'https://jjfan.github.io/jj/'\
+        prerelease main --push
+    ```
+
+    This should build the version of the docs from the current commit,
+    deploy it as a new commit to the `gh-pages` branch,
+    and push the `gh-pages` branch to the origin.
+    
+5. Now, you should be able to see the full website, including your latest changes
+to the `prerelease` version, at `https://jjfan.github.io/jj/prerelease/`.
+
+6. (Optional) When you are done, you may want to reset the `gh-branches` to the same
+spot as it is in the upstream. If you configured the `upstream` remote and are in a
+colocated repo, this can be done with:
+
+    ```shell
+    jj git fetch --remote upstream
+    jj branch set gh-pages -r gh-pages@upstream
+    jj git push --branch upstream
+    ```
+    
+#### Explanation of the `docs-build-deploy` script
+
+The script sets up the `site_url` mkdocs config to 'https://jjfan.github.io/jj/'. If this config
+does not match the URL where you loaded the website, some minor website features
+(like the version switching widget) will have reduced functionality.
+
+Then, the script passes the rest of its arguments to `potery run -- mike deploy`, which does
+the rest of the job. Run `poetry run -- mike help` to find out what the arguments do.
+
+## Modifying protobuffers (this is not common)
 
  Occasionally, you may need to change the `.proto` files that define jj's data
  storage format. In this case, you will need to add a few steps to the above
