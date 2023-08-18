@@ -152,3 +152,15 @@ These are listed roughly in order of decreasing importance.
 
  The `.rs` files generated from `.proto` files are included in the repository,
  and there is a Github CI check that will complain if they do not match.
+
+## Docs (experimental)
+
+### Notes on using `poetry`
+
+Can be installed with a package manager.
+
+```shell
+# https://github.com/python-poetry/poetry/issues/1917
+PYTHON_KEYRING_BACKEND=keyring.backends.fail.Keyring poetry install
+poetry shell
+```
