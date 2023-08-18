@@ -1141,14 +1141,14 @@ fn test_rebase_descendants_update_branches_after_divergent_rewrite() {
         .unwrap();
     tx.mut_repo().rebase_descendants(&settings).unwrap();
 
-    let target = tx.mut_repo().get_local_branch("main").unwrap();
-    assert!(target.is_conflict());
+    let target = tx.mut_repo().get_local_branch("main");
+    assert!(target.has_conflict());
     assert_eq!(
-        target.removes().iter().counts(),
+        target.removed_ids().counts(),
         hashmap! { commit_b.id() => 2 },
     );
     assert_eq!(
-        target.adds().iter().counts(),
+        target.added_ids().counts(),
         hashmap! {
             commit_b2.id() => 1,
             commit_b3.id() => 1,
@@ -1216,14 +1216,14 @@ fn test_rebase_descendants_rewrite_updates_branch_conflict() {
         .unwrap();
     tx.mut_repo().rebase_descendants(&settings).unwrap();
 
-    let target = tx.mut_repo().get_local_branch("main").unwrap();
-    assert!(target.is_conflict());
+    let target = tx.mut_repo().get_local_branch("main");
+    assert!(target.has_conflict());
     assert_eq!(
-        target.removes().iter().counts(),
+        target.removed_ids().counts(),
         hashmap! { commit_a.id() => 1, commit_b.id() => 1 },
     );
     assert_eq!(
-        target.adds().iter().counts(),
+        target.added_ids().counts(),
         hashmap! {
             commit_c.id() => 1,
             commit_b2.id() => 1,
@@ -1313,7 +1313,7 @@ fn test_rebase_descendants_branch_delete_modify_abandon() {
     let mut tx = repo.start_transaction(&settings, "test");
     tx.mut_repo().record_abandoned_commit(commit_b.id().clone());
     tx.mut_repo().rebase_descendants(&settings).unwrap();
-    assert_eq!(tx.mut_repo().get_local_branch("main"), None);
+    assert_eq!(tx.mut_repo().get_local_branch("main"), RefTarget::absent());
 }
 
 #[test_case(false ; "local backend")]

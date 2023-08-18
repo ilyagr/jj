@@ -22,6 +22,7 @@ use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 
 use crate::backend::{ChangeId, ObjectId, Signature, Timestamp};
+use crate::fmt_util::binary_prefix;
 use crate::fsmonitor::FsmonitorKind;
 
 #[derive(Debug, Clone)]
@@ -97,19 +98,14 @@ impl UserSettings {
     }
 
     pub fn user_name(&self) -> String {
-        self.config
-            .get_string("user.name")
-            .unwrap_or_else(|_| Self::user_name_placeholder().to_string())
+        self.config.get_string("user.name").unwrap_or_default()
     }
 
-    pub fn user_name_placeholder() -> &'static str {
-        "(no name configured)"
-    }
+    // Must not be changed to avoid git pushing older commits with no set name
+    pub const USER_NAME_PLACEHOLDER: &str = "(no name configured)";
 
     pub fn user_email(&self) -> String {
-        self.config
-            .get_string("user.email")
-            .unwrap_or_else(|_| Self::user_email_placeholder().to_string())
+        self.config.get_string("user.email").unwrap_or_default()
     }
 
     pub fn fsmonitor_kind(&self) -> Result<Option<FsmonitorKind>, config::ConfigError> {
@@ -120,9 +116,9 @@ impl UserSettings {
         }
     }
 
-    pub fn user_email_placeholder() -> &'static str {
-        "(no email configured)"
-    }
+    // Must not be changed to avoid git pushing older commits with no set email
+    // address
+    pub const USER_EMAIL_PLACEHOLDER: &str = "(no email configured)";
 
     pub fn operation_timestamp(&self) -> Option<Timestamp> {
         get_timestamp_config(&self.config, "debug.operation-timestamp")
@@ -142,8 +138,14 @@ impl UserSettings {
 
     pub fn push_branch_prefix(&self) -> String {
         self.config
-            .get_string("push.branch-prefix")
+            .get_string("git.push-branch-prefix")
             .unwrap_or_else(|_| "push-".to_string())
+    }
+
+    pub fn default_description(&self) -> String {
+        self.config()
+            .get_string("ui.default-description")
+            .unwrap_or_default()
     }
 
     pub fn default_revset(&self) -> String {
@@ -190,6 +192,19 @@ impl UserSettings {
             .get_string("ui.graph.style")
             .unwrap_or_else(|_| "curved".to_string())
     }
+
+    pub fn max_new_file_size(&self) -> Result<u64, config::ConfigError> {
+        let cfg = self
+            .config
+            .get::<HumanByteSize>("snapshot.max-new-file-size")
+            .map(|x| x.0);
+        match cfg {
+            Ok(0) => Ok(u64::MAX),
+            x @ Ok(_) => x,
+            Err(config::ConfigError::NotFound(_)) => Ok(1024 * 1024),
+            e @ Err(_) => e,
+        }
+    }
 }
 
 /// This Rng uses interior mutability to allow generating random values using an
@@ -229,5 +244,109 @@ impl<T> ConfigResultExt<T> for Result<T, config::ConfigError> {
             Err(config::ConfigError::NotFound(_)) => Ok(None),
             Err(err) => Err(err),
         }
+    }
+}
+
+/// A size in bytes optionally formatted/serialized with binary prefixes
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct HumanByteSize(pub u64);
+
+impl std::fmt::Display for HumanByteSize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (value, prefix) = binary_prefix(self.0 as f32);
+        write!(f, "{value:.1}{prefix}B")
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for HumanByteSize {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        struct Visitor;
+
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = HumanByteSize;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(formatter, "a size in bytes with an optional binary unit")
+            }
+
+            fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                Ok(HumanByteSize(v))
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                let bytes = parse_human_byte_size(v).map_err(Error::custom)?;
+                Ok(HumanByteSize(bytes))
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_any(Visitor)
+        } else {
+            deserializer.deserialize_u64(Visitor)
+        }
+    }
+}
+
+fn parse_human_byte_size(v: &str) -> Result<u64, &str> {
+    let digit_end = v.find(|c: char| !c.is_ascii_digit()).unwrap_or(v.len());
+    if digit_end == 0 {
+        return Err("must start with a number");
+    }
+    let (digits, trailing) = v.split_at(digit_end);
+    let exponent = match trailing.trim_start() {
+        "" | "B" => 0,
+        unit => {
+            const PREFIXES: [char; 8] = ['K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+            let Some(prefix) = PREFIXES.iter().position(|&x| unit.starts_with(x)) else {
+                return Err("unrecognized unit prefix");
+            };
+            let ("" | "B" | "i" | "iB") = &unit[1..] else {
+                return Err("unrecognized unit");
+            };
+            prefix as u32 + 1
+        }
+    };
+    // A string consisting only of base 10 digits is either a valid u64 or really
+    // huge.
+    let factor = digits.parse::<u64>().unwrap_or(u64::MAX);
+    Ok(factor.saturating_mul(1024u64.saturating_pow(exponent)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_size_parse() {
+        assert_eq!(parse_human_byte_size("0"), Ok(0));
+        assert_eq!(parse_human_byte_size("42"), Ok(42));
+        assert_eq!(parse_human_byte_size("42B"), Ok(42));
+        assert_eq!(parse_human_byte_size("42 B"), Ok(42));
+        assert_eq!(parse_human_byte_size("42K"), Ok(42 * 1024));
+        assert_eq!(parse_human_byte_size("42 K"), Ok(42 * 1024));
+        assert_eq!(parse_human_byte_size("42 KB"), Ok(42 * 1024));
+        assert_eq!(parse_human_byte_size("42 KiB"), Ok(42 * 1024));
+        assert_eq!(
+            parse_human_byte_size("42 LiB"),
+            Err("unrecognized unit prefix")
+        );
+        assert_eq!(parse_human_byte_size("42 KiC"), Err("unrecognized unit"));
+        assert_eq!(parse_human_byte_size("42 KC"), Err("unrecognized unit"));
+        assert_eq!(
+            parse_human_byte_size("KiB"),
+            Err("must start with a number")
+        );
+        assert_eq!(parse_human_byte_size(""), Err("must start with a number"));
     }
 }

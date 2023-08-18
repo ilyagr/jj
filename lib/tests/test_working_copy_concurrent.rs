@@ -20,16 +20,14 @@ use jj_lib::repo::{Repo, StoreFactories};
 use jj_lib::repo_path::RepoPath;
 use jj_lib::working_copy::{CheckoutError, SnapshotOptions};
 use jj_lib::workspace::Workspace;
-use test_case::test_case;
-use testutils::TestWorkspace;
+use testutils::{write_working_copy_file, TestWorkspace};
 
-#[test_case(false ; "local backend")]
-#[test_case(true ; "git backend")]
-fn test_concurrent_checkout(use_git: bool) {
+#[test]
+fn test_concurrent_checkout() {
     // Test that we error out if a concurrent checkout is detected (i.e. if the
     // working-copy commit changed on disk after we read it).
     let settings = testutils::user_settings();
-    let mut test_workspace1 = TestWorkspace::init(&settings, use_git);
+    let mut test_workspace1 = TestWorkspace::init(&settings, true);
     let repo1 = test_workspace1.repo.clone();
     let workspace1_root = test_workspace1.workspace.workspace_root().clone();
 
@@ -78,13 +76,12 @@ fn test_concurrent_checkout(use_git: bool) {
     );
 }
 
-#[test_case(false ; "local backend")]
-#[test_case(true ; "git backend")]
-fn test_checkout_parallel(use_git: bool) {
+#[test]
+fn test_checkout_parallel() {
     // Test that concurrent checkouts by different processes (simulated by using
     // different repo instances) is safe.
     let settings = testutils::user_settings();
-    let mut test_workspace = TestWorkspace::init(&settings, use_git);
+    let mut test_workspace = TestWorkspace::init(&settings, true);
     let repo = &test_workspace.repo;
     let workspace_root = test_workspace.workspace.workspace_root().clone();
 
@@ -145,4 +142,36 @@ fn test_checkout_parallel(use_git: bool) {
             });
         }
     });
+}
+
+#[test]
+fn test_racy_checkout() {
+    let settings = testutils::user_settings();
+    let mut test_workspace = TestWorkspace::init(&settings, true);
+    let repo = &test_workspace.repo;
+    let op_id = repo.op_id().clone();
+    let workspace_root = test_workspace.workspace.workspace_root().clone();
+
+    let path = RepoPath::from_internal_string("file");
+    let tree = testutils::create_tree(repo, &[(&path, "1")]);
+
+    let mut num_matches = 0;
+    for _ in 0..100 {
+        let wc = test_workspace.workspace.working_copy_mut();
+        wc.check_out(op_id.clone(), None, &tree).unwrap();
+        assert_eq!(
+            std::fs::read(path.to_fs_path(&workspace_root)).unwrap(),
+            b"1".to_vec()
+        );
+        // A file written right after checkout (hopefully, from the test's perspective,
+        // within the file system timestamp granularity) is detected as changed.
+        write_working_copy_file(&workspace_root, &path, "x");
+        let modified_tree = test_workspace.snapshot().unwrap();
+        if modified_tree.id() == tree.id() {
+            num_matches += 1;
+        }
+        // Reset the state for the next round
+        write_working_copy_file(&workspace_root, &path, "1");
+    }
+    assert_eq!(num_matches, 0);
 }

@@ -14,13 +14,45 @@
 
 #![allow(missing_docs)]
 
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 use std::collections::{BTreeMap, HashSet};
 
 use crate::backend::CommitId;
-use crate::default_index_store::{IndexEntry, IndexPosition};
-use crate::nightly_shims::BTreeMapExt;
-use crate::revset::{RevsetGraphEdge, RevsetGraphEdgeType};
+use crate::default_index_store::{CompositeIndex, IndexEntry, IndexPosition};
+use crate::revset_graph::{RevsetGraphEdge, RevsetGraphEdgeType};
+
+/// Like `RevsetGraphEdge`, but stores `IndexPosition` instead.
+///
+/// This can be cheaply allocated and hashed compared to `CommitId`-based type.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct IndexGraphEdge {
+    target: IndexPosition,
+    edge_type: RevsetGraphEdgeType,
+}
+
+impl IndexGraphEdge {
+    fn missing(target: IndexPosition) -> Self {
+        let edge_type = RevsetGraphEdgeType::Missing;
+        IndexGraphEdge { target, edge_type }
+    }
+
+    fn direct(target: IndexPosition) -> Self {
+        let edge_type = RevsetGraphEdgeType::Direct;
+        IndexGraphEdge { target, edge_type }
+    }
+
+    fn indirect(target: IndexPosition) -> Self {
+        let edge_type = RevsetGraphEdgeType::Indirect;
+        IndexGraphEdge { target, edge_type }
+    }
+
+    fn to_revset_edge(self, index: CompositeIndex<'_>) -> RevsetGraphEdge {
+        RevsetGraphEdge {
+            target: index.entry_by_pos(self.target).commit_id(),
+            edge_type: self.edge_type,
+        }
+    }
+}
 
 /// Given an iterator over some set of revisions, yields the same revisions with
 /// associated edge types.
@@ -89,6 +121,7 @@ use crate::revset::{RevsetGraphEdge, RevsetGraphEdgeType};
 /// could lead to "D", but that would require extra book-keeping to remember for
 /// later that the edges from "f" and "H" are only partially computed.
 pub struct RevsetGraphIterator<'revset, 'index> {
+    index: CompositeIndex<'index>,
     input_set_iter: Box<dyn Iterator<Item = IndexEntry<'index>> + 'revset>,
     /// Commits in the input set we had to take out of the iterator while
     /// walking external edges. Does not necessarily include the commit
@@ -98,16 +131,17 @@ pub struct RevsetGraphIterator<'revset, 'index> {
     /// look_ahead map, but it's faster to keep a separate field for it.
     min_position: IndexPosition,
     /// Edges for commits not in the input set.
-    // TODO: Remove unneeded entries here as we go (that's why it's an ordered map)?
-    edges: BTreeMap<IndexPosition, HashSet<(IndexPosition, RevsetGraphEdge)>>,
+    edges: BTreeMap<IndexPosition, Vec<IndexGraphEdge>>,
     skip_transitive_edges: bool,
 }
 
 impl<'revset, 'index> RevsetGraphIterator<'revset, 'index> {
     pub fn new(
+        index: CompositeIndex<'index>,
         input_set_iter: Box<dyn Iterator<Item = IndexEntry<'index>> + 'revset>,
     ) -> RevsetGraphIterator<'revset, 'index> {
         RevsetGraphIterator {
+            index,
             input_set_iter,
             look_ahead: Default::default(),
             min_position: IndexPosition::MAX,
@@ -122,7 +156,7 @@ impl<'revset, 'index> RevsetGraphIterator<'revset, 'index> {
     }
 
     fn next_index_entry(&mut self) -> Option<IndexEntry<'index>> {
-        if let Some(index_entry) = self.look_ahead.pop_last_value() {
+        if let Some(index_entry) = self.look_ahead.last_entry().map(|x| x.remove()) {
             return Some(index_entry);
         }
         self.input_set_iter.next()
@@ -131,70 +165,95 @@ impl<'revset, 'index> RevsetGraphIterator<'revset, 'index> {
     fn edges_from_internal_commit(
         &mut self,
         index_entry: &IndexEntry<'index>,
-    ) -> HashSet<(IndexPosition, RevsetGraphEdge)> {
-        if let Some(edges) = self.edges.get(&index_entry.position()) {
-            return edges.clone();
+    ) -> &[IndexGraphEdge] {
+        let position = index_entry.position();
+        // `if let Some(edges) = ...` doesn't pass lifetime check as of Rust 1.71.0
+        if self.edges.contains_key(&position) {
+            return self.edges.get(&position).unwrap();
         }
-        let mut edges = HashSet::new();
+        let edges = self.new_edges_from_internal_commit(index_entry);
+        self.edges.entry(position).or_insert(edges)
+    }
+
+    fn pop_edges_from_internal_commit(
+        &mut self,
+        index_entry: &IndexEntry<'index>,
+    ) -> Vec<IndexGraphEdge> {
+        let position = index_entry.position();
+        while let Some(entry) = self.edges.last_entry() {
+            match entry.key().cmp(&position) {
+                Ordering::Less => break, // no cached edges found
+                Ordering::Equal => return entry.remove(),
+                Ordering::Greater => entry.remove(),
+            };
+        }
+        self.new_edges_from_internal_commit(index_entry)
+    }
+
+    fn new_edges_from_internal_commit(
+        &mut self,
+        index_entry: &IndexEntry<'index>,
+    ) -> Vec<IndexGraphEdge> {
+        let mut edges = Vec::new();
+        let mut known_ancestors = HashSet::new();
         for parent in index_entry.parents() {
             let parent_position = parent.position();
-            let parent_commit_id = parent.commit_id();
             self.consume_to(parent_position);
             if self.look_ahead.contains_key(&parent_position) {
-                edges.insert((parent_position, RevsetGraphEdge::direct(parent_commit_id)));
+                edges.push(IndexGraphEdge::direct(parent_position));
             } else {
                 let parent_edges = self.edges_from_external_commit(parent);
                 if parent_edges
                     .iter()
-                    .all(|(_, edge)| edge.edge_type == RevsetGraphEdgeType::Missing)
+                    .all(|edge| edge.edge_type == RevsetGraphEdgeType::Missing)
                 {
-                    edges.insert((parent_position, RevsetGraphEdge::missing(parent_commit_id)));
+                    edges.push(IndexGraphEdge::missing(parent_position));
                 } else {
-                    edges.extend(parent_edges);
+                    edges.extend(
+                        parent_edges
+                            .iter()
+                            .filter(|edge| known_ancestors.insert(edge.target)),
+                    )
                 }
             }
         }
-        self.edges.insert(index_entry.position(), edges.clone());
         edges
     }
 
-    fn edges_from_external_commit(
-        &mut self,
-        index_entry: IndexEntry<'index>,
-    ) -> HashSet<(IndexPosition, RevsetGraphEdge)> {
+    fn edges_from_external_commit(&mut self, index_entry: IndexEntry<'index>) -> &[IndexGraphEdge] {
         let position = index_entry.position();
         let mut stack = vec![index_entry];
         while let Some(entry) = stack.last() {
             let position = entry.position();
-            let mut edges = HashSet::new();
+            if self.edges.contains_key(&position) {
+                stack.pop().unwrap();
+                continue;
+            }
+            let mut edges = Vec::new();
+            let mut known_ancestors = HashSet::new();
             let mut parents_complete = true;
             for parent in entry.parents() {
                 let parent_position = parent.position();
                 self.consume_to(parent_position);
                 if self.look_ahead.contains_key(&parent_position) {
                     // We have found a path back into the input set
-                    edges.insert((
-                        parent_position,
-                        RevsetGraphEdge::indirect(parent.commit_id()),
-                    ));
+                    edges.push(IndexGraphEdge::indirect(parent_position));
                 } else if let Some(parent_edges) = self.edges.get(&parent_position) {
                     if parent_edges
                         .iter()
-                        .all(|(_, edge)| edge.edge_type == RevsetGraphEdgeType::Missing)
+                        .all(|edge| edge.edge_type == RevsetGraphEdgeType::Missing)
                     {
-                        edges.insert((
-                            parent_position,
-                            RevsetGraphEdge::missing(parent.commit_id()),
-                        ));
+                        edges.push(IndexGraphEdge::missing(parent_position));
                     } else {
-                        edges.extend(parent_edges.iter().cloned());
+                        edges.extend(
+                            parent_edges
+                                .iter()
+                                .filter(|edge| known_ancestors.insert(edge.target)),
+                        );
                     }
                 } else if parent_position < self.min_position {
                     // The parent is not in the input set
-                    edges.insert((
-                        parent_position,
-                        RevsetGraphEdge::missing(parent.commit_id()),
-                    ));
+                    edges.push(IndexGraphEdge::missing(parent_position));
                 } else {
                     // The parent is not in the input set but it's somewhere in the range
                     // where we have commits in the input set, so continue searching.
@@ -207,16 +266,13 @@ impl<'revset, 'index> RevsetGraphIterator<'revset, 'index> {
                 self.edges.insert(position, edges);
             }
         }
-        self.edges.get(&position).unwrap().clone()
+        self.edges.get(&position).unwrap()
     }
 
-    fn remove_transitive_edges(
-        &mut self,
-        edges: HashSet<(IndexPosition, RevsetGraphEdge)>,
-    ) -> HashSet<(IndexPosition, RevsetGraphEdge)> {
+    fn remove_transitive_edges(&mut self, edges: Vec<IndexGraphEdge>) -> Vec<IndexGraphEdge> {
         if !edges
             .iter()
-            .any(|(_, edge)| edge.edge_type == RevsetGraphEdgeType::Indirect)
+            .any(|edge| edge.edge_type == RevsetGraphEdgeType::Indirect)
         {
             return edges;
         }
@@ -224,38 +280,38 @@ impl<'revset, 'index> RevsetGraphIterator<'revset, 'index> {
         let mut initial_targets = HashSet::new();
         let mut work = vec![];
         // To start with, add the edges one step after the input edges.
-        for (target, edge) in &edges {
-            initial_targets.insert(target);
+        for edge in &edges {
+            initial_targets.insert(edge.target);
             if edge.edge_type != RevsetGraphEdgeType::Missing {
-                let entry = self.look_ahead.get(target).unwrap().clone();
+                let entry = self.look_ahead.get(&edge.target).unwrap().clone();
                 min_generation = min(min_generation, entry.generation_number());
-                work.extend(self.edges_from_internal_commit(&entry));
+                work.extend_from_slice(self.edges_from_internal_commit(&entry));
             }
         }
         // Find commits reachable transitively and add them to the `unwanted` set.
         let mut unwanted = HashSet::new();
-        while let Some((target, edge)) = work.pop() {
-            if edge.edge_type == RevsetGraphEdgeType::Missing || target < self.min_position {
+        while let Some(edge) = work.pop() {
+            if edge.edge_type == RevsetGraphEdgeType::Missing || edge.target < self.min_position {
                 continue;
             }
-            if !unwanted.insert(target) {
+            if !unwanted.insert(edge.target) {
                 // Already visited
                 continue;
             }
-            if initial_targets.contains(&target) {
+            if initial_targets.contains(&edge.target) {
                 // Already visited
                 continue;
             }
-            let entry = self.look_ahead.get(&target).unwrap().clone();
+            let entry = self.look_ahead.get(&edge.target).unwrap().clone();
             if entry.generation_number() < min_generation {
                 continue;
             }
-            work.extend(self.edges_from_internal_commit(&entry));
+            work.extend_from_slice(self.edges_from_internal_commit(&entry));
         }
 
         edges
             .into_iter()
-            .filter(|(target, _)| !unwanted.contains(target))
+            .filter(|edge| !unwanted.contains(&edge.target))
             .collect()
     }
 
@@ -277,13 +333,14 @@ impl<'revset, 'index> Iterator for RevsetGraphIterator<'revset, 'index> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let index_entry = self.next_index_entry()?;
-        let mut edges = self.edges_from_internal_commit(&index_entry);
+        let mut edges = self.pop_edges_from_internal_commit(&index_entry);
         if self.skip_transitive_edges {
             edges = self.remove_transitive_edges(edges);
         }
-        let mut edges: Vec<_> = edges.into_iter().collect();
-        edges.sort_by(|(target_pos1, _), (target_pos2, _)| target_pos2.cmp(target_pos1));
-        let edges = edges.into_iter().map(|(_, edge)| edge).collect();
+        let edges = edges
+            .iter()
+            .map(|edge| edge.to_revset_edge(self.index))
+            .collect();
         Some((index_entry.commit_id(), edges))
     }
 }

@@ -17,6 +17,8 @@
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
+use tracing::instrument;
+
 use crate::repo_path::{RepoPath, RepoPathComponent};
 
 #[derive(PartialEq, Eq, Debug)]
@@ -65,7 +67,7 @@ pub enum VisitFiles {
     Set(HashSet<RepoPathComponent>),
 }
 
-pub trait Matcher {
+pub trait Matcher: Sync {
     fn matches(&self, file: &RepoPath) -> bool;
     fn visit(&self, dir: &RepoPath) -> Visit;
 }
@@ -126,6 +128,7 @@ pub struct PrefixMatcher {
 }
 
 impl PrefixMatcher {
+    #[instrument]
     pub fn new(prefixes: &[RepoPath]) -> Self {
         let mut tree = RepoPathTree::new();
         for prefix in prefixes {

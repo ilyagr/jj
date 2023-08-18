@@ -15,72 +15,45 @@
 #![allow(missing_docs)]
 
 use crate::backend::CommitId;
-use crate::conflicts::Conflict;
 use crate::index::Index;
-use crate::merge::trivial_merge;
-use crate::op_store::{BranchTarget, RefTarget, RefTargetExt as _};
+use crate::merge::{trivial_merge, Merge};
+use crate::op_store::{BranchTarget, RefTarget, RefTargetOptionExt};
 
 pub fn merge_ref_targets(
     index: &dyn Index,
-    left: Option<&RefTarget>,
-    base: Option<&RefTarget>,
-    right: Option<&RefTarget>,
-) -> Option<RefTarget> {
-    if let Some(resolved) = trivial_merge(&[base], &[left, right]) {
-        return resolved.cloned();
+    left: &RefTarget,
+    base: &RefTarget,
+    right: &RefTarget,
+) -> RefTarget {
+    if let Some(&resolved) = trivial_merge(&[base], &[left, right]) {
+        return resolved.clone();
     }
 
-    let conflict = Conflict::new(
-        vec![ref_target_to_conflict(base)],
-        vec![ref_target_to_conflict(left), ref_target_to_conflict(right)],
+    let merge = Merge::new(
+        vec![base.as_merge().clone()],
+        vec![left.as_merge().clone(), right.as_merge().clone()],
     )
     .flatten()
     .simplify();
 
-    // TODO: switch to conflict.is_resolved()
-    if conflict.as_resolved().is_some() {
-        conflict_to_ref_target(conflict)
+    if merge.is_resolved() {
+        RefTarget::from_merge(merge)
     } else {
-        let conflict = merge_ref_targets_non_trivial(index, conflict);
-        conflict_to_ref_target(conflict)
-    }
-}
-
-fn conflict_to_ref_target(conflict: Conflict<Option<CommitId>>) -> Option<RefTarget> {
-    match conflict.as_resolved() {
-        Some(Some(id)) => Some(RefTarget::Normal(id.clone())),
-        Some(None) => None, // Deleted ref
-        None => {
-            let (removes, adds) = conflict.into_legacy_form();
-            Some(RefTarget::Conflict { removes, adds })
-        }
-    }
-}
-
-// TODO: Make RefTarget store or be aliased to Conflict<Option<CommitId>>.
-// Since new conflict type can represent a deleted/absent ref, we might have
-// to replace Option<RefTarget> with it. Map API might be a bit trickier.
-fn ref_target_to_conflict(maybe_target: Option<&RefTarget>) -> Conflict<Option<CommitId>> {
-    if let Some(target) = maybe_target {
-        Conflict::from_legacy_form(
-            target.removes().iter().cloned(),
-            target.adds().iter().cloned(),
-        )
-    } else {
-        Conflict::resolved(None) // Deleted or absent ref
+        let merge = merge_ref_targets_non_trivial(index, merge);
+        RefTarget::from_merge(merge)
     }
 }
 
 fn merge_ref_targets_non_trivial(
     index: &dyn Index,
-    conflict: Conflict<Option<CommitId>>,
-) -> Conflict<Option<CommitId>> {
+    conflict: Merge<Option<CommitId>>,
+) -> Merge<Option<CommitId>> {
     let (mut removes, mut adds) = conflict.take();
     while let Some((remove_index, add_index)) = find_pair_to_remove(index, &removes, &adds) {
         removes.remove(remove_index);
         adds.remove(add_index);
     }
-    Conflict::new(removes, adds)
+    Merge::new(removes, adds)
 }
 
 fn find_pair_to_remove(
@@ -132,13 +105,13 @@ pub fn classify_branch_push_action(
     branch_target: &BranchTarget,
     remote_name: &str,
 ) -> BranchPushAction {
-    let local_target = branch_target.local_target.as_ref();
-    let remote_target = branch_target.remote_targets.get(remote_name);
+    let local_target = &branch_target.local_target;
+    let remote_target = branch_target.remote_targets.get(remote_name).flatten();
     if local_target == remote_target {
         BranchPushAction::AlreadyMatches
-    } else if local_target.is_conflict() {
+    } else if local_target.has_conflict() {
         BranchPushAction::LocalConflicted
-    } else if remote_target.is_conflict() {
+    } else if remote_target.has_conflict() {
         BranchPushAction::RemoteConflicted
     } else {
         BranchPushAction::Update(BranchPushUpdate {
@@ -161,7 +134,7 @@ mod tests {
         let branch = BranchTarget {
             local_target: RefTarget::normal(commit_id1.clone()),
             remote_targets: btreemap! {
-                "origin".to_string() => RefTarget::normal(commit_id1).unwrap(),
+                "origin".to_string() => RefTarget::normal(commit_id1),
             },
         };
         assert_eq!(
@@ -190,9 +163,9 @@ mod tests {
     fn test_classify_branch_push_action_removed() {
         let commit_id1 = CommitId::from_hex("11");
         let branch = BranchTarget {
-            local_target: None,
+            local_target: RefTarget::absent(),
             remote_targets: btreemap! {
-                "origin".to_string() => RefTarget::normal(commit_id1.clone()).unwrap(),
+                "origin".to_string() => RefTarget::normal(commit_id1.clone()),
             },
         };
         assert_eq!(
@@ -211,7 +184,7 @@ mod tests {
         let branch = BranchTarget {
             local_target: RefTarget::normal(commit_id2.clone()),
             remote_targets: btreemap! {
-                "origin".to_string() => RefTarget::normal(commit_id1.clone()).unwrap(),
+                "origin".to_string() => RefTarget::normal(commit_id1.clone()),
             },
         };
         assert_eq!(
@@ -230,7 +203,7 @@ mod tests {
         let branch = BranchTarget {
             local_target: RefTarget::from_legacy_form([], [commit_id1.clone(), commit_id2]),
             remote_targets: btreemap! {
-                "origin".to_string() => RefTarget::normal(commit_id1).unwrap(),
+                "origin".to_string() => RefTarget::normal(commit_id1),
             },
         };
         assert_eq!(
@@ -249,7 +222,7 @@ mod tests {
                 "origin".to_string() => RefTarget::from_legacy_form(
                     [],
                     [commit_id1, commit_id2],
-                ).unwrap(),
+                ),
             },
         };
         assert_eq!(

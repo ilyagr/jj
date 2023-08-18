@@ -34,6 +34,7 @@ The following keywords can be used in `jj log`/`jj obslog` templates.
 * `hidden: Boolean`: True if the commit is not visible (a.k.a. abandoned).
 * `conflict: Boolean`: True if the commit contains merge conflicts.
 * `empty: Boolean`: True if the commit modifies no files.
+* `root: Boolean`: True if the commit is the root commit.
 
 ### Operation keywords
 
@@ -164,7 +165,7 @@ The following methods are defined.
 
 ## Configuration
 
-[The default templates and aliases](../src/config/templates.toml) are defined
+[The default templates and aliases](../cli/src/config/templates.toml) are defined
 in the `[templates]` and `[template-aliases]` sections respectively.
 
 New keywords and functions can be defined as aliases, by using any

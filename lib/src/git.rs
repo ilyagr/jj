@@ -17,6 +17,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::default::Default;
 use std::io::Read;
+use std::iter;
 use std::path::PathBuf;
 
 use git2::Oid;
@@ -24,16 +25,28 @@ use itertools::Itertools;
 use tempfile::NamedTempFile;
 use thiserror::Error;
 
-use crate::backend::{CommitId, ObjectId};
+use crate::backend::{BackendError, CommitId, ObjectId};
 use crate::git_backend::NO_GC_REF_NAMESPACE;
-use crate::op_store::{BranchTarget, RefTarget, RefTargetExt as _};
+use crate::op_store::{BranchTarget, RefTarget, RefTargetOptionExt};
 use crate::repo::{MutableRepo, Repo};
 use crate::revset;
 use crate::settings::GitSettings;
 use crate::view::{RefName, View};
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum GitImportError {
+    #[error("Failed to read Git HEAD target commit {id}: {err}", id=id.hex())]
+    MissingHeadTarget {
+        id: CommitId,
+        #[source]
+        err: BackendError,
+    },
+    #[error("Ancestor of Git ref {ref_name} is missing: {err}")]
+    MissingRefAncestor {
+        ref_name: String,
+        #[source]
+        err: BackendError,
+    },
     #[error("Unexpected git error when importing refs: {0}")]
     InternalGitError(#[from] git2::Error),
 }
@@ -82,7 +95,7 @@ fn to_remote_branch<'a>(parsed_ref: &'a RefName, remote_name: &str) -> Option<&'
 /// should be faster than `git_ref.peel_to_commit()`.
 fn resolve_git_ref_to_commit_id(
     git_ref: &git2::Reference<'_>,
-    known_target: Option<&RefTarget>,
+    known_target: &RefTarget,
 ) -> Option<CommitId> {
     // Try fast path if we have a candidate id which is known to be a commit object.
     if let Some(id) = known_target.as_normal() {
@@ -145,8 +158,8 @@ fn local_branch_git_tracking_refs(view: &View) -> impl Iterator<Item = (&str, &R
     })
 }
 
-pub fn get_local_git_tracking_branch<'a>(view: &'a View, branch: &str) -> Option<&'a RefTarget> {
-    view.git_refs().get(&format!("refs/heads/{branch}"))
+pub fn get_local_git_tracking_branch<'a>(view: &'a View, branch: &str) -> &'a RefTarget {
+    view.get_git_ref(&format!("refs/heads/{branch}"))
 }
 
 fn prevent_gc(git_repo: &git2::Repository, id: &CommitId) -> Result<(), git2::Error> {
@@ -183,104 +196,73 @@ pub fn import_some_refs(
     git_settings: &GitSettings,
     git_ref_filter: impl Fn(&RefName) -> bool,
 ) -> Result<(), GitImportError> {
-    let store = mut_repo.store().clone();
-    let mut jj_view_git_refs = mut_repo.view().git_refs().clone();
-    let mut pinned_git_heads = HashMap::new();
-
     // TODO: Should this be a separate function? We may not always want to import
     // the Git HEAD (and add it to our set of heads).
-    if let Ok(head_git_commit) = git_repo
+    let old_git_head = mut_repo.view().git_head();
+    let changed_git_head = if let Ok(head_git_commit) = git_repo
         .head()
         .and_then(|head_ref| head_ref.peel_to_commit())
     {
-        // Add the current HEAD to `pinned_git_heads` to pin the branch. It's not added
-        // to `hidable_git_heads` because HEAD move doesn't automatically mean the old
-        // HEAD branch has been rewritten.
-        let head_ref_name = RefName::GitRef("HEAD".to_owned());
+        // The current HEAD is not added to `hidable_git_heads` because HEAD move
+        // doesn't automatically mean the old HEAD branch has been rewritten.
         let head_commit_id = CommitId::from_bytes(head_git_commit.id().as_bytes());
-        pinned_git_heads.insert(head_ref_name, vec![head_commit_id.clone()]);
-        if !matches!(mut_repo.git_head().as_normal(), Some(id) if id == &head_commit_id) {
-            let head_commit = store.get_commit(&head_commit_id).unwrap();
-            prevent_gc(git_repo, &head_commit_id)?;
-            mut_repo.add_head(&head_commit);
-            mut_repo.set_git_head_target(RefTarget::normal(head_commit_id));
-        }
+        let new_head_target = RefTarget::normal(head_commit_id);
+        (*old_git_head != new_head_target).then_some(new_head_target)
     } else {
-        mut_repo.set_git_head_target(None);
-    }
+        old_git_head.is_present().then(RefTarget::absent)
+    };
+    let changed_git_refs = diff_refs_to_import(mut_repo.view(), git_repo, git_ref_filter)?;
 
-    let mut changed_git_refs = BTreeMap::new();
-    let git_repo_refs = git_repo.references()?;
-    for git_repo_ref in git_repo_refs {
-        let git_repo_ref = git_repo_ref?;
-        let full_name = if let Some(full_name) = git_repo_ref.name() {
-            full_name
-        } else {
-            // Skip non-utf8 refs.
-            continue;
-        };
-        let ref_name = if let Some(ref_name) = parse_git_ref(full_name) {
-            ref_name
-        } else {
-            // Skip other refs (such as notes) and symbolic refs.
-            continue;
-        };
-        let id = if let Some(id) =
-            resolve_git_ref_to_commit_id(&git_repo_ref, jj_view_git_refs.get(full_name))
-        {
-            id
-        } else {
-            // Skip invalid refs.
-            continue;
-        };
-        pinned_git_heads.insert(ref_name.clone(), vec![id.clone()]);
-        if !git_ref_filter(&ref_name) {
-            continue;
-        }
-        // TODO: Make it configurable which remotes are publishing and update public
-        // heads here.
-        let old_target = jj_view_git_refs.remove(full_name);
-        let new_target = RefTarget::normal(id.clone());
-        if new_target != old_target {
-            prevent_gc(git_repo, &id)?;
-            mut_repo.set_git_ref_target(full_name, RefTarget::normal(id.clone()));
-            let commit = store.get_commit(&id).unwrap();
-            mut_repo.add_head(&commit);
-            changed_git_refs.insert(ref_name, (old_target, new_target));
+    // Import new heads
+    let store = mut_repo.store();
+    let mut head_commits = Vec::new();
+    if let Some(new_head_target) = &changed_git_head {
+        for id in new_head_target.added_ids() {
+            let commit = store
+                .get_commit(id)
+                .map_err(|err| GitImportError::MissingHeadTarget {
+                    id: id.clone(),
+                    err,
+                })?;
+            head_commits.push(commit);
         }
     }
-    for (full_name, target) in jj_view_git_refs {
-        // TODO: or clean up invalid ref in case it was stored due to historical bug?
-        let ref_name = parse_git_ref(&full_name).expect("stored git ref should be parsable");
-        if git_ref_filter(&ref_name) {
-            mut_repo.set_git_ref_target(&full_name, None);
-            changed_git_refs.insert(ref_name, (Some(target), None));
-        } else {
-            pinned_git_heads.insert(ref_name, target.adds().to_vec());
+    for (ref_name, (_, new_git_target)) in &changed_git_refs {
+        for id in new_git_target.added_ids() {
+            let commit =
+                store
+                    .get_commit(id)
+                    .map_err(|err| GitImportError::MissingRefAncestor {
+                        ref_name: ref_name.to_string(),
+                        err,
+                    })?;
+            head_commits.push(commit);
         }
+    }
+    for commit in &head_commits {
+        prevent_gc(git_repo, commit.id())?;
+    }
+    mut_repo.add_heads(&head_commits);
+
+    // Apply the change that happened in git since last time we imported refs.
+    if let Some(new_head_target) = changed_git_head {
+        mut_repo.set_git_head_target(new_head_target);
     }
     for (ref_name, (old_git_target, new_git_target)) in &changed_git_refs {
-        // Apply the change that happened in git since last time we imported refs
-        mut_repo.merge_single_ref(ref_name, old_git_target.as_ref(), new_git_target.as_ref());
-        // If a git remote-tracking branch changed, apply the change to the local branch
-        // as well
-        if !git_settings.auto_local_branch {
-            continue;
-        }
-        if let RefName::RemoteBranch { branch, remote: _ } = ref_name {
-            let local_ref_name = RefName::LocalBranch(branch.clone());
-            mut_repo.merge_single_ref(
-                &local_ref_name,
-                old_git_target.as_ref(),
-                new_git_target.as_ref(),
-            );
-            match mut_repo.get_local_branch(branch) {
-                None => pinned_git_heads.remove(&local_ref_name),
-                Some(target) => {
-                    // Note that we are mostly *replacing*, not inserting
-                    pinned_git_heads.insert(local_ref_name, target.adds().to_vec())
-                }
-            };
+        let full_name = to_git_ref_name(ref_name).unwrap();
+        mut_repo.set_git_ref_target(&full_name, new_git_target.clone());
+        if let RefName::RemoteBranch { branch, remote } = ref_name {
+            // Remote-tracking branch is the last known state of the branch in the remote.
+            // It shouldn't diverge even if we had inconsistent view.
+            mut_repo.set_remote_branch_target(branch, remote, new_git_target.clone());
+            // If a git remote-tracking branch changed, apply the change to the local branch
+            // as well.
+            if git_settings.auto_local_branch {
+                let local_ref_name = RefName::LocalBranch(branch.clone());
+                mut_repo.merge_single_ref(&local_ref_name, old_git_target, new_git_target);
+            }
+        } else {
+            mut_repo.merge_single_ref(ref_name, old_git_target, new_git_target);
         }
     }
 
@@ -288,32 +270,21 @@ pub fn import_some_refs(
     // in jj as well.
     let hidable_git_heads = changed_git_refs
         .values()
-        .filter_map(|(old_git_target, _)| old_git_target.as_ref().map(|target| target.adds()))
-        .flatten()
+        .flat_map(|(old_git_target, _)| old_git_target.added_ids())
         .cloned()
         .collect_vec();
     if hidable_git_heads.is_empty() {
         return Ok(());
     }
-    // We must remove non-existing commits from pinned_git_heads, as they could have
-    // come from branches which were never fetched.
-    let mut pinned_git_heads_set = HashSet::new();
-    for heads_for_ref in pinned_git_heads.into_values() {
-        pinned_git_heads_set.extend(heads_for_ref);
-    }
-    pinned_git_heads_set.retain(|id| mut_repo.index().has_id(id));
+    let pinned_heads = pinned_commit_ids(mut_repo.view()).cloned().collect_vec();
     // We could use mut_repo.record_rewrites() here but we know we only need to care
     // about abandoned commits for now. We may want to change this if we ever
     // add a way of preserving change IDs across rewrites by `git` (e.g. by
     // putting them in the commit message).
-    let abandoned_commits = revset::walk_revs(
-        mut_repo,
-        &hidable_git_heads,
-        &pinned_git_heads_set.into_iter().collect_vec(),
-    )
-    .unwrap()
-    .iter()
-    .collect_vec();
+    let abandoned_commits = revset::walk_revs(mut_repo, &hidable_git_heads, &pinned_heads)
+        .unwrap()
+        .iter()
+        .collect_vec();
     let root_commit_id = mut_repo.store().root_commit_id().clone();
     for abandoned_commit in abandoned_commits {
         if abandoned_commit != root_commit_id {
@@ -322,6 +293,72 @@ pub fn import_some_refs(
     }
 
     Ok(())
+}
+
+/// Calculates diff of git refs to be imported.
+fn diff_refs_to_import(
+    view: &View,
+    git_repo: &git2::Repository,
+    git_ref_filter: impl Fn(&RefName) -> bool,
+) -> Result<BTreeMap<RefName, (RefTarget, RefTarget)>, GitImportError> {
+    let mut known_git_refs: HashMap<RefName, &RefTarget> = view
+        .git_refs()
+        .iter()
+        .filter_map(|(full_name, target)| {
+            // TODO: or clean up invalid ref in case it was stored due to historical bug?
+            let ref_name = parse_git_ref(full_name).expect("stored git ref should be parsable");
+            git_ref_filter(&ref_name).then_some((ref_name, target))
+        })
+        .collect();
+    let mut changed_git_refs = BTreeMap::new();
+    let git_repo_refs = git_repo.references()?;
+    for git_repo_ref in git_repo_refs {
+        let git_repo_ref = git_repo_ref?;
+        let Some(full_name) = git_repo_ref.name() else {
+            // Skip non-utf8 refs.
+            continue;
+        };
+        let Some(ref_name) = parse_git_ref(full_name) else {
+            // Skip other refs (such as notes) and symbolic refs.
+            continue;
+        };
+        if !git_ref_filter(&ref_name) {
+            continue;
+        }
+        let old_target = known_git_refs.get(&ref_name).copied().flatten();
+        let Some(id) = resolve_git_ref_to_commit_id(&git_repo_ref, old_target) else {
+            // Skip (or remove existing) invalid refs.
+            continue;
+        };
+        // TODO: Make it configurable which remotes are publishing and update public
+        // heads here.
+        known_git_refs.remove(&ref_name);
+        let new_target = RefTarget::normal(id);
+        if new_target != *old_target {
+            changed_git_refs.insert(ref_name, (old_target.clone(), new_target));
+        }
+    }
+    for (ref_name, old_target) in known_git_refs {
+        changed_git_refs.insert(ref_name, (old_target.clone(), RefTarget::absent()));
+    }
+    Ok(changed_git_refs)
+}
+
+/// Commits referenced by local/remote branches, tags, or HEAD@git.
+///
+/// On `import_refs()`, this is similar to collecting commits referenced by
+/// `view.git_refs()`. Main difference is that local branches can be moved by
+/// tracking remotes, and such mutation isn't applied to `view.git_refs()` yet.
+fn pinned_commit_ids(view: &View) -> impl Iterator<Item = &CommitId> {
+    let branch_ref_targets = view.branches().values().flat_map(|branch_target| {
+        iter::once(&branch_target.local_target).chain(branch_target.remote_targets.values())
+    });
+    itertools::chain!(
+        branch_ref_targets,
+        view.tags().values(),
+        iter::once(view.git_head()),
+    )
+    .flat_map(|target| target.added_ids())
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -369,8 +406,8 @@ pub fn export_some_refs(
         itertools::chain(
             target
                 .local_target
-                .as_ref()
-                .map(|_| RefName::LocalBranch(branch.to_owned())),
+                .is_present()
+                .then(|| RefName::LocalBranch(branch.to_owned())),
             target
                 .remote_targets
                 .keys()
@@ -411,7 +448,7 @@ pub fn export_some_refs(
         }
         let old_oid = if let Some(id) = old_branch.as_normal() {
             Some(Oid::from_bytes(id.as_bytes()).unwrap())
-        } else if old_branch.is_conflict() {
+        } else if old_branch.has_conflict() {
             // The old git ref should only be a conflict if there were concurrent import
             // operations while the value changed. Don't overwrite these values.
             failed_branches.push(jj_known_ref);
@@ -423,7 +460,7 @@ pub fn export_some_refs(
         if let Some(id) = new_branch.as_normal() {
             let new_oid = Oid::from_bytes(id.as_bytes());
             branches_to_update.insert(jj_known_ref, (old_oid, new_oid.unwrap()));
-        } else if new_branch.is_conflict() {
+        } else if new_branch.has_conflict() {
             // Skip conflicts and leave the old value in git_refs
             continue;
         } else {
@@ -464,7 +501,7 @@ pub fn export_some_refs(
             true
         };
         if success {
-            mut_repo.set_git_ref_target(&git_ref_name, None);
+            mut_repo.set_git_ref_target(&git_ref_name, RefTarget::absent());
         } else {
             failed_branches.push(parsed_ref_name);
         }
@@ -534,13 +571,14 @@ pub fn remove_remote(
         .view()
         .git_refs()
         .keys()
-        .filter_map(|r| r.starts_with(&prefix).then(|| r.clone()))
+        .filter(|&r| r.starts_with(&prefix))
+        .cloned()
         .collect_vec();
     for branch in branches_to_delete {
-        mut_repo.set_remote_branch_target(&branch, remote_name, None);
+        mut_repo.set_remote_branch_target(&branch, remote_name, RefTarget::absent());
     }
     for git_ref in git_refs_to_delete {
-        mut_repo.set_git_ref_target(&git_ref, None);
+        mut_repo.set_git_ref_target(&git_ref, RefTarget::absent());
     }
     Ok(())
 }
@@ -569,18 +607,20 @@ pub fn rename_remote(
         })
         .collect_vec();
     for (old, new, target) in git_refs {
-        mut_repo.set_git_ref_target(&old, None);
-        mut_repo.set_git_ref_target(&new, Some(target));
+        mut_repo.set_git_ref_target(&old, RefTarget::absent());
+        mut_repo.set_git_ref_target(&new, target);
     }
     Ok(())
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum GitFetchError {
     #[error("No git remote named '{0}'")]
     NoSuchRemote(String),
     #[error("Invalid glob provided. Globs may not contain the characters `:` or `^`.")]
     InvalidGlob,
+    #[error("Failec to import Git refs: {0}")]
+    GitImportError(#[from] GitImportError),
     // TODO: I'm sure there are other errors possible, such as transport-level errors.
     #[error("Unexpected git error when fetching: {0}")]
     InternalGitError(#[from] git2::Error),
@@ -639,7 +679,8 @@ pub fn fetch(
         .view()
         .branches()
         .iter()
-        .filter_map(|(branch, target)| target.local_target.as_ref().map(|_| branch.to_owned()))
+        .filter(|&(_branch, target)| target.local_target.is_present())
+        .map(|(branch, _target)| branch.to_owned())
         .collect();
     // TODO: Inform the user if the export failed? In most cases, export is not
     // essential for fetch to work.
@@ -711,9 +752,6 @@ pub fn fetch(
         to_remote_branch(ref_name, remote_name)
             .map(&branch_name_filter)
             .unwrap_or(false)
-    })
-    .map_err(|err| match err {
-        GitImportError::InternalGitError(source) => GitFetchError::InternalGitError(source),
     })?;
     Ok(default_branch)
 }
@@ -853,7 +891,7 @@ fn push_refs(
 #[allow(clippy::type_complexity)]
 pub struct RemoteCallbacks<'a> {
     pub progress: Option<&'a mut dyn FnMut(&Progress)>,
-    pub get_ssh_key: Option<&'a mut dyn FnMut(&str) -> Option<PathBuf>>,
+    pub get_ssh_keys: Option<&'a mut dyn FnMut(&str) -> Vec<PathBuf>>,
     pub get_password: Option<&'a mut dyn FnMut(&str, &str) -> Option<String>>,
     pub get_username_password: Option<&'a mut dyn FnMut(&str) -> Option<(String, String)>>,
 }
@@ -874,6 +912,8 @@ impl<'a> RemoteCallbacks<'a> {
         }
         // TODO: We should expose the callbacks to the caller instead -- the library
         // crate shouldn't read environment variables.
+        let mut tried_ssh_agent = false;
+        let mut ssh_key_paths_to_try: Option<Vec<PathBuf>> = None;
         callbacks.credentials(move |url, username_from_url, allowed_types| {
             let span = tracing::debug_span!("RemoteCallbacks.credentials");
             let _ = span.enter();
@@ -886,40 +926,33 @@ impl<'a> RemoteCallbacks<'a> {
                 return Ok(creds);
             } else if let Some(username) = username_from_url {
                 if allowed_types.contains(git2::CredentialType::SSH_KEY) {
-                    // Try to get the SSH key from the agent by default, and report an error
-                    // only if it _seems_ like that's what the user wanted.
-                    //
-                    // Note that the env variables read below are **not** the only way to
-                    // communicate with the agent, which is why we request a key from it no
-                    // matter what.
-                    match git2::Cred::ssh_key_from_agent(username) {
-                        Ok(key) => {
-                            tracing::info!(username, "using ssh_key_from_agent");
-                            return Ok(key);
-                        }
-                        Err(err) => {
-                            if std::env::var("SSH_AUTH_SOCK").is_ok()
-                                || std::env::var("SSH_AGENT_PID").is_ok()
-                            {
-                                tracing::error!(err = %err);
-                                return Err(err);
-                            }
-                            // There is no agent-related env variable so we
-                            // consider that the user doesn't care about using
-                            // the agent and proceed.
-                        }
+                    // Try to get the SSH key from the agent once. We don't even check if
+                    // $SSH_AUTH_SOCK is set because Windows uses another mechanism.
+                    if !tried_ssh_agent {
+                        tracing::info!(username, "trying ssh_key_from_agent");
+                        tried_ssh_agent = true;
+                        return git2::Cred::ssh_key_from_agent(username).map_err(|err| {
+                            tracing::error!(err = %err);
+                            err
+                        });
                     }
 
-                    if let Some(ref mut cb) = self.get_ssh_key {
-                        if let Some(path) = cb(username) {
-                            tracing::info!(username, path = ?path, "using ssh_key");
-                            return git2::Cred::ssh_key(username, None, &path, None).map_err(
-                                |err| {
-                                    tracing::error!(err = %err);
-                                    err
-                                },
-                            );
+                    let paths = ssh_key_paths_to_try.get_or_insert_with(|| {
+                        if let Some(ref mut cb) = self.get_ssh_keys {
+                            let mut paths = cb(username);
+                            paths.reverse();
+                            paths
+                        } else {
+                            vec![]
                         }
+                    });
+
+                    if let Some(path) = paths.pop() {
+                        tracing::info!(username, path = ?path, "trying ssh_key");
+                        return git2::Cred::ssh_key(username, None, &path, None).map_err(|err| {
+                            tracing::error!(err = %err);
+                            err
+                        });
                     }
                 }
                 if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {

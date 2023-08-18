@@ -16,7 +16,7 @@
 
 use std::any::Any;
 use std::collections::BTreeMap;
-use std::fmt::{Debug, Error, Formatter};
+use std::fmt::Debug;
 use std::io::Read;
 use std::result::Result;
 use std::vec::Vec;
@@ -24,6 +24,7 @@ use std::vec::Vec;
 use thiserror::Error;
 
 use crate::content_hash::ContentHash;
+use crate::merge::Merge;
 use crate::repo_path::{RepoPath, RepoPathComponent};
 
 pub trait ObjectId {
@@ -42,14 +43,14 @@ macro_rules! id_type {
             #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
             $vis struct $name(Vec<u8>);
         }
-        impl_id_type!($name);
+        $crate::backend::impl_id_type!($name);
     };
 }
 
 macro_rules! impl_id_type {
     ($name:ident) => {
-        impl Debug for $name {
-            fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
                 f.debug_tuple(stringify!($name)).field(&self.hex()).finish()
             }
         }
@@ -89,6 +90,8 @@ macro_rules! impl_id_type {
         }
     };
 }
+
+pub(crate) use {id_type, impl_id_type};
 
 id_type!(pub CommitId);
 id_type!(pub ChangeId);
@@ -145,7 +148,14 @@ content_hash! {
     pub struct Commit {
         pub parents: Vec<CommitId>,
         pub predecessors: Vec<CommitId>,
-        pub root_tree: TreeId,
+        pub root_tree: Merge<TreeId>,
+        /// Indicates that there this commit uses the new tree-level conflict format, which means
+        /// that if `root_tree` is not a conflict, we know that we won't have to walk it to
+        /// determine if there are conflicts.
+        // TODO(#1624): Delete this field at some point in the future, when we decide to drop
+        // support for conflicts in older repos, or maybe after we have provided an upgrade
+        // mechanism.
+        pub uses_tree_conflict_format: bool,
         pub change_id: ChangeId,
         pub description: String,
         pub author: Signature,
@@ -387,7 +397,8 @@ pub fn make_root_commit(root_change_id: ChangeId, empty_tree_id: TreeId) -> Comm
     Commit {
         parents: vec![],
         predecessors: vec![],
-        root_tree: empty_tree_id,
+        root_tree: Merge::resolved(empty_tree_id),
+        uses_tree_conflict_format: false,
         change_id: root_change_id,
         description: String::new(),
         author: signature.clone(),

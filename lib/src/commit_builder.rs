@@ -18,6 +18,7 @@ use std::sync::Arc;
 
 use crate::backend::{self, BackendResult, ChangeId, CommitId, Signature, TreeId};
 use crate::commit::Commit;
+use crate::merge::Merge;
 use crate::repo::{MutableRepo, Repo};
 use crate::settings::{JJRng, UserSettings};
 
@@ -43,7 +44,9 @@ impl CommitBuilder<'_> {
         let commit = backend::Commit {
             parents,
             predecessors: vec![],
-            root_tree: tree_id,
+            // TODO(#1624): set this when appropriate
+            root_tree: Merge::from_legacy_tree_id(tree_id),
+            uses_tree_conflict_format: false,
             change_id,
             description: String::new(),
             author: signature.clone(),
@@ -67,10 +70,14 @@ impl CommitBuilder<'_> {
         commit.committer = settings.signature();
         // If the user had not configured a name and email before but now they have,
         // update the author fields with the new information.
-        if commit.author.name == UserSettings::user_name_placeholder() {
+        if commit.author.name.is_empty()
+            || commit.author.name == UserSettings::USER_NAME_PLACEHOLDER
+        {
             commit.author.name = commit.committer.name.clone();
         }
-        if commit.author.email == UserSettings::user_email_placeholder() {
+        if commit.author.email.is_empty()
+            || commit.author.email == UserSettings::USER_EMAIL_PLACEHOLDER
+        {
             commit.author.email = commit.committer.email.clone();
         }
         CommitBuilder {
@@ -101,11 +108,11 @@ impl CommitBuilder<'_> {
     }
 
     pub fn tree(&self) -> &TreeId {
-        &self.commit.root_tree
+        self.commit.root_tree.as_legacy_tree_id()
     }
 
     pub fn set_tree(mut self, tree_id: TreeId) -> Self {
-        self.commit.root_tree = tree_id;
+        self.commit.root_tree = Merge::from_legacy_tree_id(tree_id);
         self
     }
 

@@ -32,6 +32,7 @@ use crate::backend::{
 };
 use crate::content_hash::blake2b_hash;
 use crate::file_util::persist_content_addressed_temp_file;
+use crate::merge::Merge;
 use crate::repo_path::{RepoPath, RepoPathComponent};
 
 const COMMIT_ID_LENGTH: usize = 64;
@@ -140,19 +141,15 @@ impl Backend for LocalBackend {
         let temp_file = NamedTempFile::new_in(&self.path).map_err(to_other_err)?;
         let mut encoder = zstd::Encoder::new(temp_file.as_file(), 0).map_err(to_other_err)?;
         let mut hasher = Blake2b512::new();
+        let mut buff: Vec<u8> = vec![0; 1 << 14];
         loop {
-            let mut buff: Vec<u8> = Vec::with_capacity(1 << 14);
-            let bytes_read;
-            unsafe {
-                buff.set_len(1 << 14);
-                bytes_read = contents.read(&mut buff).map_err(to_other_err)?;
-                buff.set_len(bytes_read);
-            }
+            let bytes_read = contents.read(&mut buff).map_err(to_other_err)?;
             if bytes_read == 0 {
                 break;
             }
-            encoder.write_all(&buff).map_err(to_other_err)?;
-            hasher.update(&buff);
+            let bytes = &buff[..bytes_read];
+            encoder.write_all(bytes).map_err(to_other_err)?;
+            hasher.update(bytes);
         }
         encoder.finish().map_err(to_other_err)?;
         let id = FileId::new(hasher.finalize().to_vec());
@@ -164,9 +161,7 @@ impl Backend for LocalBackend {
 
     fn read_symlink(&self, _path: &RepoPath, id: &SymlinkId) -> Result<String, BackendError> {
         let path = self.symlink_path(id);
-        let mut file = File::open(path).map_err(|err| map_not_found_err(err, id))?;
-        let mut target = String::new();
-        file.read_to_string(&mut target).unwrap();
+        let target = fs::read_to_string(path).map_err(|err| map_not_found_err(err, id))?;
         Ok(target)
     }
 
@@ -284,7 +279,21 @@ pub fn commit_to_proto(commit: &Commit) -> crate::protos::local_store::Commit {
     for predecessor in &commit.predecessors {
         proto.predecessors.push(predecessor.to_bytes());
     }
-    proto.root_tree = commit.root_tree.to_bytes();
+    let conflict = crate::protos::local_store::TreeConflict {
+        removes: commit
+            .root_tree
+            .removes()
+            .iter()
+            .map(|id| id.to_bytes())
+            .collect(),
+        adds: commit
+            .root_tree
+            .adds()
+            .iter()
+            .map(|id| id.to_bytes())
+            .collect(),
+    };
+    proto.root_tree = Some(conflict);
     proto.change_id = commit.change_id.to_bytes();
     proto.description = commit.description.clone();
     proto.author = Some(signature_to_proto(&commit.author));
@@ -295,12 +304,17 @@ pub fn commit_to_proto(commit: &Commit) -> crate::protos::local_store::Commit {
 fn commit_from_proto(proto: crate::protos::local_store::Commit) -> Commit {
     let parents = proto.parents.into_iter().map(CommitId::new).collect();
     let predecessors = proto.predecessors.into_iter().map(CommitId::new).collect();
-    let root_tree = TreeId::new(proto.root_tree);
+    let conflict = proto.root_tree.unwrap();
+    let root_tree = Merge::new(
+        conflict.removes.into_iter().map(TreeId::new).collect(),
+        conflict.adds.into_iter().map(TreeId::new).collect(),
+    );
     let change_id = ChangeId::new(proto.change_id);
     Commit {
         parents,
         predecessors,
         root_tree,
+        uses_tree_conflict_format: true,
         change_id,
         description: proto.description,
         author: signature_from_proto(proto.author.unwrap_or_default()),

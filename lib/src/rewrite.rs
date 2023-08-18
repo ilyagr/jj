@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use itertools::{process_results, Itertools};
+use tracing::instrument;
 
 use crate::backend::{BackendError, CommitId, ObjectId};
 use crate::commit::Commit;
@@ -32,10 +33,12 @@ use crate::store::Store;
 use crate::tree::{merge_trees, Tree, TreeMergeError};
 use crate::view::RefName;
 
+#[instrument(skip(repo))]
 pub fn merge_commit_trees(repo: &dyn Repo, commits: &[Commit]) -> Result<Tree, TreeMergeError> {
     merge_commit_trees_without_repo(repo.store(), repo.index(), commits)
 }
 
+#[instrument(skip(index))]
 pub fn merge_commit_trees_without_repo(
     store: &Arc<Store>,
     index: &dyn Index,
@@ -225,13 +228,11 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
         // all branches each time we rebase a commit.
         let mut branches: HashMap<_, HashSet<_>> = HashMap::new();
         for (branch_name, branch_target) in mut_repo.view().branches() {
-            if let Some(local_target) = &branch_target.local_target {
-                for commit in local_target.adds() {
-                    branches
-                        .entry(commit.clone())
-                        .or_default()
-                        .insert(branch_name.clone());
-                }
+            for commit in branch_target.local_target.added_ids() {
+                branches
+                    .entry(commit.clone())
+                    .or_default()
+                    .insert(branch_name.clone());
             }
         }
 
@@ -278,10 +279,7 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
         new_ids
     }
 
-    fn ref_target_update(
-        old_id: CommitId,
-        new_ids: Vec<CommitId>,
-    ) -> (Option<RefTarget>, Option<RefTarget>) {
+    fn ref_target_update(old_id: CommitId, new_ids: Vec<CommitId>) -> (RefTarget, RefTarget) {
         let old_ids = std::iter::repeat(old_id).take(new_ids.len());
         (
             RefTarget::from_legacy_form([], old_ids),
@@ -307,8 +305,8 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
                         .or_default()
                         .insert(branch_name.clone());
                 }
-                let local_target = self.mut_repo.get_local_branch(branch_name).unwrap();
-                for old_add in local_target.adds() {
+                let local_target = self.mut_repo.get_local_branch(branch_name);
+                for old_add in local_target.added_ids() {
                     if *old_add == old_commit_id {
                         branch_updates.push(branch_name.clone());
                     }
@@ -319,8 +317,8 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
             for branch_name in branch_updates {
                 self.mut_repo.merge_single_ref(
                     &RefName::LocalBranch(branch_name),
-                    old_target.as_ref(),
-                    new_target.as_ref(),
+                    &old_target,
+                    &new_target,
                 );
             }
         }

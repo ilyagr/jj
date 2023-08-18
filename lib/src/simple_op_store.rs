@@ -22,30 +22,35 @@ use std::path::{Path, PathBuf};
 
 use prost::Message;
 use tempfile::{NamedTempFile, PersistError};
+use thiserror::Error;
 
 use crate::backend::{CommitId, MillisSinceEpoch, ObjectId, Timestamp};
 use crate::content_hash::blake2b_hash;
 use crate::file_util::persist_content_addressed_temp_file;
+use crate::merge::Merge;
 use crate::op_store::{
     BranchTarget, OpStore, OpStoreError, OpStoreResult, Operation, OperationId, OperationMetadata,
-    RefTarget, RefTargetExt as _, View, ViewId, WorkspaceId,
+    RefTarget, View, ViewId, WorkspaceId,
 };
-
-impl From<std::io::Error> for OpStoreError {
-    fn from(err: std::io::Error) -> Self {
-        OpStoreError::Other(err.to_string())
-    }
-}
 
 impl From<PersistError> for OpStoreError {
     fn from(err: PersistError) -> Self {
-        OpStoreError::Other(err.to_string())
+        OpStoreError::Other(err.into())
     }
 }
 
-impl From<prost::DecodeError> for OpStoreError {
-    fn from(err: prost::DecodeError) -> Self {
-        OpStoreError::Other(err.to_string())
+#[derive(Debug, Error)]
+#[error("Failed to read {kind} with ID {id}: {err}")]
+struct DecodeError {
+    kind: &'static str,
+    id: String,
+    #[source]
+    err: prost::DecodeError,
+}
+
+impl From<DecodeError> for OpStoreError {
+    fn from(err: DecodeError) -> Self {
+        OpStoreError::Other(err.into())
     }
 }
 
@@ -87,17 +92,25 @@ impl OpStore for SimpleOpStore {
 
     fn read_view(&self, id: &ViewId) -> OpStoreResult<View> {
         let path = self.view_path(id);
-        let buf = fs::read(path)?;
+        let buf = fs::read(path).map_err(|err| not_found_to_store_error(err, id))?;
 
-        let proto = crate::protos::op_store::View::decode(&*buf)?;
+        let proto = crate::protos::op_store::View::decode(&*buf).map_err(|err| DecodeError {
+            kind: "view",
+            id: id.hex(),
+            err,
+        })?;
         Ok(view_from_proto(proto))
     }
 
     fn write_view(&self, view: &View) -> OpStoreResult<ViewId> {
-        let temp_file = NamedTempFile::new_in(&self.path)?;
+        let temp_file =
+            NamedTempFile::new_in(&self.path).map_err(|err| io_to_write_error(err, "view"))?;
 
         let proto = view_to_proto(view);
-        temp_file.as_file().write_all(&proto.encode_to_vec())?;
+        temp_file
+            .as_file()
+            .write_all(&proto.encode_to_vec())
+            .map_err(|err| io_to_write_error(err, "view"))?;
 
         let id = ViewId::new(blake2b_hash(view).to_vec());
 
@@ -107,17 +120,26 @@ impl OpStore for SimpleOpStore {
 
     fn read_operation(&self, id: &OperationId) -> OpStoreResult<Operation> {
         let path = self.operation_path(id);
-        let buf = fs::read(path).map_err(not_found_to_store_error)?;
+        let buf = fs::read(path).map_err(|err| not_found_to_store_error(err, id))?;
 
-        let proto = crate::protos::op_store::Operation::decode(&*buf)?;
+        let proto =
+            crate::protos::op_store::Operation::decode(&*buf).map_err(|err| DecodeError {
+                kind: "operation",
+                id: id.hex(),
+                err,
+            })?;
         Ok(operation_from_proto(proto))
     }
 
     fn write_operation(&self, operation: &Operation) -> OpStoreResult<OperationId> {
-        let temp_file = NamedTempFile::new_in(&self.path)?;
+        let temp_file =
+            NamedTempFile::new_in(&self.path).map_err(|err| io_to_write_error(err, "operation"))?;
 
         let proto = operation_to_proto(operation);
-        temp_file.as_file().write_all(&proto.encode_to_vec())?;
+        temp_file
+            .as_file()
+            .write_all(&proto.encode_to_vec())
+            .map_err(|err| io_to_write_error(err, "operation"))?;
 
         let id = OperationId::new(blake2b_hash(operation).to_vec());
 
@@ -126,11 +148,30 @@ impl OpStore for SimpleOpStore {
     }
 }
 
-fn not_found_to_store_error(err: std::io::Error) -> OpStoreError {
+fn not_found_to_store_error(err: std::io::Error, id: &impl ObjectId) -> OpStoreError {
     if err.kind() == ErrorKind::NotFound {
         OpStoreError::NotFound
     } else {
-        OpStoreError::from(err)
+        io_to_read_error(err, id)
+    }
+}
+
+fn io_to_read_error(err: std::io::Error, id: &impl ObjectId) -> OpStoreError {
+    if err.kind() == ErrorKind::NotFound {
+        OpStoreError::NotFound
+    } else {
+        OpStoreError::ReadObject {
+            object_type: id.object_type(),
+            hash: id.hex(),
+            source: Box::new(err),
+        }
+    }
+}
+
+fn io_to_write_error(err: std::io::Error, object_type: &'static str) -> OpStoreError {
+    OpStoreError::WriteObject {
+        object_type,
+        source: Box::new(err),
     }
 }
 
@@ -219,13 +260,13 @@ fn view_to_proto(view: &View) -> crate::protos::op_store::View {
             ..Default::default()
         };
         branch_proto.name = name.clone();
-        branch_proto.local_target = ref_target_to_proto(target.local_target.as_ref());
+        branch_proto.local_target = ref_target_to_proto(&target.local_target);
         for (remote_name, target) in &target.remote_targets {
             branch_proto
                 .remote_branches
                 .push(crate::protos::op_store::RemoteBranch {
                     remote_name: remote_name.clone(),
-                    target: ref_target_to_proto(Some(target)),
+                    target: ref_target_to_proto(target),
                 });
         }
         proto.branches.push(branch_proto);
@@ -234,19 +275,19 @@ fn view_to_proto(view: &View) -> crate::protos::op_store::View {
     for (name, target) in &view.tags {
         proto.tags.push(crate::protos::op_store::Tag {
             name: name.clone(),
-            target: ref_target_to_proto(Some(target)),
+            target: ref_target_to_proto(target),
         });
     }
 
     for (git_ref_name, target) in &view.git_refs {
         proto.git_refs.push(crate::protos::op_store::GitRef {
             name: git_ref_name.clone(),
-            target: ref_target_to_proto(Some(target)),
+            target: ref_target_to_proto(target),
             ..Default::default()
         });
     }
 
-    proto.git_head = ref_target_to_proto(view.git_head.as_ref());
+    proto.git_head = ref_target_to_proto(&view.git_head);
 
     proto
 }
@@ -278,7 +319,7 @@ fn view_from_proto(proto: crate::protos::op_store::View) -> View {
         for remote_branch in branch_proto.remote_branches {
             remote_targets.insert(
                 remote_branch.remote_name,
-                ref_target_from_proto(remote_branch.target).unwrap(),
+                ref_target_from_proto(remote_branch.target),
             );
         }
 
@@ -292,10 +333,8 @@ fn view_from_proto(proto: crate::protos::op_store::View) -> View {
     }
 
     for tag_proto in proto.tags {
-        view.tags.insert(
-            tag_proto.name,
-            ref_target_from_proto(tag_proto.target).unwrap(),
-        );
+        view.tags
+            .insert(tag_proto.name, ref_target_from_proto(tag_proto.target));
     }
 
     for git_ref in proto.git_refs {
@@ -305,7 +344,7 @@ fn view_from_proto(proto: crate::protos::op_store::View) -> View {
             // Legacy format
             RefTarget::normal(CommitId::new(git_ref.commit_id))
         };
-        view.git_refs.insert(git_ref.name, target.unwrap());
+        view.git_refs.insert(git_ref.name, target);
     }
 
     #[allow(deprecated)]
@@ -318,7 +357,26 @@ fn view_from_proto(proto: crate::protos::op_store::View) -> View {
     view
 }
 
-fn ref_target_to_proto(value: Option<&RefTarget>) -> Option<crate::protos::op_store::RefTarget> {
+fn ref_target_to_proto(value: &RefTarget) -> Option<crate::protos::op_store::RefTarget> {
+    let term_to_proto = |term: &Option<CommitId>| crate::protos::op_store::ref_conflict::Term {
+        value: term.as_ref().map(|id| id.to_bytes()),
+    };
+    let merge = value.as_merge();
+    let conflict_proto = crate::protos::op_store::RefConflict {
+        removes: merge.removes().iter().map(term_to_proto).collect(),
+        adds: merge.adds().iter().map(term_to_proto).collect(),
+    };
+    let proto = crate::protos::op_store::RefTarget {
+        value: Some(crate::protos::op_store::ref_target::Value::Conflict(
+            conflict_proto,
+        )),
+    };
+    Some(proto)
+}
+
+#[allow(deprecated)]
+#[cfg(test)]
+fn ref_target_to_proto_legacy(value: &RefTarget) -> Option<crate::protos::op_store::RefTarget> {
     if let Some(id) = value.as_normal() {
         let proto = crate::protos::op_store::RefTarget {
             value: Some(crate::protos::op_store::ref_target::Value::CommitId(
@@ -326,13 +384,13 @@ fn ref_target_to_proto(value: Option<&RefTarget>) -> Option<crate::protos::op_st
             )),
         };
         Some(proto)
-    } else if value.is_conflict() {
-        let ref_conflict_proto = crate::protos::op_store::RefConflict {
-            removes: value.removes().iter().map(|id| id.to_bytes()).collect(),
-            adds: value.adds().iter().map(|id| id.to_bytes()).collect(),
+    } else if value.has_conflict() {
+        let ref_conflict_proto = crate::protos::op_store::RefConflictLegacy {
+            removes: value.removed_ids().map(|id| id.to_bytes()).collect(),
+            adds: value.added_ids().map(|id| id.to_bytes()).collect(),
         };
         let proto = crate::protos::op_store::RefTarget {
-            value: Some(crate::protos::op_store::ref_target::Value::Conflict(
+            value: Some(crate::protos::op_store::ref_target::Value::ConflictLegacy(
                 ref_conflict_proto,
             )),
         };
@@ -343,18 +401,32 @@ fn ref_target_to_proto(value: Option<&RefTarget>) -> Option<crate::protos::op_st
     }
 }
 
-fn ref_target_from_proto(
-    maybe_proto: Option<crate::protos::op_store::RefTarget>,
-) -> Option<RefTarget> {
-    let proto = maybe_proto?;
+fn ref_target_from_proto(maybe_proto: Option<crate::protos::op_store::RefTarget>) -> RefTarget {
+    // TODO: Delete legacy format handling when we decide to drop support for views
+    // saved by jj <= 0.8.
+    let Some(proto) = maybe_proto else {
+        // Legacy absent id
+        return RefTarget::absent();
+    };
     match proto.value.unwrap() {
+        #[allow(deprecated)]
         crate::protos::op_store::ref_target::Value::CommitId(id) => {
+            // Legacy non-conflicting id
             RefTarget::normal(CommitId::new(id))
         }
-        crate::protos::op_store::ref_target::Value::Conflict(conflict) => {
+        #[allow(deprecated)]
+        crate::protos::op_store::ref_target::Value::ConflictLegacy(conflict) => {
+            // Legacy conflicting ids
             let removes = conflict.removes.into_iter().map(CommitId::new);
             let adds = conflict.adds.into_iter().map(CommitId::new);
             RefTarget::from_legacy_form(removes, adds)
+        }
+        crate::protos::op_store::ref_target::Value::Conflict(conflict) => {
+            let term_from_proto =
+                |term: crate::protos::op_store::ref_conflict::Term| term.value.map(CommitId::new);
+            let removes = conflict.removes.into_iter().map(term_from_proto).collect();
+            let adds = conflict.adds.into_iter().map(term_from_proto).collect();
+            RefTarget::from_merge(Merge::new(removes, adds))
         }
     }
 }
@@ -392,22 +464,22 @@ mod tests {
                 "main".to_string() => BranchTarget {
                     local_target: branch_main_local_target,
                     remote_targets: btreemap! {
-                        "origin".to_string() => branch_main_origin_target.unwrap(),
-                    }
+                        "origin".to_string() => branch_main_origin_target,
+                    },
                 },
                 "deleted".to_string() => BranchTarget {
-                    local_target: None,
+                    local_target: RefTarget::absent(),
                     remote_targets: btreemap! {
-                        "origin".to_string() => branch_deleted_origin_target.unwrap(),
-                    }
+                        "origin".to_string() => branch_deleted_origin_target,
+                    },
                 },
             },
             tags: btreemap! {
-                "v1.0".to_string() => tag_v1_target.unwrap(),
+                "v1.0".to_string() => tag_v1_target,
             },
             git_refs: btreemap! {
-                "refs/heads/main".to_string() => git_refs_main_target.unwrap(),
-                "refs/heads/feature".to_string() => git_refs_feature_target.unwrap(),
+                "refs/heads/main".to_string() => git_refs_main_target,
+                "refs/heads/feature".to_string() => git_refs_feature_target,
             },
             git_head: RefTarget::normal(CommitId::from_hex("fff111")),
             wc_commit_ids: hashmap! {
@@ -449,7 +521,7 @@ mod tests {
         // Test exact output so we detect regressions in compatibility
         assert_snapshot!(
             ViewId::new(blake2b_hash(&create_view()).to_vec()).hex(),
-            @"7f47fa81494d7189cb1827b83b3f834662f0f61b4c4090298067e85cdc60f773bf639c4e6a3554a4e401650218ca240291ce591f45a1c501ade1d2b9f97e1a37"
+            @"3c1c6efecfc0809130a5bf139aec77e6299cd7d5985b95c01a29318d40a5e2defc9bd12329e91511e545fbad065f60ce5da91f5f0368c9bf549ca761bb047f7e"
         );
     }
 
@@ -480,5 +552,54 @@ mod tests {
         let op_id = store.write_operation(&operation).unwrap();
         let read_operation = store.read_operation(&op_id).unwrap();
         assert_eq!(read_operation, operation);
+    }
+
+    #[test]
+    fn test_ref_target_change_delete_order_roundtrip() {
+        let target = RefTarget::from_merge(Merge::new(
+            vec![Some(CommitId::from_hex("111111"))],
+            vec![Some(CommitId::from_hex("222222")), None],
+        ));
+        let maybe_proto = ref_target_to_proto(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
+
+        // If it were legacy format, order of None entry would be lost.
+        let target = RefTarget::from_merge(Merge::new(
+            vec![Some(CommitId::from_hex("111111"))],
+            vec![None, Some(CommitId::from_hex("222222"))],
+        ));
+        let maybe_proto = ref_target_to_proto(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
+    }
+
+    #[test]
+    fn test_ref_target_legacy_roundtrip() {
+        let target = RefTarget::absent();
+        let maybe_proto = ref_target_to_proto_legacy(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
+
+        let target = RefTarget::normal(CommitId::from_hex("111111"));
+        let maybe_proto = ref_target_to_proto_legacy(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
+
+        // N-way conflict
+        let target = RefTarget::from_legacy_form(
+            [CommitId::from_hex("111111"), CommitId::from_hex("222222")],
+            [
+                CommitId::from_hex("333333"),
+                CommitId::from_hex("444444"),
+                CommitId::from_hex("555555"),
+            ],
+        );
+        let maybe_proto = ref_target_to_proto_legacy(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
+
+        // Change-delete conflict
+        let target = RefTarget::from_legacy_form(
+            [CommitId::from_hex("111111")],
+            [CommitId::from_hex("222222")],
+        );
+        let maybe_proto = ref_target_to_proto_legacy(&target);
+        assert_eq!(ref_target_from_proto(maybe_proto), target);
     }
 }

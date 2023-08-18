@@ -20,7 +20,8 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use crate::backend;
-use crate::backend::{ChangeId, CommitId, Signature, TreeId};
+use crate::backend::{BackendError, ChangeId, CommitId, Signature, TreeId};
+use crate::merged_tree::MergedTree;
 use crate::repo_path::RepoPath;
 use crate::store::Store;
 use crate::tree::Tree;
@@ -54,7 +55,7 @@ impl Ord for Commit {
 
 impl PartialOrd for Commit {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.id.cmp(&other.id))
+        Some(self.cmp(other))
     }
 }
 
@@ -101,14 +102,29 @@ impl Commit {
             .collect()
     }
 
+    // TODO(#1624): Delete when all callers use `merged_tree()`
     pub fn tree(&self) -> Tree {
         self.store
-            .get_tree(&RepoPath::root(), &self.data.root_tree)
+            .get_tree(&RepoPath::root(), self.data.root_tree.as_legacy_tree_id())
             .unwrap()
     }
 
+    pub fn merged_tree(&self) -> Result<MergedTree, BackendError> {
+        if self.data.uses_tree_conflict_format {
+            let tree_conflict = self
+                .data
+                .root_tree
+                .try_map(|tree_id| self.store.get_tree(&RepoPath::root(), tree_id))?;
+            Ok(MergedTree::new(tree_conflict))
+        } else {
+            let tree_id = self.data.root_tree.as_legacy_tree_id();
+            let tree = self.store.get_tree(&RepoPath::root(), tree_id)?;
+            Ok(MergedTree::legacy(tree))
+        }
+    }
+
     pub fn tree_id(&self) -> &TreeId {
-        &self.data.root_tree
+        self.data.root_tree.as_legacy_tree_id()
     }
 
     pub fn change_id(&self) -> &ChangeId {
@@ -140,5 +156,25 @@ impl Commit {
             }
         }
         false
+    }
+}
+
+/// Wrapper to sort `Commit` by committer timestamp.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) struct CommitByCommitterTimestamp(pub Commit);
+
+impl Ord for CommitByCommitterTimestamp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let self_timestamp = &self.0.committer().timestamp.timestamp;
+        let other_timestamp = &other.0.committer().timestamp.timestamp;
+        self_timestamp
+            .cmp(other_timestamp)
+            .then_with(|| self.0.cmp(&other.0)) // to comply with Eq
+    }
+}
+
+impl PartialOrd for CommitByCommitterTimestamp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

@@ -16,12 +16,12 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{Debug, Error, Formatter};
-use std::slice;
 
+use once_cell::sync::Lazy;
 use thiserror::Error;
 
-use crate::backend::{CommitId, Timestamp};
-use crate::content_hash::ContentHash;
+use crate::backend::{id_type, CommitId, ObjectId, Timestamp};
+use crate::merge::Merge;
 
 content_hash! {
     #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
@@ -50,208 +50,108 @@ impl WorkspaceId {
     }
 }
 
-content_hash! {
-    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-    pub struct ViewId(Vec<u8>);
-}
-
-impl Debug for ViewId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.debug_tuple("ViewId").field(&self.hex()).finish()
-    }
-}
-
-impl ViewId {
-    pub fn new(value: Vec<u8>) -> Self {
-        Self(value)
-    }
-
-    pub fn from_hex(hex: &str) -> Self {
-        Self(hex::decode(hex).unwrap())
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.clone()
-    }
-
-    pub fn hex(&self) -> String {
-        hex::encode(&self.0)
-    }
-}
+id_type!(pub ViewId);
+id_type!(pub OperationId);
 
 content_hash! {
-    #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
-    pub struct OperationId(Vec<u8>);
-}
-
-impl Debug for OperationId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        f.debug_tuple("OperationId").field(&self.hex()).finish()
+    #[derive(PartialEq, Eq, Hash, Clone, Debug)]
+    pub struct RefTarget {
+        merge: Merge<Option<CommitId>>,
     }
 }
 
-impl OperationId {
-    pub fn new(value: Vec<u8>) -> Self {
-        Self(value)
-    }
-
-    pub fn from_hex(hex: &str) -> Self {
-        Self(hex::decode(hex).unwrap())
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.0
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        self.0.clone()
-    }
-
-    pub fn hex(&self) -> String {
-        hex::encode(&self.0)
-    }
-}
-
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
-pub enum RefTarget {
-    Normal(CommitId),
-    Conflict {
-        removes: Vec<CommitId>,
-        adds: Vec<CommitId>,
-    },
-}
-
-impl ContentHash for RefTarget {
-    fn hash(&self, state: &mut impl digest::Update) {
-        use RefTarget::*;
-        match self {
-            Normal(id) => {
-                state.update(&0u32.to_le_bytes());
-                id.hash(state);
-            }
-            Conflict { removes, adds } => {
-                state.update(&1u32.to_le_bytes());
-                removes.hash(state);
-                adds.hash(state);
-            }
-        }
+impl Default for RefTarget {
+    fn default() -> Self {
+        Self::absent()
     }
 }
 
 impl RefTarget {
-    /// Creates non-conflicting target pointing to a commit.
-    pub fn normal(id: CommitId) -> Option<Self> {
-        Some(RefTarget::Normal(id))
+    /// Creates non-conflicting target pointing to no commit.
+    pub fn absent() -> Self {
+        Self::from_merge(Merge::absent())
     }
 
-    /// Creates conflicting target from removed/added ids.
+    /// Returns non-conflicting target pointing to no commit.
+    ///
+    /// This will typically be used in place of `None` returned by map lookup.
+    pub fn absent_ref() -> &'static Self {
+        static TARGET: Lazy<RefTarget> = Lazy::new(RefTarget::absent);
+        &TARGET
+    }
+
+    /// Creates non-conflicting target pointing to a commit.
+    pub fn normal(id: CommitId) -> Self {
+        Self::from_merge(Merge::normal(id))
+    }
+
+    /// Creates target from removed/added ids.
     pub fn from_legacy_form(
         removed_ids: impl IntoIterator<Item = CommitId>,
         added_ids: impl IntoIterator<Item = CommitId>,
-    ) -> Option<Self> {
-        // TODO: This function will create non-conflicting target if there're only one
-        // add id and no removed ids.
-        let removes = removed_ids.into_iter().collect();
-        let adds = added_ids.into_iter().collect();
-        Some(RefTarget::Conflict { removes, adds })
+    ) -> Self {
+        Self::from_merge(Merge::from_legacy_form(removed_ids, added_ids))
+    }
+
+    pub fn from_merge(merge: Merge<Option<CommitId>>) -> Self {
+        RefTarget { merge }
     }
 
     /// Returns id if this target is non-conflicting and points to a commit.
     pub fn as_normal(&self) -> Option<&CommitId> {
-        match self {
-            RefTarget::Normal(id) => Some(id),
-            RefTarget::Conflict { .. } => None,
-        }
+        let maybe_id = self.merge.as_resolved()?;
+        maybe_id.as_ref()
     }
 
-    pub fn is_conflict(&self) -> bool {
-        matches!(self, RefTarget::Conflict { .. })
+    /// Returns true if this target points to no commit.
+    pub fn is_absent(&self) -> bool {
+        matches!(self.merge.as_resolved(), Some(None))
     }
 
-    pub fn removes(&self) -> &[CommitId] {
-        match self {
-            RefTarget::Normal(_) => &[],
-            RefTarget::Conflict { removes, adds: _ } => removes,
-        }
+    /// Returns true if this target points to any commit. Conflicting target is
+    /// always "present" as it should have at least one commit id.
+    pub fn is_present(&self) -> bool {
+        !self.is_absent()
     }
 
-    pub fn adds(&self) -> &[CommitId] {
-        match self {
-            RefTarget::Normal(id) => slice::from_ref(id),
-            RefTarget::Conflict { removes: _, adds } => adds,
-        }
-    }
-}
-
-// TODO: These methods will be migrate to new Conflict-based RefTarget type.
-pub trait RefTargetExt {
-    fn as_normal(&self) -> Option<&CommitId>;
-    fn is_absent(&self) -> bool;
-    fn is_present(&self) -> bool;
-    fn is_conflict(&self) -> bool;
-    fn removes(&self) -> &[CommitId];
-    fn adds(&self) -> &[CommitId];
-}
-
-impl RefTargetExt for Option<RefTarget> {
-    fn as_normal(&self) -> Option<&CommitId> {
-        self.as_ref().and_then(|target| target.as_normal())
+    /// Whether this target has conflicts.
+    pub fn has_conflict(&self) -> bool {
+        !self.merge.is_resolved()
     }
 
-    fn is_absent(&self) -> bool {
-        self.is_none()
+    pub fn removed_ids(&self) -> impl Iterator<Item = &CommitId> {
+        self.merge.removes().iter().flatten()
     }
 
-    fn is_present(&self) -> bool {
-        self.is_some()
+    pub fn added_ids(&self) -> impl Iterator<Item = &CommitId> {
+        self.merge.adds().iter().flatten()
     }
 
-    fn is_conflict(&self) -> bool {
-        self.as_ref()
-            .map(|target| target.is_conflict())
-            .unwrap_or(false)
-    }
-
-    fn removes(&self) -> &[CommitId] {
-        self.as_ref()
-            .map(|target| target.removes())
-            .unwrap_or_default()
-    }
-
-    fn adds(&self) -> &[CommitId] {
-        self.as_ref()
-            .map(|target| target.adds())
-            .unwrap_or_default()
+    pub fn as_merge(&self) -> &Merge<Option<CommitId>> {
+        &self.merge
     }
 }
 
-impl RefTargetExt for Option<&RefTarget> {
-    fn as_normal(&self) -> Option<&CommitId> {
-        self.and_then(|target| target.as_normal())
-    }
+/// Helper to strip redundant `Option<T>` from `RefTarget` lookup result.
+pub trait RefTargetOptionExt {
+    type Value;
 
-    fn is_absent(&self) -> bool {
-        self.is_none()
-    }
+    fn flatten(self) -> Self::Value;
+}
 
-    fn is_present(&self) -> bool {
-        self.is_some()
-    }
+impl RefTargetOptionExt for Option<RefTarget> {
+    type Value = RefTarget;
 
-    fn is_conflict(&self) -> bool {
-        self.map(|target| target.is_conflict()).unwrap_or(false)
+    fn flatten(self) -> Self::Value {
+        self.unwrap_or_else(RefTarget::absent)
     }
+}
 
-    fn removes(&self) -> &[CommitId] {
-        self.map(|target| target.removes()).unwrap_or_default()
-    }
+impl<'a> RefTargetOptionExt for Option<&'a RefTarget> {
+    type Value = &'a RefTarget;
 
-    fn adds(&self) -> &[CommitId] {
-        self.map(|target| target.adds()).unwrap_or_default()
+    fn flatten(self) -> Self::Value {
+        self.unwrap_or_else(|| RefTarget::absent_ref())
     }
 }
 
@@ -260,7 +160,7 @@ content_hash! {
     pub struct BranchTarget {
         /// The commit the branch points to locally. `None` if the branch has been
         /// deleted locally.
-        pub local_target: Option<RefTarget>,
+        pub local_target: RefTarget,
         // TODO: Do we need to support tombstones for remote branches? For example, if the branch
         // has been deleted locally and you pull from a remote, maybe it should make a difference
         // whether the branch is known to have existed on the remote. We may not want to resurrect
@@ -284,7 +184,7 @@ content_hash! {
         /// The commit the Git HEAD points to.
         // TODO: Support multiple Git worktrees?
         // TODO: Do we want to store the current branch name too?
-        pub git_head: Option<RefTarget>,
+        pub git_head: RefTarget,
         // The commit that *should be* checked out in the workspace. Note that the working copy
         // (.jj/working_copy/) has the source of truth about which commit *is* checked out (to be
         // precise: the commit to which we most recently completed an update to).
@@ -330,8 +230,19 @@ content_hash! {
 pub enum OpStoreError {
     #[error("Operation not found")]
     NotFound,
-    #[error("{0}")]
-    Other(String),
+    #[error("Error when reading object {hash} of type {object_type}: {source}")]
+    ReadObject {
+        object_type: String,
+        hash: String,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    #[error("Could not write object of type {object_type}: {source}")]
+    WriteObject {
+        object_type: &'static str,
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
+    #[error(transparent)]
+    Other(Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub type OpStoreResult<T> = Result<T, OpStoreError>;

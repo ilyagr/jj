@@ -60,8 +60,10 @@ only symbols.
 * `x+`: Children of `x`.
 * `:x`: Ancestors of `x`, including the commits in `x` itself.
 * `x:`: Descendants of `x`, including the commits in `x` itself.
-* `x:y`: Descendants of `x` that are also ancestors of `y`. Equivalent to
-  `x: & :y`. This is what `git log` calls `--ancestry-path x..y`.
+* `x:y`: Descendants of `x` that are also ancestors of `y`. Equivalent
+   to `x: & :y`. This is what `git log` calls `--ancestry-path x..y`.
+* `::x`, `x::`, and `x::y`: New versions of for `:x`, `x:`, and `x:y` to be
+  released in jj 0.9.0. We plan to delete the latter in jj 0.15+.
 * `x..y`: Ancestors of `y` that are not also ancestors of `x`. Equivalent to
   `:y ~ :x`. This is what `git log` calls `x..y` (i.e. the same as we call it).
 * `..x`: Ancestors of `x`, including the commits in `x` itself. Equivalent to
@@ -84,17 +86,17 @@ revsets (expressions) as arguments.
 * `all()`: All visible commits in the repo.
 * `none()`: No commits. This function is rarely useful; it is provided for
   completeness.
-* `branches([needle])`: All local branch targets. If `needle` is specified,
+* `branches([pattern])`: All local branch targets. If `pattern` is specified,
   branches whose name contains the given string are selected. For example,
   `branches(push)` would match the branches `push-123` and `repushed` but not
   the branch `main`. If a branch is in a conflicted state, all its possible
   targets are included.
-* `remote_branches([branch_needle[, [remote=]remote_needle]])`: All remote
-  branch targets across all remotes. If just the `branch_needle` is specified,
+* `remote_branches([branch_pattern[, [remote=]remote_pattern]])`: All remote
+  branch targets across all remotes. If just the `branch_pattern` is specified,
   branches whose name contains the given string across all remotes are
-  selected. If both `branch_needle` and `remote_needle` are specified, the
+  selected. If both `branch_pattern` and `remote_pattern` are specified, the
   selection is further restricted to just the remotes whose name contains
-  `remote_needle`. For example, `remote_branches(push, ri)` would match the
+  `remote_pattern`. For example, `remote_branches(push, ri)` would match the
   branches `push-123@origin` and `repushed@private` but not `push-123@upstream`
   or `main@origin` or `main@upstream`. If a branch is in a conflicted state,
   all its possible targets are included.
@@ -116,11 +118,13 @@ revsets (expressions) as arguments.
 * `latest(x[, count])`: Latest `count` commits in `x`, based on committer
   timestamp. The default `count` is 1.
 * `merges()`: Merge commits.
-* `description(needle)`: Commits with the given string in their
+* `description(pattern)`: Commits with the given string in their
   description.
-* `author(needle)`: Commits with the given string in the author's name or
+* `author(pattern)`: Commits with the given string in the author's name or
   email.
-* `committer(needle)`: Commits with the given string in the committer's
+* `mine()`: Commits where the author's email matches the email of the current
+  user.
+* `committer(pattern)`: Commits with the given string in the committer's
   name or email.
 * `empty()`: Commits modifying no files. This also includes `merges()` without
   user modifications and `root`.
@@ -132,6 +136,13 @@ revsets (expressions) as arguments.
 * `conflict()`: Commits with conflicts.
 * `present(x)`: Same as `x`, but evaluated to `none()` if any of the commits
   in `x` doesn't exist (e.g. is an unknown branch name.)
+
+## String patterns
+
+Functions that perform string matching support the following pattern syntax.
+
+* `"string"`, `substring:"string"`: Matches strings that contain `string`.
+* `exact:"string"`: Matches strings exactly equal to `string`.
 
 ## Aliases
 
@@ -186,6 +197,7 @@ jj log -r 'tags() | branches()'
 
 Show local commits leading up to the working copy, as well as descendants of
 those commits:
+
 
 ```
 jj log -r '(remote_branches()..@):'

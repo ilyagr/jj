@@ -1,0 +1,13 @@
+[aliases]
+# Placeholder: added by user
+
+[revset-aliases]
+# Placeholder: added by user
+
+[ui]
+paginate = "auto"
+pager = { command = ["less", "-FRX"], env = { LESSCHARSET = "utf-8" } }
+log-word-wrap = false
+
+[snapshot]
+max-new-file-size = "1MiB"

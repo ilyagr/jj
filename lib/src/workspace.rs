@@ -14,8 +14,9 @@
 
 #![allow(missing_docs)]
 
+use std::fs;
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -167,6 +168,7 @@ impl Workspace {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn init_with_factories(
         user_settings: &UserSettings,
         workspace_root: &Path,
@@ -175,6 +177,7 @@ impl Workspace {
         op_heads_store_factory: impl FnOnce(&Path) -> Box<dyn OpHeadsStore>,
         index_store_factory: impl FnOnce(&Path) -> Box<dyn IndexStore>,
         submodule_store_factory: impl FnOnce(&Path) -> Box<dyn SubmoduleStore>,
+        workspace_id: WorkspaceId,
     ) -> Result<(Self, Arc<ReadonlyRepo>), WorkspaceInitError> {
         let jj_dir = create_jj_dir(workspace_root)?;
         (|| {
@@ -193,13 +196,8 @@ impl Workspace {
                 RepoInitError::Backend(err) => WorkspaceInitError::Backend(err),
                 RepoInitError::Path(err) => WorkspaceInitError::Path(err),
             })?;
-            let (working_copy, repo) = init_working_copy(
-                user_settings,
-                &repo,
-                workspace_root,
-                &jj_dir,
-                WorkspaceId::default(),
-            )?;
+            let (working_copy, repo) =
+                init_working_copy(user_settings, &repo, workspace_root, &jj_dir, workspace_id)?;
             let repo_loader = repo.loader();
             let workspace = Workspace::new(workspace_root, working_copy, repo_loader)?;
             Ok((workspace, repo))
@@ -223,6 +221,7 @@ impl Workspace {
             ReadonlyRepo::default_op_heads_store_factory(),
             ReadonlyRepo::default_index_store_factory(),
             ReadonlyRepo::default_submodule_store_factory(),
+            WorkspaceId::default(),
         )
     }
 
@@ -287,7 +286,7 @@ impl Workspace {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct WorkspaceLoader {
     workspace_root: PathBuf,
     repo_dir: PathBuf,
@@ -306,9 +305,7 @@ impl WorkspaceLoader {
         // If .jj/repo is a file, then we interpret its contents as a relative path to
         // the actual repo directory (typically in another workspace).
         if repo_dir.is_file() {
-            let mut repo_file = File::open(&repo_dir).context(&repo_dir)?;
-            let mut buf = Vec::new();
-            repo_file.read_to_end(&mut buf).context(&repo_dir)?;
+            let buf = fs::read(&repo_dir).context(&repo_dir)?;
             let repo_path_str =
                 String::from_utf8(buf).map_err(|_| WorkspaceLoadError::NonUnicodePath)?;
             repo_dir = jj_dir

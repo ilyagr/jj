@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: Remove after https://github.com/frondeus/test-case/issues/122 is resolved
-#![allow(unknown_lints)] // Needed for clippy <1.70
+// this was supposed to be fixed in 1.71.0, but barely missed the cut.
+// can be released after we bump MSRV to 1.72.0, see:
+// https://github.com/frondeus/test-case/issues/126#issuecomment-1635916592
 #![allow(clippy::items_after_test_module)]
-#![deny(unknown_lints)]
 
 use std::path::Path;
 
@@ -30,10 +30,10 @@ use jj_lib::op_store::{BranchTarget, RefTarget, WorkspaceId};
 use jj_lib::repo::Repo;
 use jj_lib::repo_path::RepoPath;
 use jj_lib::revset::{
-    optimize, parse, DefaultSymbolResolver, ReverseRevsetGraphIterator, Revset, RevsetAliasesMap,
-    RevsetExpression, RevsetFilterPredicate, RevsetGraphEdge, RevsetResolutionError,
-    RevsetWorkspaceContext, SymbolResolver as _,
+    optimize, parse, DefaultSymbolResolver, Revset, RevsetAliasesMap, RevsetExpression,
+    RevsetFilterPredicate, RevsetResolutionError, RevsetWorkspaceContext, SymbolResolver as _,
 };
+use jj_lib::revset_graph::{ReverseRevsetGraphIterator, RevsetGraphEdge};
 use jj_lib::settings::GitSettings;
 use jj_lib::tree::merge_trees;
 use jj_lib::workspace::Workspace;
@@ -192,7 +192,7 @@ fn test_resolve_symbol_commit_id() {
     assert_eq!(resolve_commit_ids(repo.as_ref(), "present(foo)"), []);
     let symbol_resolver = DefaultSymbolResolver::new(repo.as_ref(), None);
     assert_matches!(
-        optimize(parse("present(04)", &RevsetAliasesMap::new(), None).unwrap()).resolve_user_expression(repo.as_ref(), &symbol_resolver),
+        optimize(parse("present(04)", &RevsetAliasesMap::new(), &settings.user_email(), None).unwrap()).resolve_user_expression(repo.as_ref(), &symbol_resolver),
         Err(RevsetResolutionError::AmbiguousCommitIdPrefix(s)) if s == "04"
     );
     assert_eq!(
@@ -775,7 +775,16 @@ fn test_resolve_symbol_git_refs() {
 }
 
 fn resolve_commit_ids(repo: &dyn Repo, revset_str: &str) -> Vec<CommitId> {
-    let expression = optimize(parse(revset_str, &RevsetAliasesMap::new(), None).unwrap());
+    let settings = testutils::user_settings();
+    let expression = optimize(
+        parse(
+            revset_str,
+            &RevsetAliasesMap::new(),
+            &settings.user_email(),
+            None,
+        )
+        .unwrap(),
+    );
     let symbol_resolver = DefaultSymbolResolver::new(repo, None);
     let expression = expression
         .resolve_user_expression(repo, &symbol_resolver)
@@ -789,13 +798,21 @@ fn resolve_commit_ids_in_workspace(
     workspace: &Workspace,
     cwd: Option<&Path>,
 ) -> Vec<CommitId> {
+    let settings = testutils::user_settings();
     let workspace_ctx = RevsetWorkspaceContext {
         cwd: cwd.unwrap_or_else(|| workspace.workspace_root()),
         workspace_id: workspace.workspace_id(),
         workspace_root: workspace.workspace_root(),
     };
-    let expression =
-        optimize(parse(revset_str, &RevsetAliasesMap::new(), Some(&workspace_ctx)).unwrap());
+    let expression = optimize(
+        parse(
+            revset_str,
+            &RevsetAliasesMap::new(),
+            &settings.user_email(),
+            Some(&workspace_ctx),
+        )
+        .unwrap(),
+    );
     let symbol_resolver = DefaultSymbolResolver::new(repo, Some(workspace_ctx.workspace_id));
     let expression = expression
         .resolve_user_expression(repo, &symbol_resolver)
@@ -846,6 +863,7 @@ fn test_evaluate_expression_heads(use_git: bool) {
     let commit1 = graph_builder.initial_commit();
     let commit2 = graph_builder.commit_with_parents(&[&commit1]);
     let commit3 = graph_builder.commit_with_parents(&[&commit2]);
+    let commit4 = graph_builder.commit_with_parents(&[&commit1]);
 
     // Heads of an empty set is an empty set
     assert_eq!(resolve_commit_ids(mut_repo, "heads(none())"), vec![]);
@@ -879,6 +897,15 @@ fn test_evaluate_expression_heads(use_git: bool) {
             &format!("heads({} | {})", commit1.id().hex(), commit3.id().hex())
         ),
         vec![commit3.id().clone()]
+    );
+
+    // Heads should be sorted in reverse index position order
+    assert_eq!(
+        resolve_commit_ids(
+            mut_repo,
+            &format!("heads({} | {})", commit3.id().hex(), commit4.id().hex())
+        ),
+        vec![commit4.id().clone(), commit3.id().clone()]
     );
 
     // Heads of all commits is the set of visible heads in the repo
@@ -1624,7 +1651,7 @@ fn test_evaluate_expression_git_refs(use_git: bool) {
             [commit3.id().clone(), commit4.id().clone()],
         ),
     );
-    mut_repo.set_git_ref_target("refs/tags/tag2", None);
+    mut_repo.set_git_ref_target("refs/tags/tag2", RefTarget::absent());
     assert_eq!(
         resolve_commit_ids(mut_repo, "git_refs()"),
         vec![
@@ -1689,8 +1716,16 @@ fn test_evaluate_expression_branches(use_git: bool) {
         resolve_commit_ids(mut_repo, "branches(branch)"),
         vec![commit2.id().clone(), commit1.id().clone()]
     );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "branches(exact:branch1)"),
+        vec![commit1.id().clone()]
+    );
     // Can silently resolve to an empty set if there's no matches
     assert_eq!(resolve_commit_ids(mut_repo, "branches(branch3)"), vec![]);
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "branches(exact:ranch1)"),
+        vec![]
+    );
     // Two branches pointing to the same commit does not result in a duplicate in
     // the revset
     mut_repo.set_local_branch_target("branch3", RefTarget::normal(commit2.id().clone()));
@@ -1713,7 +1748,7 @@ fn test_evaluate_expression_branches(use_git: bool) {
             [commit3.id().clone(), commit4.id().clone()],
         ),
     );
-    mut_repo.set_local_branch_target("branch3", None);
+    mut_repo.set_local_branch_target("branch3", RefTarget::absent());
     assert_eq!(
         resolve_commit_ids(mut_repo, "branches()"),
         vec![
@@ -1761,6 +1796,10 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
         resolve_commit_ids(mut_repo, "remote_branches(branch)"),
         vec![commit2.id().clone(), commit1.id().clone()]
     );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "remote_branches(exact:branch1)"),
+        vec![commit1.id().clone()]
+    );
     // Can get branches from matching remotes
     assert_eq!(
         resolve_commit_ids(mut_repo, r#"remote_branches("", origin)"#),
@@ -1770,6 +1809,10 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
         resolve_commit_ids(mut_repo, r#"remote_branches("", ri)"#),
         vec![commit2.id().clone(), commit1.id().clone()]
     );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, r#"remote_branches("", exact:origin)"#),
+        vec![commit1.id().clone()]
+    );
     // Can get branches with matching names from matching remotes
     assert_eq!(
         resolve_commit_ids(mut_repo, "remote_branches(branch1, ri)"),
@@ -1778,6 +1821,10 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
     assert_eq!(
         resolve_commit_ids(mut_repo, r#"remote_branches(branch, private)"#),
         vec![commit2.id().clone()]
+    );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, r#"remote_branches(exact:branch1, exact:origin)"#),
+        vec![commit1.id().clone()]
     );
     // Can silently resolve to an empty set if there's no matches
     assert_eq!(
@@ -1790,6 +1837,14 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
     );
     assert_eq!(
         resolve_commit_ids(mut_repo, r#"remote_branches(branch1, private)"#),
+        vec![]
+    );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, r#"remote_branches(exact:ranch1, exact:origin)"#),
+        vec![]
+    );
+    assert_eq!(
+        resolve_commit_ids(mut_repo, r#"remote_branches(exact:branch1, exact:orig)"#),
         vec![]
     );
     // Two branches pointing to the same commit does not result in a duplicate in
@@ -1822,7 +1877,7 @@ fn test_evaluate_expression_remote_branches(use_git: bool) {
             [commit3.id().clone(), commit4.id().clone()],
         ),
     );
-    mut_repo.set_remote_branch_target("branch3", "origin", None);
+    mut_repo.set_remote_branch_target("branch3", "origin", RefTarget::absent());
     assert_eq!(
         resolve_commit_ids(mut_repo, "remote_branches()"),
         vec![
@@ -2062,6 +2117,75 @@ fn test_evaluate_expression_author(use_git: bool) {
             &format!("root.. & (author(name1) | {})", commit3.id().hex())
         ),
         vec![commit3.id().clone(), commit1.id().clone()]
+    );
+}
+
+#[test_case(false ; "local backend")]
+#[test_case(true ; "git backend")]
+fn test_evaluate_expression_mine(use_git: bool) {
+    let settings = testutils::user_settings();
+    let test_repo = TestRepo::init(use_git);
+    let repo = &test_repo.repo;
+
+    let mut tx = repo.start_transaction(&settings, "test");
+    let mut_repo = tx.mut_repo();
+
+    let timestamp = Timestamp {
+        timestamp: MillisSinceEpoch(0),
+        tz_offset: 0,
+    };
+    let commit1 = create_random_commit(mut_repo, &settings)
+        .set_author(Signature {
+            name: "name1".to_string(),
+            email: "email1".to_string(),
+            timestamp: timestamp.clone(),
+        })
+        .write()
+        .unwrap();
+    let commit2 = create_random_commit(mut_repo, &settings)
+        .set_parents(vec![commit1.id().clone()])
+        .set_author(Signature {
+            name: "name2".to_string(),
+            email: settings.user_email(),
+            timestamp: timestamp.clone(),
+        })
+        .write()
+        .unwrap();
+    // Can find a unique match by name
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "mine()"),
+        vec![commit2.id().clone()]
+    );
+    let commit3 = create_random_commit(mut_repo, &settings)
+        .set_parents(vec![commit2.id().clone()])
+        .set_author(Signature {
+            name: "name3".to_string(),
+            email: settings.user_email(),
+            timestamp,
+        })
+        .write()
+        .unwrap();
+    // Can find multiple matches by name
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "mine()"),
+        vec![commit3.id().clone(), commit2.id().clone()]
+    );
+    // Searches only among candidates if specified
+    assert_eq!(
+        resolve_commit_ids(mut_repo, "visible_heads() & mine()"),
+        vec![commit3.id().clone()],
+    );
+    // Filter by union of pure predicate and set
+    assert_eq!(
+        resolve_commit_ids(
+            mut_repo,
+            &format!("root.. & (mine() | {})", commit1.id().hex())
+        ),
+        vec![
+            commit3.id().clone(),
+            commit2.id().clone(),
+            commit1.id().clone()
+        ]
     );
 }
 

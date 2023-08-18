@@ -21,15 +21,15 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::backend::{
     BackendError, ConflictId, FileId, ObjectId, TreeEntriesNonRecursiveIterator, TreeEntry, TreeId,
     TreeValue,
 };
-use crate::conflicts::Conflict;
 use crate::files::MergeResult;
 use crate::matchers::{EverythingMatcher, Matcher};
-use crate::merge::trivial_merge;
+use crate::merge::{trivial_merge, Merge};
 use crate::repo_path::{RepoPath, RepoPathComponent, RepoPathJoin};
 use crate::store::Store;
 use crate::{backend, files};
@@ -184,6 +184,7 @@ impl Tree {
         }
     }
 
+    #[instrument(skip(matcher))]
     pub fn diff<'matcher>(
         &self,
         other: &Tree,
@@ -223,6 +224,7 @@ impl Tree {
         conflicts
     }
 
+    #[instrument]
     pub fn conflicts(&self) -> Vec<(RepoPath, ConflictId)> {
         self.conflicts_matching(&EverythingMatcher)
     }
@@ -560,57 +562,57 @@ fn merge_tree_value(
             }
         }
         _ => {
-            // Start by creating a Conflict object. Conflicts can cleanly represent a single
+            // Start by creating a Merge object. Merges can cleanly represent a single
             // resolved state, the absence of a state, or a conflicted state.
-            let conflict = Conflict::new(
+            let conflict = Merge::new(
                 vec![maybe_base.cloned()],
                 vec![maybe_side1.cloned(), maybe_side2.cloned()],
             );
             let filename = dir.join(basename);
-            let conflict = simplify_conflict(store, &filename, conflict)?;
-            if let Some(value) = conflict.as_resolved() {
-                return Ok(value.clone());
-            }
-            if let Some(tree_value) = try_resolve_file_conflict(store, &filename, &conflict)? {
-                Some(tree_value)
-            } else {
-                let conflict_id = store.write_conflict(&filename, &conflict)?;
-                Some(TreeValue::Conflict(conflict_id))
+            let expanded = conflict.try_map(|term| match term {
+                Some(TreeValue::Conflict(id)) => store.read_conflict(&filename, id),
+                _ => Ok(Merge::resolved(term.clone())),
+            })?;
+            let merge = expanded.flatten().simplify();
+            match merge.into_resolved() {
+                Ok(value) => value,
+                Err(conflict) => {
+                    if let Some(tree_value) =
+                        try_resolve_file_conflict(store, &filename, &conflict)?
+                    {
+                        Some(tree_value)
+                    } else {
+                        let conflict_id = store.write_conflict(&filename, &conflict)?;
+                        Some(TreeValue::Conflict(conflict_id))
+                    }
+                }
             }
         }
     })
 }
 
-fn try_resolve_file_conflict(
+pub fn try_resolve_file_conflict(
     store: &Store,
     filename: &RepoPath,
-    conflict: &Conflict<Option<TreeValue>>,
+    conflict: &Merge<Option<TreeValue>>,
 ) -> Result<Option<TreeValue>, TreeMergeError> {
     // If there are any non-file or any missing parts in the conflict, we can't
     // merge it. We check early so we don't waste time reading file contents if
     // we can't merge them anyway. At the same time we determine whether the
     // resulting file should be executable.
-    // TODO: Change to let-else once our MSRV is above 1.65
-    let file_id_conflict = if let Some(conflict) = conflict.maybe_map(|term| match term {
+    let Some(file_id_conflict) = conflict.maybe_map(|term| match term {
         Some(TreeValue::File { id, executable: _ }) => Some(id),
         _ => None,
-    }) {
-        conflict
-    } else {
+    }) else {
         return Ok(None);
     };
-    // TODO: Change to let-else once our MSRV is above 1.65
-    let executable_conflict = if let Some(conflict) = conflict.maybe_map(|term| match term {
+    let Some(executable_conflict) = conflict.maybe_map(|term| match term {
         Some(TreeValue::File { id: _, executable }) => Some(executable),
         _ => None,
-    }) {
-        conflict
-    } else {
+    }) else {
         return Ok(None);
     };
-    let executable = if let Some(&executable) = executable_conflict.resolve_trivial() {
-        *executable
-    } else {
+    let Some(&&executable) = executable_conflict.resolve_trivial() else {
         // We're unable to determine whether the result should be executable
         return Ok(None);
     };
@@ -657,47 +659,4 @@ fn try_resolve_file_conflict(
         }
         MergeResult::Conflict(_) => Ok(None),
     }
-}
-
-fn simplify_conflict(
-    store: &Store,
-    path: &RepoPath,
-    conflict: Conflict<Option<TreeValue>>,
-) -> Result<Conflict<Option<TreeValue>>, BackendError> {
-    // Important cases to simplify:
-    //
-    // D
-    // |
-    // B C
-    // |/
-    // A
-    //
-    // 1. rebase C to B, then back to A => there should be no conflict
-    // 2. rebase C to B, then to D => the conflict should not mention B
-    // 3. rebase B to C and D to B', then resolve the conflict in B' and rebase D'
-    // on top =>    the conflict should be between B'', B, and D; it should not
-    // mention the conflict in B'
-
-    // Case 1 above:
-    // After first rebase, the conflict is {+B-A+C}. After rebasing back,
-    // the unsimplified conflict is {+A-B+{+B-A+C}}. Since the
-    // inner conflict is positive, we can simply move it into the outer conflict. We
-    // thus get {+A-B+B-A+C}, which we can then simplify to just C (because {+C} ==
-    // C).
-    //
-    // Case 2 above:
-    // After first rebase, the conflict is {+B-A+C}. After rebasing to D,
-    // the unsimplified conflict is {+D-C+{+B-A+C}}. As in the
-    // previous case, the inner conflict can be moved into the outer one. We then
-    // get {+D-C+B-A+C}. That can be simplified to
-    // {+D+B-A}, which is the desired conflict.
-    //
-    // Case 3 above:
-    // TODO: describe this case
-
-    let expanded = conflict.try_map(|term| match term {
-        Some(TreeValue::Conflict(id)) => store.read_conflict(path, id),
-        _ => Ok(Conflict::resolved(term.clone())),
-    })?;
-    Ok(expanded.flatten().simplify())
 }

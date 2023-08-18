@@ -24,7 +24,7 @@ use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{io, iter};
+use std::{fs, io, iter};
 
 use blake2::Blake2b512;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -35,21 +35,24 @@ use tempfile::NamedTempFile;
 use thiserror::Error;
 
 use crate::backend::{ChangeId, CommitId, ObjectId};
-use crate::commit::Commit;
+use crate::commit::{Commit, CommitByCommitterTimestamp};
 use crate::file_util::persist_content_addressed_temp_file;
 use crate::index::{
     HexPrefix, Index, IndexStore, IndexWriteError, MutableIndex, PrefixResolution, ReadonlyIndex,
 };
-#[cfg(not(feature = "map_first_last"))]
-// This import is used on Rust 1.61, but not on recent version.
-// TODO: Remove it when our MSRV becomes recent enough.
-#[allow(unused_imports)]
-use crate::nightly_shims::BTreeSetExt;
-use crate::op_store::OperationId;
+use crate::op_store::{OpStoreError, OperationId};
 use crate::operation::Operation;
 use crate::revset::{ResolvedExpression, Revset, RevsetEvaluationError};
 use crate::store::Store;
 use crate::{backend, dag_walk, default_revset_engine};
+
+#[derive(Debug, Error)]
+pub enum DefaultIndexStoreError {
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    OpStore(#[from] OpStoreError),
+}
 
 #[derive(Debug)]
 pub struct DefaultIndexStore {
@@ -83,11 +86,7 @@ impl DefaultIndexStore {
         op_id: &OperationId,
     ) -> Result<Arc<ReadonlyIndexImpl>, IndexLoadError> {
         let op_id_file = self.dir.join("operations").join(op_id.hex());
-        let mut buf = vec![];
-        File::open(op_id_file)
-            .unwrap()
-            .read_to_end(&mut buf)
-            .unwrap();
+        let buf = fs::read(op_id_file).unwrap();
         let index_file_id_hex = String::from_utf8(buf).unwrap();
         let index_file_path = self.dir.join(&index_file_id_hex);
         let mut index_file = File::open(index_file_path).unwrap();
@@ -100,12 +99,13 @@ impl DefaultIndexStore {
         )
     }
 
+    #[tracing::instrument(skip(self, store))]
     fn index_at_operation(
         &self,
         store: &Arc<Store>,
         operation: &Operation,
-    ) -> io::Result<Arc<ReadonlyIndexImpl>> {
-        let view = operation.view();
+    ) -> Result<Arc<ReadonlyIndexImpl>, DefaultIndexStoreError> {
+        let view = operation.view()?;
         let operations_dir = self.dir.join("operations");
         let commit_id_length = store.commit_id_length();
         let change_id_length = store.change_id_length();
@@ -121,7 +121,7 @@ impl DefaultIndexStore {
                     parent_op_id = Some(op.id().clone())
                 }
             } else {
-                for head in op.view().heads() {
+                for head in op.view()?.heads() {
                     new_heads.insert(head.clone());
                 }
             }
@@ -142,17 +142,44 @@ impl DefaultIndexStore {
             }
         }
 
-        let mut heads = new_heads.into_iter().collect_vec();
-        heads.sort();
-        let commits = topo_order_earlier_first(store, heads, maybe_parent_file);
-
-        for commit in &commits {
+        tracing::info!(
+            ?maybe_parent_file,
+            new_heads_count = new_heads.len(),
+            "indexing commits reachable from historical heads"
+        );
+        // Build a list of ancestors of heads where parents and predecessors come after
+        // the commit itself.
+        let parent_file_has_id = |id: &CommitId| {
+            maybe_parent_file
+                .as_ref()
+                .map_or(false, |index| index.has_id(id))
+        };
+        let commits = dag_walk::topo_order_reverse_ord(
+            new_heads
+                .iter()
+                .filter(|&id| !parent_file_has_id(id))
+                .map(|id| store.get_commit(id).unwrap())
+                .map(CommitByCommitterTimestamp),
+            |CommitByCommitterTimestamp(commit)| commit.id().clone(),
+            |CommitByCommitterTimestamp(commit)| {
+                itertools::chain(commit.parent_ids(), commit.predecessor_ids())
+                    .filter(|&id| !parent_file_has_id(id))
+                    .map(|id| store.get_commit(id).unwrap())
+                    .map(CommitByCommitterTimestamp)
+                    .collect_vec()
+            },
+        );
+        for CommitByCommitterTimestamp(commit) in commits.iter().rev() {
             data.add_commit(commit);
         }
 
         let index_file = data.save_in(self.dir.clone())?;
-
         self.associate_file_with_operation(&index_file, operation.id())?;
+        tracing::info!(
+            ?index_file,
+            commits_count = commits.len(),
+            "saved new index file"
+        );
 
         Ok(index_file)
     }
@@ -229,76 +256,6 @@ impl IndexStore for DefaultIndexStore {
             })?;
         Ok(Box::new(ReadonlyIndexWrapper(index)))
     }
-}
-
-// Returns the ancestors of heads with parents and predecessors come before the
-// commit itself
-fn topo_order_earlier_first(
-    store: &Arc<Store>,
-    heads: Vec<CommitId>,
-    parent_file: Option<Arc<ReadonlyIndexImpl>>,
-) -> Vec<Commit> {
-    // First create a list of all commits in topological order with
-    // children/successors first (reverse of what we want)
-    let mut work = vec![];
-    for head in &heads {
-        work.push(store.get_commit(head).unwrap());
-    }
-    let mut commits = vec![];
-    let mut visited = HashSet::new();
-    let mut in_parent_file = HashSet::new();
-    let parent_file_source = parent_file.as_ref().map(|file| file.as_ref());
-    while let Some(commit) = work.pop() {
-        if parent_file_source.map_or(false, |index| index.has_id(commit.id())) {
-            in_parent_file.insert(commit.id().clone());
-            continue;
-        } else if !visited.insert(commit.id().clone()) {
-            continue;
-        }
-
-        work.extend(commit.parents());
-        work.extend(commit.predecessors());
-        commits.push(commit);
-    }
-    drop(visited);
-
-    // Now create the topological order with earlier commits first. If we run into
-    // any commits whose parents/predecessors have not all been indexed, put
-    // them in the map of waiting commit (keyed by the commit they're waiting
-    // for). Note that the order in the graph doesn't really have to be
-    // topological, but it seems like a useful property to have.
-
-    // Commits waiting for their parents/predecessors to be added
-    let mut waiting = HashMap::new();
-
-    let mut result = vec![];
-    let mut visited = in_parent_file;
-    while let Some(commit) = commits.pop() {
-        let mut waiting_for_earlier_commit = false;
-        for earlier in commit
-            .parent_ids()
-            .iter()
-            .chain(commit.predecessor_ids().iter())
-        {
-            if !visited.contains(earlier) {
-                waiting
-                    .entry(earlier.clone())
-                    .or_insert_with(Vec::new)
-                    .push(commit.clone());
-                waiting_for_earlier_commit = true;
-                break;
-            }
-        }
-        if !waiting_for_earlier_commit {
-            visited.insert(commit.id().clone());
-            if let Some(dependents) = waiting.remove(commit.id()) {
-                commits.extend(dependents);
-            }
-            result.push(commit);
-        }
-    }
-    assert!(waiting.is_empty());
-    result
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
@@ -603,8 +560,7 @@ impl MutableIndexImpl {
             buf.write_u32::<LittleEndian>(pos.0).unwrap();
         }
 
-        buf[parent_overflow_offset..parent_overflow_offset + 4]
-            .as_mut()
+        (&mut buf[parent_overflow_offset..parent_overflow_offset + 4])
             .write_u32::<LittleEndian>(parent_overflow.len() as u32)
             .unwrap();
         for parent_pos in parent_overflow {
@@ -1004,7 +960,7 @@ impl<'a> CompositeIndex<'a> {
         rev_walk
     }
 
-    fn heads_pos(
+    pub fn heads_pos(
         &self,
         mut candidate_positions: BTreeSet<IndexPosition>,
     ) -> BTreeSet<IndexPosition> {
@@ -2948,7 +2904,7 @@ mod tests {
         );
 
         // Merge range with sub-range (1..4 + 2..3 should be 1..4, not 1..3):
-        // 8,7,6->5:1..4, B5_1->5:2..3
+        // 8,7,6->5::1..4, B5_1->5::2..3
         assert_eq!(
             walk_commit_ids(
                 &[&ids[8], &ids[7], &ids[6], &id_branch5_1].map(Clone::clone),

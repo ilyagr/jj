@@ -12,15 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::sync::Arc;
-
 use jj_lib::op_store::{BranchTarget, RefTarget, WorkspaceId};
-use jj_lib::repo::{ReadonlyRepo, Repo};
-use jj_lib::settings::UserSettings;
-use jj_lib::transaction::Transaction;
+use jj_lib::repo::Repo;
 use maplit::{btreemap, hashset};
 use test_case::test_case;
-use testutils::{create_random_commit, write_random_commit, CommitGraphBuilder, TestRepo};
+use testutils::{
+    commit_transactions, create_random_commit, write_random_commit, CommitGraphBuilder, TestRepo,
+};
 
 #[test_case(false ; "local backend")]
 #[test_case(true ; "git backend")]
@@ -106,7 +104,6 @@ fn test_merge_views_heads() {
     let head_add_tx1 = write_random_commit(tx1.mut_repo(), &settings);
     let public_head_add_tx1 = write_random_commit(tx1.mut_repo(), &settings);
     tx1.mut_repo().add_public_head(&public_head_add_tx1);
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     tx2.mut_repo().remove_head(head_remove_tx2.id());
@@ -115,9 +112,8 @@ fn test_merge_views_heads() {
     let head_add_tx2 = write_random_commit(tx2.mut_repo(), &settings);
     let public_head_add_tx2 = write_random_commit(tx2.mut_repo(), &settings);
     tx2.mut_repo().add_public_head(&public_head_add_tx2);
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
 
     let expected_heads = hashset! {
         head_unchanged.id().clone(),
@@ -200,7 +196,6 @@ fn test_merge_views_checkout() {
     tx1.mut_repo()
         .set_wc_commit(ws6_id.clone(), commit2.id().clone())
         .unwrap();
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     tx2.mut_repo()
@@ -216,12 +211,8 @@ fn test_merge_views_checkout() {
     tx2.mut_repo()
         .set_wc_commit(ws7_id.clone(), commit3.id().clone())
         .unwrap();
-    // Make sure the end time different, assuming the clock has sub-millisecond
-    // precision.
-    std::thread::sleep(std::time::Duration::from_millis(1));
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
 
     // We currently arbitrarily pick the first transaction's working-copy commit
     // (first by transaction end time).
@@ -285,7 +276,6 @@ fn test_merge_views_branches() {
         "feature",
         RefTarget::normal(feature_branch_tx1.id().clone()),
     );
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     let main_branch_local_tx2 = write_random_commit(tx2.mut_repo(), &settings);
@@ -298,9 +288,8 @@ fn test_merge_views_branches() {
         "origin",
         RefTarget::normal(main_branch_origin_tx1.id().clone()),
     );
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
     let expected_main_branch = BranchTarget {
         local_target: RefTarget::from_legacy_form(
             [main_branch_local_tx0.id().clone()],
@@ -310,8 +299,8 @@ fn test_merge_views_branches() {
             ],
         ),
         remote_targets: btreemap! {
-            "origin".to_string() => RefTarget::normal(main_branch_origin_tx1.id().clone()).unwrap(),
-            "alternate".to_string() => RefTarget::normal(main_branch_alternate_tx0.id().clone()).unwrap(),
+            "origin".to_string() => RefTarget::normal(main_branch_origin_tx1.id().clone()),
+            "alternate".to_string() => RefTarget::normal(main_branch_alternate_tx0.id().clone()),
         },
     };
     let expected_feature_branch = BranchTarget {
@@ -350,15 +339,13 @@ fn test_merge_views_tags() {
     let v2_tx1 = write_random_commit(tx1.mut_repo(), &settings);
     tx1.mut_repo()
         .set_tag_target("v2.0", RefTarget::normal(v2_tx1.id().clone()));
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     let v1_tx2 = write_random_commit(tx2.mut_repo(), &settings);
     tx2.mut_repo()
         .set_tag_target("v1.0", RefTarget::normal(v1_tx2.id().clone()));
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
     let expected_v1 = RefTarget::from_legacy_form(
         [v1_tx0.id().clone()],
         [v1_tx1.id().clone(), v1_tx2.id().clone()],
@@ -367,8 +354,8 @@ fn test_merge_views_tags() {
     assert_eq!(
         repo.view().tags(),
         &btreemap! {
-            "v1.0".to_string() => expected_v1.unwrap(),
-            "v2.0".to_string() => expected_v2.unwrap(),
+            "v1.0".to_string() => expected_v1,
+            "v2.0".to_string() => expected_v2,
         }
     );
 }
@@ -406,7 +393,6 @@ fn test_merge_views_git_refs() {
         "refs/heads/feature",
         RefTarget::normal(feature_branch_tx1.id().clone()),
     );
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     let main_branch_tx2 = write_random_commit(tx2.mut_repo(), &settings);
@@ -414,9 +400,8 @@ fn test_merge_views_git_refs() {
         "refs/heads/main",
         RefTarget::normal(main_branch_tx2.id().clone()),
     );
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
     let expected_main_branch = RefTarget::from_legacy_form(
         [main_branch_tx0.id().clone()],
         [main_branch_tx1.id().clone(), main_branch_tx2.id().clone()],
@@ -425,8 +410,8 @@ fn test_merge_views_git_refs() {
     assert_eq!(
         repo.view().git_refs(),
         &btreemap! {
-            "refs/heads/main".to_string() => expected_main_branch.unwrap(),
-            "refs/heads/feature".to_string() => expected_feature_branch.unwrap(),
+            "refs/heads/main".to_string() => expected_main_branch,
+            "refs/heads/feature".to_string() => expected_feature_branch,
         }
     );
 }
@@ -449,37 +434,18 @@ fn test_merge_views_git_heads() {
     let tx1_head = write_random_commit(tx1.mut_repo(), &settings);
     tx1.mut_repo()
         .set_git_head_target(RefTarget::normal(tx1_head.id().clone()));
-    tx1.commit();
 
     let mut tx2 = repo.start_transaction(&settings, "test");
     let tx2_head = write_random_commit(tx2.mut_repo(), &settings);
     tx2.mut_repo()
         .set_git_head_target(RefTarget::normal(tx2_head.id().clone()));
-    tx2.commit();
 
-    let repo = repo.reload_at_head(&settings).unwrap();
+    let repo = commit_transactions(&settings, vec![tx1, tx2]);
     let expected_git_head = RefTarget::from_legacy_form(
         [tx0_head.id().clone()],
         [tx1_head.id().clone(), tx2_head.id().clone()],
     );
-    assert_eq!(repo.view().git_head(), expected_git_head.as_ref());
-}
-
-fn commit_transactions(settings: &UserSettings, txs: Vec<Transaction>) -> Arc<ReadonlyRepo> {
-    let repo_loader = txs[0].base_repo().loader();
-    let mut op_ids = vec![];
-    for tx in txs {
-        op_ids.push(tx.commit().op_id().clone());
-        std::thread::sleep(std::time::Duration::from_millis(1));
-    }
-    let repo = repo_loader.load_at_head(settings).unwrap();
-    // Test the setup. The assumption here is that the parent order matches the
-    // order in which they were merged (which currently matches the transaction
-    // commit order), so we want to know make sure they appear in a certain
-    // order, so the caller can decide the order by passing them to this
-    // function in a certain order.
-    assert_eq!(*repo.operation().parent_ids(), op_ids);
-    repo
+    assert_eq!(repo.view().git_head(), &expected_git_head);
 }
 
 #[test]

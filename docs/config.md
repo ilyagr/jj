@@ -8,11 +8,12 @@ These are the config settings available to jj/Jujutsu.
 The config settings are loaded from the following locations. Less common ways to
 specify `jj` config settings are discussed in a later section.
 
-* `~/.jjconfig.toml` (global)
+* [The user config file]
 * `.jj/repo/config.toml` (per-repository)
 
 See the [TOML site] and the [syntax guide] for a description of the syntax.
 
+[The user config file]: #user-config-file
 [TOML site]: https://toml.io/en/
 [syntax guide]: https://toml.io/en/v1.0.0
 
@@ -121,7 +122,7 @@ Parts of the style that are not overridden - such as the foreground color in the
 example above - are inherited from the parent style.
 
 Which elements can be colored is not yet documented, but see
-the [default color configuration](https://github.com/martinvonz/jj/blob/main/src/config/colors.toml)
+the [default color configuration](https://github.com/martinvonz/jj/blob/main/cli/src/config/colors.toml)
 for some examples of what's possible.
 
 ### Default command
@@ -134,12 +135,46 @@ subcommand name, subcommand alias, or user-defined alias (defaults to `"log"`).
 ui.default-command = "log"
 ```
 
+### Default description
+
+The value of the `ui.default-description` setting will be used to prepopulate
+the editor when describing changes with an empty description. This could be a
+useful reminder to fill in things like BUG=, TESTED= etc.
+
+```toml
+ui.default-description = "\n\nTESTED=TODO"
+```
+
 ### Diff format
 
 ```toml
 # Possible values: "color-words" (default), "git", "summary"
 ui.diff.format = "git"
 ```
+
+### Generating diffs by external command
+
+If `ui.diff.tool` is set, the specified diff command will be called instead of
+the internal diff function.
+
+```toml
+# Use Difftastic by default
+ui.diff.tool = ["difft", "--color=always", "$left", "$right"]
+# Use tool named "<name>" (see below)
+ui.diff.tool = "<name>"
+```
+
+The external diff tool can also be enabled by `diff --tool <name>` argument.
+For the tool named `<name>`, command arguments can be configured as follows.
+
+```toml
+[merge-tools.<name>]
+# program = "<name>"  # Defaults to the name of the tool if not specified
+diff-args = ["--color=always", "$left", "$right"]
+```
+
+- `$left` and `$right` are replaced with the paths to the left and right
+  directories to diff respectively.
 
 ### Default revisions to log
 
@@ -154,13 +189,13 @@ revsets.log = "main.."
 
 ```toml
 # Possible values: "curved" (default), "square", "ascii", "ascii-large",
-# "legacy" 
+# "legacy"
 ui.graph.style = "square"
 ```
 
 ### Wrap log content
 
-If enabled, `log`/`obslog`/`op log` content will be wrapped based on 
+If enabled, `log`/`obslog`/`op log` content will be wrapped based on
 the terminal width.
 
 ```toml
@@ -235,6 +270,9 @@ Can be customized by the `format_short_signature()` template alias.
 
 ## Pager
 
+Windows users: Note that pagination is disabled by default on Windows for now
+([#2040](https://github.com/martinvonz/jj/issues/2040)).
+
 The default pager is can be set via `ui.pager` or the `PAGER` environment
 variable. The priority is as follows (environment variables are marked with
 a `$`):
@@ -242,6 +280,15 @@ a `$`):
 `ui.pager` > `$PAGER`
 
 `less -FRX` is the default pager in the absence of any other setting.
+
+Additionally, paging behavior can be toggled via `ui.paginate` like so:
+
+```toml
+# Enable pagination for commands that support it (default)
+ui.paginate = "auto"
+# Disable all pagination, equivalent to using --no-pager
+ui.paginate = "never"
+```
 
 ### Processing contents to be paged
 
@@ -270,8 +317,8 @@ a `$`):
 
 `$JJ_EDITOR` > `ui.editor` > `$VISUAL` > `$EDITOR`
 
-Pico is the default editor in the absence of any other setting, but you could
-set it explicitly too.
+Pico is the default editor (Notepad on Windows) in the absence of any other
+setting, but you could set it explicitly too.
 
 ```toml
 ui.editor = "pico"
@@ -448,6 +495,14 @@ branches. Since the local branch isn't created, the remote branch will be
 deleted if you push the branch with `jj git push --branch` or `jj git push
 --all`.
 
+### Prefix for generated branches on push
+
+`jj git push --change` generates branch names with a prefix of "push-" by
+default. You can pick a different prefix by setting `git.push-branch-prefix`. For
+example:
+
+    git.push-branch-prefix = "martinvonz/push-"
+
 ## Filesystem monitor
 
 In large repositories, it may be beneficial to use a "filesystem monitor" to
@@ -461,7 +516,7 @@ currently only enabled if you compile jj with the `watchman` feature, such as
 with the following invocation:
 
 ```shell
-cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jujutsu --features watchman
+cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jj-cli --features watchman
 ```
 
 To configure the Watchman filesystem monitor, set
@@ -470,10 +525,13 @@ executable on your system](https://facebook.github.io/watchman/docs/install)).
 
 Debugging commands are available under `jj debug watchman`.
 
-# Alternative ways to specify configuration settings
+# User config file
 
-Instead of `~/.jjconfig.toml`, the config settings can be located under
-a platform-specific directory. It is an error for both of these files to exist.
+On all platforms, the user's global `jj` configuration file is located at either
+`~/.jjconfig.toml` (where `~` represents `$HOME` on Unix-likes, or
+`%USERPROFILE%` on Windows) or in a platform-specific directory. The
+platform-specific location is recommended for better integration with platform
+services. It is an error for both of these files to exist.
 
 | Platform | Value                                              | Example                                                   |
 | :------- | :------------------------------------------------- | :-------------------------------------------------------- |
@@ -495,7 +553,7 @@ additional configuration settings. This overrides settings defined in config
 files or environment variables. For example,
 
 ```shell
-jj --config-toml='ui.color="always"' --config-toml='ui.difftool="kdiff3"' split
+jj --config-toml='ui.color="always"' --config-toml='ui.diff-editor="kdiff3"' split
 ```
 
 Config specified this way must be valid TOML. In particular, string values must
