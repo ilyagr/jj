@@ -10,6 +10,7 @@ mdbook_root="$sourcetree/docs/.mdbook"
 outtree="$workdir"/gh-pages
 
 git worktree add "$sourcetree" --detach --quiet
+# TODO: Custom target branch for testing?
 git worktree add "$outtree" -f gh-pages --quiet
 # git -C "$outtree" rm -r "$outtree/"
 
@@ -32,9 +33,17 @@ for tag in mdbook $(git tag | grep -E 'v[0-9]+\.[0-9]+(\.[0-9]+)?(-mdbook)?' | s
 
   if [ -r "$mdbook_root/book.toml" ]; then
     cd "$mdbook_root" || exit 5
+    # TODO: Use env vars MDBOOK_...
     sed -i "s/^title\s*=.*/title =\"jj $friendly_tag docs\"/" book.toml
     mdbook build
     rsync -rI --delete "$sourcetree/rendered-docs/" "$outtree/$tag/"
+    # TODO: Also (?) generate a JSON or JSON-like file
+    # or some other way for docs to know their version
+    # and link between versions.
+    #
+    # We can copy https://github.com/kg4zow/mdbook-template#automatic-git-commit-information
+    # or the design of https://github.com/jimporter/mike
+    # TODO: Record commit id
     echo "- [$friendly_tag]($tag/index.html)" >> "$outtree/index.md"
     git restore :/ --quiet
   fi
@@ -42,5 +51,5 @@ done
 cd "$outtree" || exit 5
 ls
 git add .
-git commit  # TODO: some message author
-
+# TODO: Use env vars for author (outside this script)
+git commit  # TODO: some message, probably with commit id
