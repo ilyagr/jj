@@ -57,11 +57,14 @@ fn test_new_merge() {
     std::fs::write(repo_path.join("file2"), "b").unwrap();
 
     // Create a merge commit
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     test_env.jj_cmd_success(&repo_path, &["new", "main", "@"]);
+
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
-    @    0c4e5b9b68ae0cbe7ce3c61042619513d09005bf
+    @    2690041283ee1c3fe2e4241f22494466073db16f
     ├─╮
-    │ ◉  f399209d9dda06e8a25a0c8e9a0cde9f421ff35d add file2
+    │ ◉  2cf5f8811f237041dc592624274c91ad9f4ee5b8 add file2
     ◉ │  38e8e2f6c92ffb954961fc391b515ff551b41636 add file1
     ├─╯
     ◉  0000000000000000000000000000000000000000
@@ -73,17 +76,19 @@ fn test_new_merge() {
 
     // Same test with `jj merge`
     test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     test_env.jj_cmd_success(&repo_path, &["merge", "main", "@"]);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
-    @    200ed1a14c8acf09783dafefe5bebf2ff58f12fd
+    @    57b39f416a9eb6fddc9914fe2d9fd365e6721e82
     ├─╮
-    │ ◉  f399209d9dda06e8a25a0c8e9a0cde9f421ff35d add file2
+    │ ◉  2cf5f8811f237041dc592624274c91ad9f4ee5b8 add file2
     ◉ │  38e8e2f6c92ffb954961fc391b515ff551b41636 add file1
     ├─╯
     ◉  0000000000000000000000000000000000000000
     "###);
 
     // `jj merge` with less than two arguments is an error
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     let stderr = test_env.jj_cmd_cli_error(&repo_path, &["merge"]);
     insta::assert_snapshot!(stderr, @r###"
     Error: Merge requires at least two revisions
@@ -94,12 +99,14 @@ fn test_new_merge() {
     "###);
 
     // merge with non-unique revisions
-    let stderr = test_env.jj_cmd_failure(&repo_path, &["new", "@", "200e"]);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
+    let stderr = test_env.jj_cmd_failure(&repo_path, &["new", "@", "57b39f"]);
     insta::assert_snapshot!(stderr, @r###"
-    Error: More than one revset resolved to revision 200ed1a14c8a
+    Error: More than one revset resolved to revision 57b39f416a9e
     "###);
 
     // merge with root
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     let stderr = test_env.jj_cmd_failure(&repo_path, &["new", "@", "root"]);
     insta::assert_snapshot!(stderr, @r###"
     Error: Cannot merge with root revision
