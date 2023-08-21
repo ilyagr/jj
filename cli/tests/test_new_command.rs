@@ -55,6 +55,7 @@ fn test_new_merge() {
     std::fs::write(repo_path.join("file1"), "a").unwrap();
     test_env.jj_cmd_success(&repo_path, &["new", "root", "-m", "add file2"]);
     std::fs::write(repo_path.join("file2"), "b").unwrap();
+    let base_operation_id = test_env.current_operation_id(&repo_path);
 
     // Create a merge commit
     test_env.advance_test_rng_seed_to_multiple_of(200_000);
@@ -75,13 +76,13 @@ fn test_new_merge() {
     insta::assert_snapshot!(stdout, @"b");
 
     // Same test with `jj merge`
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.advance_test_rng_seed_to_multiple_of(200_000);
     test_env.jj_cmd_success(&repo_path, &["merge", "main", "@"]);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
-    @    57b39f416a9eb6fddc9914fe2d9fd365e6721e82
+    @    178ea7aaf4fcd1a8b3de6affd1ab2e7fdbda8e4d
     ├─╮
-    │ ◉  2cf5f8811f237041dc592624274c91ad9f4ee5b8 add file2
+    │ ◉  bcd0f02cadb1d7e0ca578793365146082162617f add file2
     ◉ │  38e8e2f6c92ffb954961fc391b515ff551b41636 add file1
     ├─╯
     ◉  0000000000000000000000000000000000000000
@@ -102,7 +103,8 @@ fn test_new_merge() {
     test_env.advance_test_rng_seed_to_multiple_of(200_000);
     let stderr = test_env.jj_cmd_failure(&repo_path, &["new", "@", "57b39f"]);
     insta::assert_snapshot!(stderr, @r###"
-    Error: More than one revset resolved to revision 57b39f416a9e
+    Error: Revision "57b39f" doesn't exist
+    Hint: Prefix the expression with 'all' to allow any number of revisions (i.e. 'all:57b39f').
     "###);
 
     // merge with root
