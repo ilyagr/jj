@@ -123,7 +123,7 @@ fn test_rebase_branch() {
     "###);
 
     // Test rebasing multiple branches at once
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["rebase", "-b=e", "-b=d", "-d=b"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 2 commits
@@ -143,7 +143,7 @@ fn test_rebase_branch() {
     "###);
 
     // Same test but with more than one revision per argument
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stderr = test_env.jj_cmd_failure(&repo_path, &["rebase", "-b=e|d", "-d=b"]);
     insta::assert_snapshot!(stderr, @r###"
     Error: Revset "e|d" resolved to more than one revision
@@ -211,7 +211,7 @@ fn test_rebase_branch_with_merge() {
     ◉
     "###);
 
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["rebase", "-d", "b"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 3 commits
@@ -271,7 +271,7 @@ fn test_rebase_single_revision() {
     ◉  a
     ◉
     "###);
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
 
     // Now, let's try moving the merge commit. After, both parents of "c" ("a" and
     // "b") should become parents of "d".
@@ -444,7 +444,7 @@ fn test_rebase_with_descendants() {
     "###);
 
     // Rebase several subtrees at once.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["rebase", "-s=c", "-s=d", "-d=a"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 2 commits
@@ -462,7 +462,7 @@ fn test_rebase_with_descendants() {
     ◉
     "###);
 
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     // Reminder of the setup
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
     @  d
@@ -493,7 +493,7 @@ fn test_rebase_with_descendants() {
     "###);
 
     // Same test as above, but with multiple commits per argument
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stderr = test_env.jj_cmd_failure(&repo_path, &["rebase", "-s=b|d", "-d=a"]);
     insta::assert_snapshot!(stderr, @r###"
     Error: Revset "b|d" resolved to more than one revision

@@ -52,7 +52,7 @@ fn test_restore() {
     insta::assert_snapshot!(stdout, @"");
 
     // Can restore another revision from its parents
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["diff", "-s", "-r=@-"]);
     insta::assert_snapshot!(stdout, @r###"
     A file2
@@ -75,7 +75,7 @@ fn test_restore() {
     "###);
 
     // Can restore this revision from another revision
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--from", "@--"]);
     insta::assert_snapshot!(stdout, @r###"
     Created kkmpptxz 237116e2 (no description set)
@@ -89,7 +89,7 @@ fn test_restore() {
     "###);
 
     // Can restore into other revision
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--to", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
     Created rlvkpnrz 887f8f96 (no description set)
@@ -107,7 +107,7 @@ fn test_restore() {
     "###);
 
     // Can combine `--from` and `--to`
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "--from", "@", "--to", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
     Created rlvkpnrz 50c1fe09 (no description set)
@@ -125,7 +125,7 @@ fn test_restore() {
     "###);
 
     // Can restore only specified paths
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["restore", "file2", "file3"]);
     insta::assert_snapshot!(stdout, @r###"
     Created kkmpptxz 48f89f52 (no description set)

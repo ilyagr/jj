@@ -57,7 +57,7 @@ fn test_unsquash() {
     "###);
 
     // Can unsquash into a given commit from its parent
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["unsquash", "-r", "b"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
@@ -80,7 +80,7 @@ fn test_unsquash() {
 
     // Cannot unsquash into a merge commit (because it's unclear which parent it
     // should come from)
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["edit", "b"]);
     test_env.jj_cmd_success(&repo_path, &["new"]);
     test_env.jj_cmd_success(&repo_path, &["branch", "create", "d"]);
@@ -173,7 +173,7 @@ fn test_unsquash_partial() {
     "###);
 
     // Can unsquash only some changes in interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(edit_script, "reset file1").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["unsquash", "-i"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -229,7 +229,7 @@ fn test_unsquash_description() {
 
     // If the destination's description is empty and the source's description is
     // non-empty, the resulting description is from the source
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "@-", "-m", "source"]);
     test_env.jj_cmd_success(&repo_path, &["unsquash"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@"), @r###"
@@ -246,7 +246,7 @@ fn test_unsquash_description() {
     "###);
 
     // If both descriptions were non-empty, we get asked for a combined description
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "@-", "-m", "source"]);
     std::fs::write(&edit_script, "dump editor0").unwrap();
     test_env.jj_cmd_success(&repo_path, &["unsquash"]);
@@ -269,7 +269,7 @@ fn test_unsquash_description() {
 
     // If the source's *content* doesn't become empty, then the source remains and
     // both descriptions are unchanged
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
     source
     "###);

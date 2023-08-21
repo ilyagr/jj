@@ -111,7 +111,7 @@ fn test_move() {
     "###);
 
     // Can move from ancestor
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["move", "--from", "@--"]);
     insta::assert_snapshot!(stdout, @r###"
     Working copy now at: kmkuslsw c8d83075 f | (no description set)
@@ -136,7 +136,7 @@ fn test_move() {
     "###);
 
     // Can move from descendant
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["move", "--from", "e", "--to", "d"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
@@ -230,7 +230,7 @@ fn test_move_partial() {
     "###);
 
     // Can move only part of the change in interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(&edit_script, "reset file2").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["move", "-i", "--from", "c"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -263,7 +263,7 @@ fn test_move_partial() {
     "###);
 
     // Can move only part of the change from a sibling in non-interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     // Clear the script so we know it won't be used
     std::fs::write(&edit_script, "").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["move", "--from", "c", "file1"]);
@@ -297,7 +297,7 @@ fn test_move_partial() {
     "###);
 
     // Can move only part of the change from a descendant in non-interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     // Clear the script so we know it won't be used
     std::fs::write(&edit_script, "").unwrap();
     let stdout =
@@ -326,7 +326,7 @@ fn test_move_partial() {
 
     // If we specify only a non-existent file, then the move still succeeds and
     // creates unchanged commits.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["move", "--from", "c", "nonexistent"]);
     insta::assert_snapshot!(stdout, @r###"
     Working copy now at: vruxwmqv b670567d d | (no description set)
@@ -359,7 +359,7 @@ fn test_move_description() {
 
     // If the destination's description is empty and the source's description is
     // non-empty, the resulting description is from the source
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "source"]);
     test_env.jj_cmd_success(&repo_path, &["move", "--to", "@-"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
@@ -376,7 +376,7 @@ fn test_move_description() {
     "###);
 
     // If both descriptions were non-empty, we get asked for a combined description
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "source"]);
     std::fs::write(&edit_script, "dump editor0").unwrap();
     test_env.jj_cmd_success(&repo_path, &["move", "--to", "@-"]);
@@ -399,7 +399,7 @@ fn test_move_description() {
 
     // If the source's *content* doesn't become empty, then the source remains and
     // both descriptions are unchanged
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(repo_path.join("file2"), "b\n").unwrap();
     test_env.jj_cmd_success(&repo_path, &["move", "--to", "@-", "file1"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"

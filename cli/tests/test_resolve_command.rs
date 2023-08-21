@@ -113,7 +113,7 @@ fn test_resolution() {
 
     // Check that the output file starts with conflict markers if
     // `merge-tool-edits-conflict-markers=true`
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["diff"]), 
     @"");
     std::fs::write(
@@ -153,7 +153,7 @@ fn test_resolution() {
 
     // Check that if merge tool leaves conflict markers in output file and
     // `merge-tool-edits-conflict-markers=true`, these markers are properly parsed.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["diff"]), 
     @"");
     std::fs::write(
@@ -220,7 +220,7 @@ conflict
     // Check that if merge tool leaves conflict markers in output file but
     // `merge-tool-edits-conflict-markers=false` or is not specified,
     // `jj` considers the conflict resolved.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["diff"]), 
     @"");
     std::fs::write(
@@ -656,7 +656,7 @@ fn test_multiple_conflicts() {
     "###);
 
     // Repeat the above with the `--quiet` option.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(&editor_script, "expect\n\0write\nresolution another_file\n").unwrap();
     insta::assert_snapshot!(
     test_env.jj_cmd_success(&repo_path, &["resolve", "--quiet", "another_file"]), @r###"
@@ -668,7 +668,7 @@ fn test_multiple_conflicts() {
 
     // For the rest of the test, we call `jj resolve` several times in a row to
     // resolve each conflict in the order it chooses.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     insta::assert_snapshot!(test_env.jj_cmd_success(&repo_path, &["diff"]), 
     @"");
     std::fs::write(

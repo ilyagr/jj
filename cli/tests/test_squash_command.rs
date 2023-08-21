@@ -58,7 +58,7 @@ fn test_squash() {
     "###);
 
     // Can squash a given commit into its parent
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash", "-r", "b"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
@@ -81,7 +81,7 @@ fn test_squash() {
 
     // Cannot squash a merge commit (because it's unclear which parent it should go
     // into)
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["edit", "b"]);
     test_env.jj_cmd_success(&repo_path, &["new"]);
     test_env.jj_cmd_success(&repo_path, &["branch", "create", "d"]);
@@ -173,7 +173,7 @@ fn test_squash_partial() {
     "###);
 
     // Can squash only some changes in interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(&edit_script, "reset file1").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash", "-r", "b", "-i"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -205,7 +205,7 @@ fn test_squash_partial() {
     "###);
 
     // Can squash only some changes in non-interactive mode
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     // Clear the script so we know it won't be used even without -i
     std::fs::write(&edit_script, "").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash", "-r", "b", "file2"]);
@@ -239,7 +239,7 @@ fn test_squash_partial() {
 
     // If we specify only a non-existent file, then the squash still succeeds and
     // creates unchanged commits.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let stdout = test_env.jj_cmd_success(&repo_path, &["squash", "-r", "b", "nonexistent"]);
     insta::assert_snapshot!(stdout, @r###"
     Rebased 1 descendant commits
@@ -248,7 +248,7 @@ fn test_squash_partial() {
     "###);
 
     // We get a warning if we pass a positional argument that looks like a revset
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["squash", "b"]);
     insta::assert_snapshot!(stderr, @r###"
     warning: The argument "b" is being interpreted as a path. To specify a revset, pass -r "b" instead.
@@ -284,7 +284,7 @@ fn test_squash_description() {
 
     // If the destination's description is empty and the source's description is
     // non-empty, the resulting description is from the source
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "source"]);
     test_env.jj_cmd_success(&repo_path, &["squash"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
@@ -301,14 +301,14 @@ fn test_squash_description() {
     "###);
 
     // An explicit description on the command-line overrides this
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["squash", "-m", "custom"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
     custom
     "###);
 
     // If both descriptions were non-empty, we get asked for a combined description
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["describe", "-m", "source"]);
     std::fs::write(&edit_script, "dump editor0").unwrap();
     test_env.jj_cmd_success(&repo_path, &["squash"]);
@@ -331,7 +331,7 @@ fn test_squash_description() {
 
     // An explicit description on the command-line overrides prevents launching an
     // editor
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["squash", "-m", "custom"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
     custom
@@ -339,7 +339,7 @@ fn test_squash_description() {
 
     // If the source's *content* doesn't become empty, then the source remains and
     // both descriptions are unchanged
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     test_env.jj_cmd_success(&repo_path, &["squash", "file1"]);
     insta::assert_snapshot!(get_description(&test_env, &repo_path, "@-"), @r###"
     destination
