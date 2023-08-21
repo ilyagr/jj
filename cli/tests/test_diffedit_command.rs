@@ -31,6 +31,8 @@ fn test_diffedit() {
     std::fs::write(repo_path.join("file2"), "b\n").unwrap();
 
     let edit_script = test_env.set_up_fake_diff_editor();
+    let base_operation_id = test_env.current_operation_id(&repo_path);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
 
     // Test the setup; nothing happens if we make no changes
     std::fs::write(
@@ -74,7 +76,8 @@ fn test_diffedit() {
     "###);
 
     // Changes to a commit are propagated to descendants
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     std::fs::write(&edit_script, "write file3\nmodified\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "-r", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -90,7 +93,7 @@ fn test_diffedit() {
     "###);
 
     // Test diffedit --from @--
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
     std::fs::write(
         &edit_script,
         "files-before file1\0files-after JJ-INSTRUCTIONS file2 file3\0reset file2",
@@ -122,6 +125,8 @@ fn test_diffedit_new_file() {
     std::fs::write(repo_path.join("file2"), "b\n").unwrap();
 
     let edit_script = test_env.set_up_fake_diff_editor();
+    let base_operation_id = test_env.current_operation_id(&repo_path);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
 
     // Test the setup; nothing happens if we make no changes
     std::fs::write(
@@ -160,7 +165,8 @@ fn test_diffedit_new_file() {
     // On one hand, it is unexpected and potentially a minor BUG. On the other
     // hand, this prevents `jj` from loading any backup files the merge tool
     // generates.
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     std::fs::write(&edit_script, "write new_file\nnew file\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -365,6 +371,8 @@ fn test_diffedit_old_restore_interactive_tests() {
     std::fs::write(repo_path.join("file3"), "b\n").unwrap();
 
     let edit_script = test_env.set_up_fake_diff_editor();
+    let base_operation_id = test_env.current_operation_id(&repo_path);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
 
     // Nothing happens if we make no changes
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@-"]);
@@ -379,6 +387,7 @@ fn test_diffedit_old_restore_interactive_tests() {
     "###);
 
     // Nothing happens if the diff-editor exits with an error
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     std::fs::write(&edit_script, "rm file2\0fail").unwrap();
     insta::assert_snapshot!(&test_env.jj_cmd_failure(&repo_path, &["diffedit", "--from", "@-"]), @r###"
     Error: Failed to edit diff: Tool exited with a non-zero code (run with --verbose to see the exact invocation). Exit code: 1.
@@ -391,6 +400,7 @@ fn test_diffedit_old_restore_interactive_tests() {
     "###);
 
     // Can restore changes to individual files
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     std::fs::write(&edit_script, "reset file2\0reset file3").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
@@ -405,7 +415,8 @@ fn test_diffedit_old_restore_interactive_tests() {
     "###);
 
     // Can make unrelated edits
-    test_env.jj_cmd_success(&repo_path, &["undo"]);
+    test_env.jj_cmd_success(&repo_path, &["op", "restore", &base_operation_id]);
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
     std::fs::write(&edit_script, "write file3\nunrelated\n").unwrap();
     let stdout = test_env.jj_cmd_success(&repo_path, &["diffedit", "--from", "@-"]);
     insta::assert_snapshot!(stdout, @r###"
