@@ -4,13 +4,14 @@ site_dir:  'rendered-docs'
 # site_url) leads to version switching failing to preserve the current path.
 site_url: 'https://ilyagr.github.io/jj/'
 theme:
-  name: 'material'
+  name: 'readthedocs'
   language: 'en'
 # See https://jimandreas.github.io/mkdocs-material/setup/setting-up-versioning/
 # for upcoming features
-extra:
-  version:
-    provider: mike
+plugins:
+  - mike:
+      canonical_version: "latest" # For search engines
+      version_selector: true
 markdown_extensions:
   - extra
   - sane_lists
@@ -39,8 +40,8 @@ nav:
       - 'Branches': 'branches.md'
       - 'Conflicts': 'conflicts.md'
       - 'Operation Log': 'operation-log.md'
-      - 'Reference material':
-          - 'Glossary': 'glossary.md'
+- 'Reference material':
+      - 'Glossary': 'glossary.md'
 
 - 'Configuration':
       - 'Settings': 'config.md'
@@ -61,8 +62,8 @@ nav:
 - Contributing:
       - 'Guidelines and Setup': 'contributing.md'
       - 'Code of conduct': 'code-of-conduct.md'
-      - 'Design docs': 
-          - 'git-submodules': 'design/git-submodules.md'
-          - 'git-submodule-storage': 'design/git-submodule-storage.md'
+- 'Design docs': 
+      - 'git-submodules': 'design/git-submodules.md'
+      - 'git-submodule-storage': 'design/git-submodule-storage.md'
 
 
