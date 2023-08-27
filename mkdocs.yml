@@ -69,8 +69,9 @@ nav:
       - 'Conflicts': 'technical/conflicts.md'
 
 - Contributing:
-      - 'Guidelines and "How to...?"': 'contributing.md'
-      - 'Code of conduct': 'code-of-conduct.md'
+      - 'Guidelines': 'contributing/guidelines.md'
+      - "How do I ...?": 'contributing/howtos.md'
+      - 'Code of conduct': 'contributing/code-of-conduct.md'
 
 - 'Design docs': 
     - 'git-submodules': 'design/git-submodules.md'
