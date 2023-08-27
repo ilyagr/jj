@@ -12,9 +12,9 @@ To move branches, use `jj branch set`.
 `jj git push --all` pushes all _branches_, not all revisions. You have two
 options:
 
-* Using `jj git push --change` will automatically create a branch and push it.
-* Using `jj branch` commands to create or move a branch to either the commit
-  you want to push or a descendant on it. Unlike Git, Jujutsu doesn't do this
+- Using `jj git push --change` will automatically create a branch and push it.
+- Using `jj branch` commands to create or move a branch to either the commit you
+  want to push or a descendant on it. Unlike Git, Jujutsu doesn't do this
   automatically (see previous question).
 
 ### Where is my commit, why is it not visible in `jj log`?
@@ -25,11 +25,11 @@ If yes, you should be aware that `jj log` only shows the revisions matching
 `revsets.log` by default. You can change it as described in [config] to show
 more revisions.
 
-If not, the revision may have been abandoned (e.g. because you
-used `jj abandon`, or because it's an obsolete version that's been rewritten
-with `jj rebase`, `jj describe`, etc). In that case, `jj log -r commit_id`
-should show the revision as "hidden". `jj new commit_id` should make the
-revision visible again.
+If not, the revision may have been abandoned (e.g. because you used
+`jj abandon`, or because it's an obsolete version that's been rewritten with
+`jj rebase`, `jj describe`, etc). In that case, `jj log -r commit_id` should
+show the revision as "hidden". `jj new commit_id` should make the revision
+visible again.
 
 See [revsets] and [templates] for further guidance.
 
@@ -65,41 +65,36 @@ To squash or split commits, use `jj squash` and `jj split`.
 
 ### How can I keep my scratch files in the repository?
 
-You can keep your notes and other scratch files in the repository, if you add
-a wildcard pattern to either the repo's `gitignore` or your global `gitignore`.
+You can keep your notes and other scratch files in the repository, if you add a
+wildcard pattern to either the repo's `gitignore` or your global `gitignore`.
 Something like `*.scratch` or `*.scratchpad` should do, after that rename the
 files you want to keep around to match the pattern.
 
 If `$EDITOR` integration is important, something like `scratchpad.*` may be more
-helpful, as you can keep the filename extension intact (it
-matches `scratchpad.md`, `scratchpad.rs` and more).
+helpful, as you can keep the filename extension intact (it matches
+`scratchpad.md`, `scratchpad.rs` and more).
 
 You can find more details on `gitignore` files [here][gitignore].
 
 ### How can I keep local changes around, but not use them for Pull Requests?
 
-In general, you should separate out the changes to their own commit (using
-e.g. `jj split`). After that, one possible workflow is to rebase your pending
-PRs on top of the commit with the local changes. Then, just before pushing to a
-remote, use `jj rebase -s child_of_commit_with_local_changes -d main` to move
-the PRs back on top of `main`.
+In general, you should separate out the changes to their own commit (using e.g.
+`jj split`). After that, one possible workflow is to rebase your pending PRs on
+top of the commit with the local changes. Then, just before pushing to a remote,
+use `jj rebase -s child_of_commit_with_local_changes -d main` to move the PRs
+back on top of `main`.
 
-If you have several PRs, you can
-try `jj rebase -s all:commit_with_local_changes+ -d main`
-(note the `+`) to move them all at once.
+If you have several PRs, you can try
+`jj rebase -s all:commit_with_local_changes+ -d main` (note the `+`) to move
+them all at once.
 
-An alternative workflow would be to rebase the commit with local changes on
-top of the PR you're working on and then do `jj new commit_with_local_changes`.
-You'll then need to use `jj new --before` to create new commits
-and `jj move --to`
-to move new changes into the correct commits.
+An alternative workflow would be to rebase the commit with local changes on top
+of the PR you're working on and then do `jj new commit_with_local_changes`.
+You'll then need to use `jj new --before` to create new commits and
+`jj move --to` to move new changes into the correct commits.
 
 [config]: config.md
-
 [gitignore]: https://git-scm.com/docs/gitignore
-
 [revsets]: revsets.md
-
 [templates]: templates.md
-
 [this issue]: https://github.com/martinvonz/jj/issues/1531

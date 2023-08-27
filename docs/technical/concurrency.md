@@ -4,8 +4,8 @@
 
 Concurrent editing is a key feature of DVCSs -- that's why they're called
 *Distributed* Version Control Systems. A DVCS that didn't let users edit files
-and create commits on separate machines at the same time wouldn't be much
-of a distributed VCS.
+and create commits on separate machines at the same time wouldn't be much of a
+distributed VCS.
 
 When conflicting changes are made in different clones, a DVCS will have to deal
 with that when you push or pull. For example, when using Mercurial, if the
@@ -49,7 +49,6 @@ the user about the conflict.
 The most important piece in the lock-free design is the "operation log". That is
 what allows us to detect and merge concurrent operations.
 
-
 ## Operation log
 
 The operation log is similar to a commit DAG (such as in
@@ -59,9 +58,9 @@ a "view". The view object contains the set of visible head commits, branches,
 tags, and the working-copy commit in each workspace. The operation object
 contains a pointer to the view object (like how commit objects point to tree
 objects), pointers to parent operation(s) (like how commit objects point to
-parent commit(s)), and metadata about the operation. These types are defined
-in `op_store.proto` The operation log is normally linear.
-It becomes non-linear if there are concurrent operations.
+parent commit(s)), and metadata about the operation. These types are defined in
+`op_store.proto` The operation log is normally linear. It becomes non-linear if
+there are concurrent operations.
 
 When a command starts, it loads the repo at the latest operation. Because the
 associated view object completely defines the repo state, the running command
@@ -86,11 +85,11 @@ concurrent operations.
 
 If Jujutsu tries to load the repo and finds multiple heads in the operation log,
 it will do a 3-way merge of the view objects based on their common ancestor
-(possibly several 3-way merges if there were more than two heads). Conflicts
-are recorded in the resulting view object. For example, if branch `main` was
-moved from commit A to commit B in one operation and moved to commit C in a
-concurrent operation, then `main` will be recorded as "moved from A to B or C".
-See the `RefTarget` definition in `op_store.proto`.
+(possibly several 3-way merges if there were more than two heads). Conflicts are
+recorded in the resulting view object. For example, if branch `main` was moved
+from commit A to commit B in one operation and moved to commit C in a concurrent
+operation, then `main` will be recorded as "moved from A to B or C". See the
+`RefTarget` definition in `op_store.proto`.
 
 Because we allow branches (etc.) to be in a conflicted state rather than just
 erroring out when there are multiple heads, the user can continue to use the

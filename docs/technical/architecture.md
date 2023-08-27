@@ -2,9 +2,9 @@
 
 ## Data model
 
-The commit data model is similar
-to [Git's object model](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects)
-, but with some differences.
+The commit data model is similar to
+[Git's object model](https://git-scm.com/book/en/v2/Git-Internals-Git-Objects) ,
+but with some differences.
 
 ## Separation of library from UI
 
@@ -13,12 +13,12 @@ the CLI crate (`jj-cli`). The library crate is currently only used by the CLI
 crate, but it is meant to also be usable from a GUI or TUI, or in a server
 serving requests from multiple users. As a result, the library should avoid
 interacting directly with the user via the terminal or by other means; all
-input/output is handled by the CLI crate [^1]. Since the library crate is meant
-to usable in a server, it also cannot read configuration from the user's home
-directory, or from user-specific environment variables.
+input/output is handled by the CLI crate \[^1\]. Since the library crate is
+meant to usable in a server, it also cannot read configuration from the user's
+home directory, or from user-specific environment variables.
 
-[^1]: There are a few exceptions, such as for messages printed during automatic
-upgrades of the repo format
+\[^1\]: There are a few exceptions, such as for messages printed during
+automatic upgrades of the repo format
 
 A lot of thought has gone into making the library crate's API easy to use, but
 not much has gone into "details" such as which collection types are used, or
@@ -28,18 +28,17 @@ which symbols are exposed in the API.
 
 One overarching principle in the design is that it should be easy to change
 where data is stored. The goal was to be able to put storage on local-disk by
-default but also be able to move storage to the cloud at Google
-(and for anyone). To that end, commits (and trees, files, etc.) are stored by
-the commit backend, operations (and views) are stored by the operation backend,
-the heads of the operation log are stored by the "op heads" backend, the commit
-index is stored by the index backend, and the working copy is stored by the
-working copy backend. The interfaces are defined in terms of plain Rust data
-types, not tied to a specific format. The working copy doesn't have its own
-trait defined yet, but its interface is small and easy to create traits for when
-needed.
+default but also be able to move storage to the cloud at Google (and for
+anyone). To that end, commits (and trees, files, etc.) are stored by the commit
+backend, operations (and views) are stored by the operation backend, the heads
+of the operation log are stored by the "op heads" backend, the commit index is
+stored by the index backend, and the working copy is stored by the working copy
+backend. The interfaces are defined in terms of plain Rust data types, not tied
+to a specific format. The working copy doesn't have its own trait defined yet,
+but its interface is small and easy to create traits for when needed.
 
-The commit backend to use when loading a repo is specified in
-the `.jj/repo/store/type` file. There are similar files for the other backends
+The commit backend to use when loading a repo is specified in the
+`.jj/repo/store/type` file. There are similar files for the other backends
 (`.jj/repo/index/type`, `.jj/repo/op_store/type`, `.jj/repo/op_heads/type`).
 
 ## Design of the library crate
@@ -76,10 +75,9 @@ graph TD;
 
 ### Backend
 
-The `Backend` trait defines the interface each
-commit backend needs to implement. The current in-tree commit backends
-are `GitBackend`
-and `LocalBackend`.
+The `Backend` trait defines the interface each commit backend needs to
+implement. The current in-tree commit backends are `GitBackend` and
+`LocalBackend`.
 
 Since there are non-commit backends, the `Backend` trait should probably be
 renamed to `CommitBackend`.
@@ -90,8 +88,8 @@ The `GitBackend` stores commits in a Git repository. It uses `libgit2` to read
 and write commits and refs.
 
 To prevent GC from deleting commits that are still reachable from the operation
-log, the `GitBackend` stores a ref for each commit in the operation log in
-the `refs/jj/keep/` namespace.
+log, the `GitBackend` stores a ref for each commit in the operation log in the
+`refs/jj/keep/` namespace.
 
 Commit data that is available in Jujutsu's model but not in Git's model is
 stored in a `StackedTable` in `.jj/repo/store/extra/`. That is currently the
@@ -111,9 +109,9 @@ their hash, with one file per object.
 ### Store
 
 The `Store` type wraps the `Backend` and returns wrapped types for commits and
-trees to make them easier to use. The wrapped objects have a reference to
-the `Store` itself, so you can do e.g. `commit.parents()` without having to
-provide the `Store` as an argument.
+trees to make them easier to use. The wrapped objects have a reference to the
+`Store` itself, so you can do e.g. `commit.parents()` without having to provide
+the `Store` as an argument.
 
 The `Store` type also provides caching of commits and trees.
 
@@ -137,14 +135,14 @@ caller modify it.
 The `Transaction` object has a `MutableRepo` and metadata that will go into the
 operation log. When the transaction commits, the `MutableRepo` becomes a view
 object in the operation log on disk, and the `Transaction` object becomes an
-operation object. In memory, `Transaction::commit()` returns a
-new `ReadonlyRepo`.
+operation object. In memory, `Transaction::commit()` returns a new
+`ReadonlyRepo`.
 
 ### RepoLoader
 
 The `RepoLoader` represents a repository at an unspecified operation. You can
-think of as a pointer to the `.jj/repo/` directory. It can create
-a `ReadonlyRepo` given an operation ID.
+think of as a pointer to the `.jj/repo/` directory. It can create a
+`ReadonlyRepo` given an operation ID.
 
 ### TreeState
 
@@ -177,10 +175,10 @@ crashed, for example).
 ### Git
 
 The `git` module contains functionality for interoperating with a Git repo, at a
-higher level than the `GitBackend`. The `GitBackend` is restricted by
-the `Backend` trait; the `git` module is specifically for Git-backed repos. It
-has functionality for importing refs from the Git repo and for exporting to refs
-in the Git repo. It also has functionality for pushing and pulling to/from Git
+higher level than the `GitBackend`. The `GitBackend` is restricted by the
+`Backend` trait; the `git` module is specifically for Git-backed repos. It has
+functionality for importing refs from the Git repo and for exporting to refs in
+the Git repo. It also has functionality for pushing and pulling to/from Git
 remotes.
 
 ### Revsets
@@ -189,15 +187,15 @@ A user-provided revset expression string goes through a few different stages to
 be evaluated:
 
 1. Parse the expression into a `RevsetExpression`, which is close to an AST
-2. Resolve symbols and functions like `tags()` into specific commits. After
-   this stage, the expression is still a `RevsetExpression`, but it won't have
-   any `CommitRef` variants in it.
+2. Resolve symbols and functions like `tags()` into specific commits. After this
+   stage, the expression is still a `RevsetExpression`, but it won't have any
+   `CommitRef` variants in it.
 3. Resolve visibility. This stage resolves `visible_heads()` and `all()` and
    produces a `ResolvedExpression`.
 4. Evaluate the `ResolvedExpression` into a `Revset`.
 
-This evaluation step is performed by `Index::evaluate_revset()`, allowing
-the `Revset` implementation to leverage the specifics of a custom index
+This evaluation step is performed by `Index::evaluate_revset()`, allowing the
+`Revset` implementation to leverage the specifics of a custom index
 implementation. The first three steps are independent of the index
 implementation.
 
@@ -225,8 +223,8 @@ results in O(log N) amortized insertion time and lookup time.
 There's no garbage collection of unreachable tables yet.
 
 The tables are named by their hash. We keep a separate directory of pointers to
-the current leaf tables, in the same way as we
-do [for the operation log](concurrency.md#storage).
+the current leaf tables, in the same way as we do
+[for the operation log](concurrency.md#storage).
 
 ## Design of the CLI crate
 

@@ -1,6 +1,5 @@
 # Installation and setup
 
-
 ## Installation
 
 See below for how to build from source. There are also
@@ -28,15 +27,15 @@ cargo install --git https://github.com/martinvonz/jj.git --locked --bin jj jj-cl
 
 #### Nix OS
 
-If you're on Nix OS you can use the flake for this repository.
-For example, if you want to run `jj` loaded from the flake, use:
+If you're on Nix OS you can use the flake for this repository. For example, if
+you want to run `jj` loaded from the flake, use:
 
 ```shell
 nix run 'github:martinvonz/jj'
 ```
 
-You can also add this flake url to your system input flakes. Or you can
-install the flake to your user profile:
+You can also add this flake url to your system input flakes. Or you can install
+the flake to your user profile:
 
 ```shell
 nix profile install 'github:martinvonz/jj'
@@ -62,8 +61,8 @@ brew install jj
 
 #### MacPorts
 
-You can also install `jj` via [MacPorts](https://www.macports.org) (as
-the `jujutsu` port):
+You can also install `jj` via [MacPorts](https://www.macports.org) (as the
+`jujutsu` port):
 
 ```shell
 sudo port install jujutsu
@@ -108,8 +107,8 @@ $ jj config set --user user.email "martinvonz@google.com"
 ## Command-line completion
 
 To set up command-line completion, source the output of
-`jj util completion --bash/--zsh/--fish` (called `jj debug completion` in
-jj <= 0.7.0). Exactly how to source it depends on your shell.
+`jj util completion --bash/--zsh/--fish` (called `jj debug completion` in jj \<=
+0.7.0). Exactly how to source it depends on your shell.
 
 ### Bash
 
@@ -117,7 +116,7 @@ jj <= 0.7.0). Exactly how to source it depends on your shell.
 source <(jj util completion)  # --bash is the default
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell
 source <(jj debug completion)  # --bash is the default
@@ -131,7 +130,7 @@ compinit
 source <(jj util completion --zsh)
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell
 autoload -U compinit
@@ -145,7 +144,7 @@ source <(jj debug completion --zsh)
 jj util completion --fish | source
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell
 jj debug completion --fish | source
@@ -157,9 +156,8 @@ jj debug completion --fish | source
 source-bash $(jj util completion)
 ```
 
-Or, with jj <= 0.7.0:
+Or, with jj \<= 0.7.0:
 
 ```shell
 source-bash $(jj debug completion)
 ```
-
