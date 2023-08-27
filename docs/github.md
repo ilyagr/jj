@@ -14,7 +14,7 @@ authenticated http.
 The simplest way to start with Jujutsu, is creating a stack of commits, before
 creating any branch.
 
-```shell script
+```shell
 # Start a new commit off of `main`
 $ jj new main
 # Refactor some files, then add a description and start a new commit
@@ -45,7 +45,7 @@ branches. In a co-located repository, `jj` isn't the source of truth. But
 Jujutsu allows an incremental migration, as `jj commit` updates the HEAD of the
 git repository.
 
-```shell script
+```shell
 $ nvim docs/tutorial.md
 $ # Do some more work.
 $ jj commit -m "Update tutorial"
@@ -61,7 +61,7 @@ In a Jujutsu repository, the workflow is simplified. If there's no need for
 explicitly named branches, you just can generate one for a change. As Jujutsu is
 able to create a branch for a revision.
 
-```shell script
+```shell
 $ # Do your work
 $ jj commit
 $ # Jujutsu automatically creates a branch
@@ -76,12 +76,18 @@ commits to your branch[^1]. Some projects (such as Jujutsu and LLVM) instead
 prefer that you keep your commits clean by rewriting them and then
 force-pushing[^2].
 
+[^1]: This is a GitHub Style review, as GitHub currently only is able to compare
+branches.
+
+[^2]: If you're wondering why we prefer clean commits in this project, see
+e.g. [this blog post][stacked]
+
 ### Adding new commits
 
 If your project prefers that you address review comments by adding commits on
 top, you can do that by doing something like this:
 
-```shell script
+```shell
 $ # Create a new commit on top of the `your-feature` branch from above.
 $ jj new your-feature
 $ # Address the comments, by updating the code
@@ -99,7 +105,7 @@ $ jj git push.
 If your project prefers that you keep commits clean, you can do that by doing
 something like this:
 
-```shell script
+```shell
 $ # Create a new commit on top of the second-to-last commit in `your-feature`,
 $ # as reviews requested a fix there.
 $ jj new your-feature-
@@ -154,11 +160,6 @@ Log all descendants of the current working copy, which aren't on a remote
 
 For a detailed overview, how Jujutsu handles conflicts, revisit
 the [tutorial][tut].
-
-[^1]: This is a GitHub Style review, as GitHub currently only is able to compare
-branches.
-[^2]: If you're wondering why we prefer clean commits in this project, see
-e.g.[this blog post][stacked]
 
 [detached]: https://git-scm.com/docs/git-checkout#_detached_head
 
