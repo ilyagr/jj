@@ -7,6 +7,8 @@ theme:
   name: 'material'
   language: 'en'
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     # - navigation.top
 extra:
   version:
@@ -42,8 +44,7 @@ nav:
       - 'Installation and Setup': 'install-and-setup.md'
       - 'Tutorial and Birds-Eye View': 'tutorial.md'
       - 'Working with Github': 'github.md'
-
-- FAQ: 'FAQ.md'
+      - FAQ: 'FAQ.md'
 
 - Concepts:
       - 'Working Copy': 'working-copy.md'
