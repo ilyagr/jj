@@ -61,7 +61,7 @@ Guidelines](https://opensource.google/conduct/).
 ## Contributing to the documentation
 
 We appreciate [bug
-reports](https://github.com/martinvonz/jj/issues/new?template=bug_report.md)
+reports](https://github.com/martinvonz/jj/issues/new?template=documentation_issue.md)
 about any problems, however small, lurking in [our documentation
 website](https://martinvonz.github.io/jj/prerelease) or in the `jj help
 <command>` docs. If a part of the bug report template does not apply, you can
