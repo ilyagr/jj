@@ -541,6 +541,9 @@ fn test_rebase_with_descendants() {
     "###);
 }
 
+// TODO: More --before and --after tests, including `jj rebase -r b --after
+// parent_of_b`. "Normal" use with repeated invocations
+
 #[test]
 fn test_rebase_revision_onto_descendant() {
     let test_env = TestEnvironment::default();
@@ -611,8 +614,99 @@ fn test_rebase_revision_onto_descendant() {
     ◉
     "###);
 
-    // TODO(ilyagr): These will be good tests for `jj rebase --insert-after` and
-    // `--insert-before`, once those are implemented.
+    let (stdout, _stderr) = test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
+    insta::assert_snapshot!(stdout, @"");
+    // #### Reminder of our initial setup ####
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    @    merge
+    ├─╮
+    │ ◉  a
+    ◉ │  b
+    ├─╯
+    ◉  base
+    ◉
+    "###);
+
+    // Simpler example with --insert-after
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&repo_path, &["rebase", "-r=base", "--insert-after=a"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Also rebased 3 descendant commits onto parent of rebased commit
+    Working copy now at: vruxwmqv 986b7a49 merge | merge
+    Parent commit      : royxmykx c07c677c b | b
+    Parent commit      : zsuskuln abc90087 a | a
+    Added 0 files, modified 0 files, removed 1 files
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    ◉  base
+    @    merge
+    ├─╮
+    │ ◉  a
+    ◉ │  b
+    ├─╯
+    ◉
+    "###);
+
+    // Make a merge with --insert-after
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Working copy now at: vruxwmqv b05964d1 merge | merge
+    Parent commit      : royxmykx cea87a87 b | b
+    Parent commit      : zsuskuln 2c5b7858 a | a
+    Added 1 files, modified 0 files, removed 0 files
+    "###);
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &repo_path,
+        &["rebase", "-r=base", "--insert-after=a", "--insert-after=b"],
+    );
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Also rebased 3 descendant commits onto parent of rebased commit
+    Working copy now at: vruxwmqv 986b7a49 merge | merge
+    Parent commit      : royxmykx c07c677c b | b
+    Parent commit      : zsuskuln abc90087 a | a
+    Added 0 files, modified 0 files, removed 1 files
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    ◉  base
+    @    merge
+    ├─╮
+    │ ◉  a
+    ◉ │  b
+    ├─╯
+    ◉
+    "###);
+
+    // Same rebase with --insert-before
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Working copy now at: vruxwmqv b05964d1 merge | merge
+    Parent commit      : royxmykx cea87a87 b | b
+    Parent commit      : zsuskuln 2c5b7858 a | a
+    Added 1 files, modified 0 files, removed 0 files
+    "###);
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&repo_path, &["rebase", "-r=base", "--insert-before=merge"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Also rebased 3 descendant commits onto parent of rebased commit
+    Working copy now at: vruxwmqv 986b7a49 merge | merge
+    Parent commit      : royxmykx c07c677c b | b
+    Parent commit      : zsuskuln abc90087 a | a
+    Added 0 files, modified 0 files, removed 1 files
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    ◉  base
+    @    merge
+    ├─╮
+    │ ◉  a
+    ◉ │  b
+    ├─╯
+    ◉
+    "###);
 }
 
 fn get_log_output(test_env: &TestEnvironment, repo_path: &Path) -> String {

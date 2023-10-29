@@ -34,10 +34,14 @@ use crate::ui::Ui;
 
 /// Move revisions to different parent(s)
 ///
-/// There are three different ways of specifying which revisions to rebase:
-/// `-b` to rebase a whole branch, `-s` to rebase a revision and its
-/// descendants, and `-r` to rebase a single commit. If none of them is
-/// specified, it defaults to `-b @`.
+/// There are three different ways of specifying which revisions to rebase: `-b`
+/// to rebase a whole branch, `-s` to rebase a revision and its descendants, and
+/// `-r` to rebase a single commit. If none of them is specified, the default is
+/// `-b @`.
+///
+/// The destination can be specified with `-d` (recommended for new users). The
+/// two other options, `--insert-before` and `--insert-after`, are useful if
+/// you're reordering commits. We will not discuss them further in this intro.
 ///
 /// With `-s`, the command rebases the specified revision and its descendants
 /// onto the destination. For example, `jj rebase -s M -d O` would transform
@@ -109,6 +113,7 @@ use crate::ui::Ui;
 #[derive(clap::Args, Clone, Debug)]
 #[command(verbatim_doc_comment)]
 #[command(group(ArgGroup::new("to_rebase").args(&["branch", "source", "revision"])))]
+#[command(group(ArgGroup::new("target").required(true).args(&["destination", "insert_after", "insert_before"])))]
 pub(crate) struct RebaseArgs {
     /// Rebase the whole branch relative to destination's ancestors (can be
     /// repeated)
@@ -130,6 +135,7 @@ pub(crate) struct RebaseArgs {
     /// If none of `-b`, `-s`, or `-r` is provided, then the default is `-b @`.
     #[arg(long, short)]
     source: Vec<RevisionArg>,
+
     /// Rebase only this revision, rebasing descendants onto this revision's
     /// parent(s)
     ///
@@ -139,10 +145,42 @@ pub(crate) struct RebaseArgs {
     /// If none of `-b`, `-s`, or `-r` is provided, then the default is `-b @`.
     #[arg(long, short)]
     revision: Option<RevisionArg>,
-    /// The revision(s) to rebase onto (can be repeated to create a merge
-    /// commit)
-    #[arg(long, short, required = true)]
+
+    /// (Recommended) The revision(s) to rebase onto (can be repeated to create
+    /// a merge commit)
+    #[arg(long, short)]
     destination: Vec<RevisionArg>,
+
+    /// Insert the rebased change between the target commit(s) and their
+    /// children; requires `-r`
+    ///
+    /// This option is useful when reordering commits. It can also be repeated;
+    /// this can be confusing unless the multiple revisions are parents of the
+    /// same merge commit.
+    //
+    // ====== Notes about --before and --after ======
+    // Changes to `--before` and `--after` should be mirrored in `jj new`.
+    //
+    // TODOs(ilyagr):
+    //  - `jj rebase -s --after` could be implemented, even for the case of multiple revisions
+    //    passed to `-s`. It's unclear how useful it would be. `jj rebase -b --after` doesn't seem
+    //    to make any sense.
+    //  - When `jj rebase -r multiple_revisions` is implemented, this seems incompatible with
+    //    `--before`/`--after` *unless* the multile revisions are of the form `A::B`.
+    //  - We could consider implementing `--insert-as-sibling`, which could be passed a revision or
+    //    a range `A::B`. This also applies to `jj new`.
+    #[arg(long, short = 'A', visible_alias = "after", requires = "revision")]
+    insert_after: Vec<RevisionArg>,
+
+    /// Insert the rebased change between the target commit(s) and their
+    /// parents; requires `-r`
+    ///
+    /// This option is useful when reordering commits. It can also be repeated;
+    /// this can be confusing unless the multiple revisions are children of the
+    /// same revision.
+    #[arg(long, short = 'B', visible_alias = "before", requires = "revision")]
+    insert_before: Vec<RevisionArg>,
+
     /// Deprecated. Please prefix the revset with `all:` instead.
     #[arg(long, short = 'L', hide = true)]
     allow_large_revsets: bool,
