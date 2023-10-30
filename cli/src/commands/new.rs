@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::io::Write;
+use std::rc::Rc;
 
 use clap::ArgGroup;
 use itertools::Itertools;
@@ -24,6 +25,7 @@ use tracing::instrument;
 
 use crate::cli_util::{
     self, short_commit_hash, user_error, CommandError, CommandHelper, RevisionArg,
+    WorkspaceCommandHelper,
 };
 use crate::ui::Ui;
 
@@ -78,7 +80,6 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
     let target_commits = cli_util::resolve_all_revs(&workspace_command, ui, &args.revisions)?
         .into_iter()
         .collect_vec();
-    let target_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
     let mut tx = workspace_command.start_transaction("new empty commit");
     let mut num_rebased;
     let new_commit;
@@ -87,35 +88,9 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
         // command line, add it between the changes' parents and the changes.
         // The parents of the new commit will be the parents of the target commits
         // which are not descendants of other target commits.
-        tx.base_workspace_helper()
-            .check_rewritable(&target_commits)?;
-        let new_children = RevsetExpression::commits(target_ids.clone());
-        let new_parents = new_children.parents();
-        if let Some(commit_id) = new_children
-            .dag_range_to(&new_parents)
-            .resolve(tx.repo())?
-            .evaluate(tx.repo())?
-            .iter()
-            .next()
-        {
-            return Err(user_error(format!(
-                "Refusing to create a loop: commit {} would be both an ancestor and a descendant \
-                 of the new commit",
-                short_commit_hash(&commit_id),
-            )));
-        }
-        let mut new_parents_commits: Vec<Commit> = new_parents
-            .resolve(tx.repo())?
-            .evaluate(tx.repo())?
-            .iter()
-            .commits(tx.repo().store())
-            .try_collect()?;
-        // The git backend does not support creating merge commits involving the root
-        // commit.
-        if new_parents_commits.len() > 1 {
-            let root_commit = tx.repo().store().root_commit();
-            new_parents_commits.retain(|c| c != &root_commit);
-        }
+        let new_parents_commits =
+            get_parents_for_insert_before(tx.base_workspace_helper(), &target_commits)?;
+        let new_children_commits = target_commits;
         let merged_tree = merge_commit_trees(tx.repo(), &new_parents_commits)?;
         let new_parents_commit_id = new_parents_commits.iter().map(|c| c.id().clone()).collect();
         new_commit = tx
@@ -123,8 +98,8 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
             .new_commit(command.settings(), new_parents_commit_id, merged_tree.id())
             .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
             .write()?;
-        num_rebased = target_ids.len();
-        for child_commit in target_commits {
+        num_rebased = new_children_commits.len();
+        for child_commit in new_children_commits {
             rebase_commit(
                 command.settings(),
                 tx.mut_repo(),
@@ -133,33 +108,24 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
             )?;
         }
     } else {
-        let old_parents = RevsetExpression::commits(target_ids.clone());
+        let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
+        let parents = RevsetExpression::commits(parent_ids);
         let commits_to_rebase: Vec<Commit> = if args.insert_after {
-            // Each child of the targets will be rebased: its set of parents will be updated
-            // so that the targets are replaced by the new commit.
-            // Exclude children that are ancestors of the new commit
-            let to_rebase = old_parents.children().minus(&old_parents.ancestors());
-            to_rebase
-                .resolve(tx.base_repo().as_ref())?
-                .evaluate(tx.base_repo().as_ref())?
-                .iter()
-                .commits(tx.base_repo().store())
-                .try_collect()?
+            get_children_for_insert_after(tx.base_workspace_helper(), &parents)?
         } else {
             vec![]
         };
-        tx.base_workspace_helper()
-            .check_rewritable(&commits_to_rebase)?;
         let merged_tree = merge_commit_trees(tx.repo(), &target_commits)?;
+        let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
         new_commit = tx
             .mut_repo()
-            .new_commit(command.settings(), target_ids.clone(), merged_tree.id())
+            .new_commit(command.settings(), parent_ids, merged_tree.id())
             .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
             .write()?;
         num_rebased = commits_to_rebase.len();
         for child_commit in commits_to_rebase {
             let commit_parents = RevsetExpression::commits(child_commit.parent_ids().to_owned());
-            let new_parents = commit_parents.minus(&old_parents);
+            let new_parents = commit_parents.minus(&parents);
             let mut new_parent_commits: Vec<Commit> = new_parents
                 .resolve(tx.base_repo().as_ref())?
                 .evaluate(tx.base_repo().as_ref())?
@@ -182,4 +148,60 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
     tx.edit(&new_commit).unwrap();
     tx.finish(ui)?;
     Ok(())
+}
+
+fn get_children_for_insert_after(
+    workspace_helper: &WorkspaceCommandHelper,
+    parents: &Rc<RevsetExpression>,
+) -> Result<Vec<Commit>, CommandError> {
+    let repo = workspace_helper.repo().as_ref();
+    // Each child of the targets will be rebased: its set of parents will be updated
+    // so that the targets are replaced by the new commit.
+    // Exclude children that are ancestors of the new commit
+    let to_rebase = parents.children().minus(&parents.ancestors());
+    let commits_to_rebase = to_rebase
+        .resolve(repo)?
+        .evaluate(repo)?
+        .iter()
+        .commits(repo.store())
+        .try_collect()?;
+    workspace_helper.check_rewritable(&commits_to_rebase)?;
+    Ok(commits_to_rebase)
+}
+
+fn get_parents_for_insert_before(
+    workspace_helper: &WorkspaceCommandHelper,
+    target_commits: &[Commit],
+) -> Result<Vec<Commit>, CommandError> {
+    let repo = workspace_helper.repo().as_ref();
+    let target_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
+    workspace_helper.check_rewritable(target_commits)?;
+    let new_children = RevsetExpression::commits(target_ids.clone());
+    let new_parents = new_children.parents();
+    if let Some(commit_id) = new_children
+        .dag_range_to(&new_parents)
+        .resolve(repo)?
+        .evaluate(repo)?
+        .iter()
+        .next()
+    {
+        return Err(user_error(format!(
+            "Refusing to create a loop: commit {} would be both an ancestor and a descendant of \
+             the new commit",
+            short_commit_hash(&commit_id),
+        )));
+    }
+    let mut new_parents_commits: Vec<Commit> = new_parents
+        .resolve(repo)?
+        .evaluate(repo)?
+        .iter()
+        .commits(repo.store())
+        .try_collect()?;
+    // The git backend does not support creating merge commits involving the root
+    // commit.
+    if new_parents_commits.len() > 1 {
+        let root_commit = repo.store().root_commit();
+        new_parents_commits.retain(|c| c != &root_commit);
+    }
+    Ok(new_parents_commits)
 }
