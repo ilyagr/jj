@@ -199,10 +199,26 @@ Please use `jj rebase -d 'all:x|y'` instead of `jj rebase --allow-large-revsets 
         ));
     }
     let mut workspace_command = command.workspace_helper(ui)?;
-    let new_parents = cli_util::resolve_all_revs(&workspace_command, ui, &args.destination)?
-        .into_iter()
-        .collect_vec();
     if let Some(rev_str) = &args.revision {
+        let (new_parents, new_children) = if !args.destination.is_empty() {
+            (
+                cli_util::resolve_all_revs(&workspace_command, ui, &args.destination)?
+                    .into_iter()
+                    .collect_vec(),
+                vec![],
+            )
+        } else if !args.insert_before.is_empty() {
+            todo!()
+        } else {
+            // Perhaps merge this if branch with `destination` if branch
+            (
+                cli_util::resolve_all_revs(&workspace_command, ui, &args.insert_after)?
+                    .into_iter()
+                    .collect_vec(),
+                something,
+            )
+        };
+        // For now, abort if parents or children contain the revision.
         rebase_revision(
             ui,
             command.settings(),
@@ -211,6 +227,10 @@ Please use `jj rebase -d 'all:x|y'` instead of `jj rebase --allow-large-revsets 
             rev_str,
         )?;
     } else if !args.source.is_empty() {
+        assert!(!args.destination.is_empty());
+        let new_parents = cli_util::resolve_all_revs(&workspace_command, ui, &args.destination)?
+            .into_iter()
+            .collect_vec();
         let source_commits =
             resolve_multiple_nonempty_revsets_default_single(&workspace_command, ui, &args.source)?;
         rebase_descendants(
@@ -221,6 +241,10 @@ Please use `jj rebase -d 'all:x|y'` instead of `jj rebase --allow-large-revsets 
             &source_commits,
         )?;
     } else {
+        assert!(!args.destination.is_empty());
+        let new_parents = cli_util::resolve_all_revs(&workspace_command, ui, &args.destination)?
+            .into_iter()
+            .collect_vec();
         let branch_commits = if args.branch.is_empty() {
             IndexSet::from([workspace_command.resolve_single_rev("@", ui)?])
         } else {
@@ -428,3 +452,4 @@ fn check_rebase_destinations(
     }
     Ok(())
 }
+// TODO: Split off `vet_destination_revs` from `cli_util::resolve_all_revs` to be used with insert-before.
