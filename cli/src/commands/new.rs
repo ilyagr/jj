@@ -16,11 +16,14 @@ use std::io::Write;
 use std::rc::Rc;
 
 use clap::ArgGroup;
+use indexmap::IndexSet;
 use itertools::Itertools;
+use jj_lib::backend::CommitId;
 use jj_lib::commit::Commit;
-use jj_lib::repo::Repo;
+use jj_lib::repo::{MutableRepo, Repo};
 use jj_lib::revset::{RevsetExpression, RevsetIteratorExt};
 use jj_lib::rewrite::{merge_commit_trees, rebase_commit};
+use jj_lib::settings::UserSettings;
 use tracing::instrument;
 
 use crate::cli_util::{
@@ -117,29 +120,20 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
         };
         let merged_tree = merge_commit_trees(tx.repo(), &target_commits)?;
         let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
-        new_commit = tx
+        let mut new_commit_array = vec![tx
             .mut_repo()
             .new_commit(command.settings(), parent_ids, merged_tree.id())
             .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
-            .write()?;
+            .write()?];
         num_rebased = commits_to_rebase.len();
-        for child_commit in commits_to_rebase {
-            let commit_parents = RevsetExpression::commits(child_commit.parent_ids().to_owned());
-            let new_parents = commit_parents.minus(&parents);
-            let mut new_parent_commits: Vec<Commit> = new_parents
-                .resolve(tx.base_repo().as_ref())?
-                .evaluate(tx.base_repo().as_ref())?
-                .iter()
-                .commits(tx.base_repo().store())
-                .try_collect()?;
-            new_parent_commits.push(new_commit.clone());
-            rebase_commit(
-                command.settings(),
-                tx.mut_repo(),
-                &child_commit,
-                &new_parent_commits,
-            )?;
-        }
+        rebase_commits_replacing_certain_parents(
+            tx.mut_repo(),
+            command.settings(),
+            &commits_to_rebase,
+            &target_commits,
+            &new_commit_array,
+        )?;
+        new_commit = new_commit_array.remove(0);
     }
     num_rebased += tx.mut_repo().rebase_descendants(command.settings())?;
     if num_rebased > 0 {
@@ -150,12 +144,43 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
     Ok(())
 }
 
+/// Rebases exactly `children_to_replace.len()` commits. Does not call
+/// `rebase_descendants`.
+///
+/// Requirements: none of `parents_to_replace` or `replacement_parents` are
+/// descendants of `children_to_rebase.`
+fn rebase_commits_replacing_certain_parents(
+    mut_repo: &mut MutableRepo,
+    settings: &UserSettings,
+    children_to_rebase: &[Commit],
+    parents_to_replace: &[Commit],
+    replacement_parents: &[Commit],
+) -> Result<(), CommandError> {
+    for child_commit in children_to_rebase {
+        let parents_to_replace_ids: IndexSet<CommitId> = parents_to_replace
+            .iter()
+            .map(|commit| commit.id().clone())
+            .collect();
+        let mut new_parent_commits: Vec<Commit> = child_commit
+            .parent_ids()
+            .iter()
+            .filter(|id| !parents_to_replace_ids.contains(*id))
+            .map(|id| mut_repo.store().get_commit(id))
+            .try_collect()?;
+        // TODO: Consideer only adding replacement_parents if something was removed.
+        // TODO: Do I need to deduplicate?
+        new_parent_commits.extend(replacement_parents.iter().cloned());
+        rebase_commit(settings, mut_repo, child_commit, &new_parent_commits)?;
+    }
+    Ok(())
+}
+
 fn get_children_for_insert_after(
     workspace_helper: &WorkspaceCommandHelper,
     parents: &Rc<RevsetExpression>,
 ) -> Result<Vec<Commit>, CommandError> {
     let repo = workspace_helper.repo().as_ref();
-    // Each child of the targets will be rebased: its set of parents will be updated
+    // Each vscode-file://vscode-app/usr/share/code/resources/app/out/vs/code/electron-sandbox/workbench/workbench.htmlchild of the targets will be rebased: its set of parents will be updated
     // so that the targets are replaced by the new commit.
     // Exclude children that are ancestors of the new commit
     let to_rebase = parents.children().minus(&parents.ancestors());
