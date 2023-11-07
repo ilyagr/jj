@@ -368,11 +368,11 @@ fn test_new_insert_before_no_root_merge() {
     ├─╮
     │ ◉  E
     ◉ │  D
-    │ │ ◉  C
-    │ │ ◉  B
-    ├───╯
-    @ │  G
-    ◉ │  A
+    ├─╯
+    │ ◉  C
+    │ ◉  B
+    │ @  G
+    │ ◉  A
     ├─╯
     ◉  root
     "###);

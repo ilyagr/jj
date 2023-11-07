@@ -102,14 +102,13 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
             .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
             .write()?;
         num_rebased = new_children_commits.len();
-        for child_commit in new_children_commits {
-            rebase_commit(
-                command.settings(),
-                tx.mut_repo(),
-                &child_commit,
-                &[new_commit.clone()],
-            )?;
-        }
+        rebase_commits_replacing_certain_parents(
+            tx.mut_repo(),
+            command.settings(),
+            &new_children_commits,
+            &new_parents_commits,
+            &[new_commit.clone()],
+        )?;
     } else {
         let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
         let parents = RevsetExpression::commits(parent_ids);
