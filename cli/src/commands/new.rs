@@ -84,59 +84,50 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
         .into_iter()
         .collect_vec();
     let mut tx = workspace_command.start_transaction("new empty commit");
-    let mut num_rebased;
-    let new_commit;
+    let new_parents_commits;
+    let commits_to_rebase: Vec<Commit>;
     if args.insert_before {
         // Instead of having the new commit as a child of the changes given on the
         // command line, add it between the changes' parents and the changes.
         // The parents of the new commit will be the parents of the target commits
         // which are not descendants of other target commits.
-        let new_parents_commits =
+        new_parents_commits =
             get_parents_for_insert_before(tx.base_workspace_helper(), &target_commits)?;
-        let new_children_commits = target_commits;
-        let merged_tree = merge_commit_trees(tx.repo(), &new_parents_commits)?;
-        let new_parents_commit_id = new_parents_commits.iter().map(|c| c.id().clone()).collect();
-        new_commit = tx
-            .mut_repo()
-            .new_commit(command.settings(), new_parents_commit_id, merged_tree.id())
-            .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
-            .write()?;
-        num_rebased = new_children_commits.len();
-        rebase_commits_replacing_certain_parents(
-            tx.mut_repo(),
-            command.settings(),
-            &new_children_commits,
-            &new_parents_commits,
-            &[new_commit.clone()],
-        )?;
+        commits_to_rebase = target_commits;
     } else {
-        let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
+        new_parents_commits = target_commits;
+        let parent_ids = new_parents_commits
+            .iter()
+            .map(|c| c.id().clone())
+            .collect_vec();
         let parents = RevsetExpression::commits(parent_ids);
-        let commits_to_rebase: Vec<Commit> = if args.insert_after {
+        commits_to_rebase = if args.insert_after {
             get_children_for_insert_after(tx.base_workspace_helper(), &parents)?
         } else {
             vec![]
         };
-        let merged_tree = merge_commit_trees(tx.repo(), &target_commits)?;
-        let parent_ids = target_commits.iter().map(|c| c.id().clone()).collect_vec();
-        let mut new_commit_array = vec![tx
-            .mut_repo()
-            .new_commit(command.settings(), parent_ids, merged_tree.id())
-            .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
-            .write()?];
-        num_rebased = commits_to_rebase.len();
+    }
+    let merged_tree = merge_commit_trees(tx.repo(), &new_parents_commits)?;
+    let new_parents_commit_id = new_parents_commits.iter().map(|c| c.id().clone()).collect();
+    let new_commit = tx
+        .mut_repo()
+        .new_commit(command.settings(), new_parents_commit_id, merged_tree.id())
+        .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
+        .write()?;
+    {
+        // This section is a no-op if commits_to_rebase is empty
+        let mut num_rebased = commits_to_rebase.len();
         rebase_commits_replacing_certain_parents(
             tx.mut_repo(),
             command.settings(),
             &commits_to_rebase,
-            &target_commits,
-            &new_commit_array,
+            &new_parents_commits,
+            &[new_commit.clone()],
         )?;
-        new_commit = new_commit_array.remove(0);
-    }
-    num_rebased += tx.mut_repo().rebase_descendants(command.settings())?;
-    if num_rebased > 0 {
-        writeln!(ui.stderr(), "Rebased {num_rebased} descendant commits")?;
+        num_rebased += tx.mut_repo().rebase_descendants(command.settings())?;
+        if num_rebased > 0 {
+            writeln!(ui.stderr(), "Rebased {num_rebased} descendant commits")?;
+        }
     }
     tx.edit(&new_commit).unwrap();
     tx.finish(ui)?;
