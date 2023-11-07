@@ -161,15 +161,25 @@ fn rebase_commits_replacing_certain_parents(
             .iter()
             .map(|commit| commit.id().clone())
             .collect();
-        let mut new_parent_commits: Vec<Commit> = child_commit
+        let mut removed_something = false;
+        let mut new_parent_commit_ids: IndexSet<&CommitId> = child_commit
             .parent_ids()
             .iter()
-            .filter(|id| !parents_to_replace_ids.contains(*id))
+            .filter(|id| {
+                let remove = parents_to_replace_ids.contains(*id);
+                removed_something = removed_something || remove;
+                !remove
+            })
+            .collect();
+        if removed_something {
+            // Add the ids rather than commits themselves to de-duplicate
+            // TODO: Check if de-duplication or `removed_something` is unnecessary
+            new_parent_commit_ids.extend(replacement_parents.iter().map(|commit| commit.id()));
+        }
+        let new_parent_commits: Vec<Commit> = new_parent_commit_ids
+            .into_iter()
             .map(|id| mut_repo.store().get_commit(id))
             .try_collect()?;
-        // TODO: Consideer only adding replacement_parents if something was removed.
-        // TODO: Do I need to deduplicate?
-        new_parent_commits.extend(replacement_parents.iter().cloned());
         rebase_commit(settings, mut_repo, child_commit, &new_parent_commits)?;
     }
     Ok(())
