@@ -613,6 +613,35 @@ fn test_rebase_revision_onto_descendant() {
     ◉
     "###);
 
+    // Now, let's rebase onto the descendant merge
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Working copy now at: znkkpsqq b1e23288 mergechild | mergechild
+    Parent commit      : vruxwmqv b05964d1 merge | merge
+    Added 1 files, modified 0 files, removed 0 files
+    "###);
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "merge", "-d", "mergechild"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Also rebased 1 descendant commits onto parent of rebased commit
+    Working copy now at: znkkpsqq cce9dabe mergechild | mergechild
+    Parent commit      : royxmykx cea87a87 b | b
+    Parent commit      : zsuskuln 2c5b7858 a | a
+    Added 0 files, modified 0 files, removed 1 files
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    ◉  merge
+    @    mergechild
+    ├─╮
+    │ ◉  a
+    ◉ │  b
+    ├─╯
+    ◉  base
+    ◉
+    "###);
+
     // TODO(ilyagr): These will be good tests for `jj rebase --insert-after` and
     // `--insert-before`, once those are implemented.
 }
