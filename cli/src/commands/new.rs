@@ -106,6 +106,7 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
             tx.mut_repo(),
             command.settings(),
             &new_children_commits,
+            // TODO: new_parents_commits may not include `root`
             &new_parents_commits,
             &[new_commit.clone()],
         )?;
@@ -143,6 +144,8 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
     Ok(())
 }
 
+// TODO: Check `--after root --after something_else`
+
 /// Rebases exactly `children_to_replace.len()` commits. Does not call
 /// `rebase_descendants`.
 ///
@@ -156,6 +159,7 @@ fn rebase_commits_replacing_certain_parents(
     replacement_parents: &[Commit],
 ) -> Result<(), CommandError> {
     for child_commit in children_to_rebase {
+        // TODO: Move out of loop?
         let parents_to_replace_ids: IndexSet<CommitId> = parents_to_replace
             .iter()
             .map(|commit| commit.id().clone())
