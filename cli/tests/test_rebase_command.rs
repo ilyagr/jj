@@ -267,6 +267,7 @@ fn test_rebase_single_revision() {
     // "a". However, since the root commit is an ancestor of "a", we don't
     // actually want both to be parents of the same commit. So, only "a" becomes
     // a parent.
+    // TODO: Related test. What do we want?
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "b", "-d", "a"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
@@ -613,6 +614,47 @@ fn test_rebase_revision_onto_descendant() {
 
     // TODO(ilyagr): These will be good tests for `jj rebase --insert-after` and
     // `--insert-before`, once those are implemented.
+}
+
+#[test]
+fn test_rebase_revision_onto_descendant_descendant_and_child() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_ok(test_env.env_root(), &["init", "repo", "--git"]);
+    let repo_path = test_env.env_root().join("repo");
+
+    create_commit(&test_env, &repo_path, "base", &[]);
+    create_commit(&test_env, &repo_path, "a", &["base"]);
+    create_commit(&test_env, &repo_path, "merge", &["base", "a"]);
+    create_commit(&test_env, &repo_path, "mergechild", &["merge"]);
+    // Test the setup
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    @  mergechild
+    ◉    merge
+    ├─╮
+    │ ◉  a
+    ├─╯
+    ◉  base
+    ◉
+    "###);
+    // let setup_opid = test_env.current_operation_id(&repo_path);
+
+    // BUG
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "merge", "-d", "mergechild"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Also rebased 1 descendant commits onto parent of rebased commit
+    Working copy now at: vruxwmqv 607f8f7d mergechild | mergechild
+    Parent commit      : zsuskuln 2c5b7858 a | a
+    Added 0 files, modified 0 files, removed 1 files
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    ◉  merge
+    @  mergechild
+    ◉  a
+    ◉  base
+    ◉
+    "###);
 }
 
 fn get_log_output(test_env: &TestEnvironment, repo_path: &Path) -> String {

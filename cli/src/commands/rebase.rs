@@ -342,6 +342,10 @@ fn rebase_revision(
     // descendants of `old_commit`, this will no longer be the case after the
     // update.
     //
+    // TODO(ilyagr): There is a BUG(!!). The assumption described below doesn't
+    // seem to hold. See `test_rebase_revision_onto_descendant_descendant_and_child`
+    // for a demo.
+    //
     // To make the update simpler, we assume that each commit was rewritten only
     // once; we don't have a situation where both `(A,B)` and `(B,C)` are in
     // `rebased_commit_ids`. This assumption relies on the fact that a descendant of
