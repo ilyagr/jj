@@ -551,9 +551,11 @@ fn test_rebase_revision_onto_descendant() {
     create_commit(&test_env, &repo_path, "a", &["base"]);
     create_commit(&test_env, &repo_path, "b", &["base"]);
     create_commit(&test_env, &repo_path, "merge", &["b", "a"]);
+    create_commit(&test_env, &repo_path, "mergechild", &["merge"]);
     // Test the setup
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
-    @    merge
+    @  mergechild
+    ◉    merge
     ├─╮
     │ ◉  a
     ◉ │  b
@@ -567,15 +569,15 @@ fn test_rebase_revision_onto_descendant() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "base", "-d", "a"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Also rebased 3 descendant commits onto parent of rebased commit
-    Working copy now at: vruxwmqv bff4a4eb merge | merge
-    Parent commit      : royxmykx c84e900d b | b
-    Parent commit      : zsuskuln d57db87b a | a
+    Also rebased 4 descendant commits onto parent of rebased commit
+    Working copy now at: znkkpsqq 2064367d mergechild | mergechild
+    Parent commit      : vruxwmqv 10eaa713 merge | merge
     Added 0 files, modified 0 files, removed 1 files
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
     ◉  base
-    │ @  merge
+    │ @  mergechild
+    │ ◉  merge
     ╭─┤
     ◉ │  a
     │ ◉  b
@@ -587,23 +589,23 @@ fn test_rebase_revision_onto_descendant() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Working copy now at: vruxwmqv b05964d1 merge | merge
-    Parent commit      : royxmykx cea87a87 b | b
-    Parent commit      : zsuskuln 2c5b7858 a | a
+    Working copy now at: znkkpsqq b1e23288 mergechild | mergechild
+    Parent commit      : vruxwmqv b05964d1 merge | merge
     Added 1 files, modified 0 files, removed 0 files
     "###);
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "base", "-d", "merge"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Also rebased 3 descendant commits onto parent of rebased commit
-    Working copy now at: vruxwmqv 986b7a49 merge | merge
-    Parent commit      : royxmykx c07c677c b | b
-    Parent commit      : zsuskuln abc90087 a | a
+    Also rebased 4 descendant commits onto parent of rebased commit
+    Working copy now at: znkkpsqq f80280d3 mergechild | mergechild
+    Parent commit      : vruxwmqv 38bd50b5 merge | merge
     Added 0 files, modified 0 files, removed 1 files
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
     ◉  base
-    @    merge
+    │ @  mergechild
+    ├─╯
+    ◉    merge
     ├─╮
     │ ◉  a
     ◉ │  b
