@@ -32,7 +32,10 @@ use crate::cli_util::{
 };
 use crate::ui::Ui;
 
-/// Create a new, empty change and edit it in the working copy
+/// Create a new, empty change and (by default) edit it in the working copy
+///
+/// By default, `jj` will edit the new change, making the working copy represent
+/// the new commit. This can be avoided with `--no-edit`.
 ///
 /// Note that you can create a merge commit by specifying multiple revisions as
 /// argument. For example, `jj new main @` will create a new commit with the
@@ -47,7 +50,7 @@ pub(crate) struct NewArgs {
     #[arg(default_value = "@")]
     pub(crate) revisions: Vec<RevisionArg>,
     /// Ignored (but lets you pass `-r` for consistency with other commands)
-    #[arg(short = 'r', hide = true)]
+    #[arg(short = 'r', hide = true, overrides_with = "unused_revision")]
     unused_revision: bool,
     /// The change description to use
     #[arg(long = "message", short, value_name = "MESSAGE")]
@@ -55,11 +58,31 @@ pub(crate) struct NewArgs {
     /// Deprecated. Please prefix the revset with `all:` instead.
     #[arg(long, short = 'L', hide = true)]
     allow_large_revsets: bool,
+    /// Do not edit the newly created change
+    #[arg(long, conflicts_with = "_edit")]
+    no_edit: bool,
+    /// No-op flag to pair with --no-edit
+    #[arg(long, hide = true)]
+    _edit: bool,
     /// Insert the new change between the target commit(s) and their children
-    #[arg(long, short = 'A', visible_alias = "after")]
+    //
+    // Repeating this flag is allowed, but has no effect.
+    #[arg(
+        long,
+        short = 'A',
+        visible_alias = "after",
+        overrides_with = "insert_after"
+    )]
     insert_after: bool,
     /// Insert the new change between the target commit(s) and their parents
-    #[arg(long, short = 'B', visible_alias = "before")]
+    //
+    // Repeating this flag is allowed, but has no effect.
+    #[arg(
+        long,
+        short = 'B',
+        visible_alias = "before",
+        overrides_with = "insert_before"
+    )]
     insert_before: bool,
 }
 
@@ -114,9 +137,9 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
         .new_commit(command.settings(), new_parents_commit_id, merged_tree.id())
         .set_description(cli_util::join_message_paragraphs(&args.message_paragraphs))
         .write()?;
+    let mut num_rebased = commits_to_rebase.len();
     {
         // This section is a no-op if commits_to_rebase is empty
-        let mut num_rebased = commits_to_rebase.len();
         rebase_commits_replacing_certain_parents(
             tx.mut_repo(),
             command.settings(),
@@ -125,11 +148,18 @@ Please use `jj new 'all:x|y'` instead of `jj new --allow-large-revsets x y`.",
             &[new_commit.clone()],
         )?;
         num_rebased += tx.mut_repo().rebase_descendants(command.settings())?;
-        if num_rebased > 0 {
-            writeln!(ui.stderr(), "Rebased {num_rebased} descendant commits")?;
-        }
     }
-    tx.edit(&new_commit).unwrap();
+    if args.no_edit {
+        write!(ui.stderr(), "Created new commit ")?;
+        tx.write_commit_summary(ui.stderr_formatter().as_mut(), &new_commit)?;
+        writeln!(ui.stderr())?;
+    } else {
+        tx.edit(&new_commit).unwrap();
+        // The description of the new commit will be printed by tx.finish()
+    }
+    if num_rebased > 0 {
+        writeln!(ui.stderr(), "Rebased {num_rebased} descendant commits")?;
+    }
     tx.finish(ui)?;
     Ok(())
 }
