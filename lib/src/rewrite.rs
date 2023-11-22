@@ -256,6 +256,8 @@ pub struct DescendantRebaser<'settings, 'repo> {
     // Commits to visit but skip. These were also in `to_visit` to start with, but we don't
     // want to rebase them. Instead, we record them in `new_parents` when we visit them. That way,
     // their descendants will be rebased correctly.
+    // NOTE(ilyagr): ?? Wrong comment location?? What are `replacements`? `new_parents`?
+    // Abandoned commits are, in fact, skipped in a way (but still affect new_parents)
     abandoned: HashSet<CommitId>,
     new_commits: HashSet<CommitId>,
     rebased: HashMap<CommitId, CommitId>,
@@ -360,14 +362,16 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
         DescendantRebaser {
             settings,
             mut_repo,
-            new_parents,
-            divergent,
-            to_visit,
+            new_parents, /* Long comment above. "A child of the key commit should be rebased onto
+                          * all the value commits." At the moment, ignores abandoned commits, but
+                          * those will be accounted for later */
+            divergent, /* Whenever rewritten's value consists of more than one commit */
+            to_visit,  /* Ordered descendants of old commits */
             abandoned,
-            new_commits,
+            new_commits, /* rewritten.values() */
             rebased: Default::default(),
-            branches,
-            heads_to_add,
+            branches,     /* Optimization */
+            heads_to_add, /* Heads of parents of old versions commits */
             heads_to_remove: Default::default(),
             options: Default::default(),
         }
@@ -401,8 +405,9 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
                 for new_parent_id in new_parent_ids {
                     // The new parent may itself have been rebased earlier in the process
                     add_parent(self.rebased.get(new_parent_id).unwrap_or(new_parent_id));
-                }
+                    }
             } else {
+                /* One lookup is enough because of topo order, would need a loop otherwise */
                 add_parent(self.rebased.get(old_id).unwrap_or(old_id));
             };
         }
