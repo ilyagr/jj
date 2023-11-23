@@ -400,16 +400,10 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
             if let Some(new_parent_ids) = self.new_parents.get(old_id) {
                 for new_parent_id in new_parent_ids {
                     // The new parent may itself have been rebased earlier in the process
-                    if let Some(newer_parent_id) = self.rebased.get(new_parent_id) {
-                        add_parent(newer_parent_id);
-                    } else {
-                        add_parent(new_parent_id);
-                    }
+                    add_parent(self.rebased.get(new_parent_id).unwrap_or(new_parent_id));
                 }
-            } else if let Some(new_parent_id) = self.rebased.get(old_id) {
-                add_parent(new_parent_id);
             } else {
-                add_parent(old_id);
+                add_parent(self.rebased.get(old_id).unwrap_or(old_id));
             };
         }
         new_ids
