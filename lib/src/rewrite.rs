@@ -254,7 +254,7 @@ pub struct DescendantRebaser<'settings, 'repo> {
     // In reverse order (parents after children), so we can remove the last one to rebase first.
     to_visit: Vec<Commit>,
     // Commits to visit but skip. These were also in `to_visit` to start with, but we don't
-    // want to rebase them. Instead, we record them in `replacements` when we visit them. That way,
+    // want to rebase them. Instead, we record them in `new_parents` when we visit them. That way,
     // their descendants will be rebased correctly.
     abandoned: HashSet<CommitId>,
     new_commits: HashSet<CommitId>,
