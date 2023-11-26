@@ -216,6 +216,51 @@ pub fn back_out_commit(
         .write()?)
 }
 
+/// Assumes that `parent_mapping` does not contain cycles
+/// TODO: More details
+pub fn new_parents_via_mapping(
+    old_ids: &[CommitId],
+    parent_mapping: &HashMap<CommitId, Vec<CommitId>>,
+) -> Vec<CommitId> {
+    let mut new_ids: Vec<CommitId> = old_ids.into();
+    let mut iterations = 0;
+    loop {
+        let mut made_replacements = false;
+        // TODO(ilyagr): (Maybe?) optimize common case of replacements all
+        // being singletons
+        let previousy_new_ids = new_ids.split_off(0);
+        for id in previousy_new_ids.into_iter() {
+            match parent_mapping.get(&id) {
+                None => new_ids.push(id),
+                Some(replacements) => {
+                    made_replacements = true;
+                    assert!(!replacements.is_empty());
+                    new_ids.extend(replacements.iter().cloned())
+                }
+            };
+        }
+        if !made_replacements {
+            break;
+        }
+        iterations += 1;
+        assert!(
+            iterations <= parent_mapping.len(),
+            "cycle detected in the parent mapping"
+        );
+    }
+    match new_ids.as_slice() {
+        // The first two cases are an optimization for the common case of commits with <=2
+        // parents
+        [_singleton] => new_ids,
+        [a, b] if a != b => new_ids,
+        _ => {
+            // De-duplicate ids
+            let new_ids_set: IndexSet<CommitId> = new_ids.into_iter().collect();
+            new_ids_set.into_iter().collect()
+        }
+    }
+}
+
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub enum EmptyBehaviour {
     /// Always keep empty commits
@@ -382,43 +427,7 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
 
     /// Panics if `parent_mapping` contains cycles
     fn new_parents(&self, old_ids: &[CommitId]) -> Vec<CommitId> {
-        let mut new_ids: Vec<CommitId> = old_ids.into();
-        let mut iterations = 0;
-        loop {
-            let mut made_replacements = false;
-            // TODO(ilyagr): (Maybe?) optimize common case of replacements all
-            // being singletons
-            let previousy_new_ids = new_ids.split_off(0);
-            for id in previousy_new_ids.into_iter() {
-                match self.parent_mapping.get(&id) {
-                    None => new_ids.push(id),
-                    Some(replacements) => {
-                        made_replacements = true;
-                        assert!(!replacements.is_empty());
-                        new_ids.extend(replacements.iter().cloned())
-                    }
-                };
-            }
-            if !made_replacements {
-                break;
-            }
-            iterations += 1;
-            assert!(
-                iterations <= self.parent_mapping.len(),
-                "cycle detected in the parent mapping"
-            );
-        }
-        match new_ids.as_slice() {
-            // The first two cases are an optimization for the common case of commits with <=2
-            // parents
-            [_singleton] => new_ids,
-            [a, b] if a != b => new_ids,
-            _ => {
-                // De-duplicate ids
-                let new_ids_set: IndexSet<CommitId> = new_ids.into_iter().collect();
-                new_ids_set.into_iter().collect()
-            }
-        }
+        new_parents_via_mapping(old_ids, &self.parent_mapping)
     }
 
     fn ref_target_update(old_id: CommitId, new_ids: Vec<CommitId>) -> (RefTarget, RefTarget) {
