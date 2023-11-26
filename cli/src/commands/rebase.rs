@@ -22,7 +22,10 @@ use jj_lib::backend::{CommitId, ObjectId};
 use jj_lib::commit::Commit;
 use jj_lib::repo::{ReadonlyRepo, Repo};
 use jj_lib::revset::{RevsetExpression, RevsetIteratorExt};
-use jj_lib::rewrite::{rebase_commit, rebase_commit_with_options, EmptyBehaviour, RebaseOptions};
+use jj_lib::rewrite::{
+    new_parents_via_mapping, rebase_commit, rebase_commit_with_options, EmptyBehaviour,
+    RebaseOptions,
+};
 use jj_lib::settings::UserSettings;
 use tracing::instrument;
 
@@ -370,51 +373,44 @@ fn rebase_revision(
 
         rebased_commit_ids.insert(
             child_commit.id().clone(),
-            rebase_commit(settings, tx.mut_repo(), child_commit, &new_child_parents)?
-                .id()
-                .clone(),
+            vec![
+                rebase_commit(settings, tx.mut_repo(), child_commit, &new_child_parents)?
+                    .id()
+                    .clone(),
+            ],
         );
     }
     // Now, rebase the descendants of the children.
     // TODO(ilyagr): Consider making it possible for these descendants to become
     // emptied, like --skip_empty. This would require writing careful tests.
-    rebased_commit_ids.extend(tx.mut_repo().rebase_descendants_return_map(settings)?);
+    rebased_commit_ids.extend(
+        tx.mut_repo()
+            .rebase_descendants_return_map(settings)?
+            .into_iter()
+            .map(|(from, to)| (from, vec![to])),
+    );
     let num_rebased_descendants = rebased_commit_ids.len();
 
-    // We now update `new_parents` to account for the rebase of all of
-    // `old_commit`'s descendants. Even if some of the original `new_parents`
-    // were descendants of `old_commit`, this will no longer be the case after
-    // the update.
-    //
-    // To make the update simpler, we assume that each commit was rewritten only
-    // once; we don't have a situation where both `(A,B)` and `(B,C)` are in
-    // `rebased_commit_ids`.
-    //
     // TODO(BUG #2650): There is something wrong with this assumption, the next TODO
     // seems to be a little optimistic. See the panicked test in
     // `test_rebase_with_child_and_descendant_bug_2600`.
     //
-    // TODO(ilyagr): This assumption relies on the fact that, after
-    // `rebase_descendants`, a descendant of `old_commit` cannot also be a
-    // direct child of `old_commit`. This fact will likely change, see
-    // https://github.com/martinvonz/jj/issues/2600. So, the code needs to be
-    // updated before that happens. This would also affect
-    // `test_rebase_with_child_and_descendant_bug_2600`.
-    //
-    // The issue is that if a child and a descendant of `old_commit` were the
-    // same commit (call it `Q`), it would be rebased first by `rebase_commit`
-    // above, and then the result would be rebased again by
-    // `rebase_descendants_return_map`. Then, if we were trying to rebase
-    // `old_commit` onto `Q`, new_parents would only account for one of these.
-    let new_parents: Vec<_> = new_parents
+    // We now update `new_parents` to account for the rebase of all of
+    // `old_commit`'s descendants. Even if some of the original `new_parents`
+    // were descendants of `old_commit`, this will no longer be the case after
+    // the update.
+    let new_parent_ids = new_parents_via_mapping(
+        new_parents
+            .iter()
+            .map(|commit| commit.id())
+            .cloned()
+            .collect_vec()
+            .as_slice(),
+        &rebased_commit_ids,
+    );
+    let new_parents: Vec<_> = new_parent_ids
         .iter()
-        .map(|new_parent| {
-            rebased_commit_ids
-                .get(new_parent.id())
-                .map_or(Ok(new_parent.clone()), |rebased_new_parent_id| {
-                    tx.repo().store().get_commit(rebased_new_parent_id)
-                })
-        })
+        .map(|id| tx.mut_repo().store().get_commit(id))
         .try_collect()?;
 
     // Finally, it's safe to rebase `old_commit`. At this point, it should no longer
