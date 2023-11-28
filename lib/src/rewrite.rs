@@ -18,6 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use futures::StreamExt;
+use indexmap::IndexSet;
 use itertools::Itertools;
 use pollster::FutureExt;
 use tracing::instrument;
@@ -379,34 +380,45 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
         &self.rebased
     }
 
+    /// Panics if `parent_mapping` contains cycles
     fn new_parents(&self, old_ids: &[CommitId]) -> Vec<CommitId> {
-        // This should be a set, but performance of a vec is much better since we expect
-        // 99% of commits to have <= 2 parents.
-        let mut new_ids = vec![];
-        let mut add_parent = |id: &CommitId| {
-            // This can trigger if we abandon an empty commit, as both the empty commit and
-            // its parent are succeeded by the same commit.
-            if !new_ids.contains(id) {
-                new_ids.push(id.clone());
-            }
-        };
-        for old_id in old_ids {
-            if let Some(new_parent_ids) = self.parent_mapping.get(old_id) {
-                for new_parent_id in new_parent_ids {
-                    // The new parent may itself have been rebased earlier in the process
-                    if let Some(newer_parent_id) = self.rebased.get(new_parent_id) {
-                        add_parent(newer_parent_id);
-                    } else {
-                        add_parent(new_parent_id);
+        let mut new_ids: Vec<CommitId> = old_ids.into();
+        let mut iterations = 0;
+        loop {
+            let mut made_replacements = false;
+            // TODO(ilyagr): (Maybe?) optimize common case of replacements all
+            // being singletons
+            let previousy_new_ids = new_ids.split_off(0);
+            for id in previousy_new_ids.into_iter() {
+                match self.parent_mapping.get(&id) {
+                    None => new_ids.push(id),
+                    Some(replacements) => {
+                        made_replacements = true;
+                        assert!(!replacements.is_empty());
+                        new_ids.extend(replacements.iter().cloned())
                     }
-                }
-            } else if let Some(new_parent_id) = self.rebased.get(old_id) {
-                add_parent(new_parent_id);
-            } else {
-                add_parent(old_id);
-            };
+                };
+            }
+            if !made_replacements {
+                break;
+            }
+            iterations += 1;
+            assert!(
+                iterations <= self.parent_mapping.len(),
+                "cycle detected in the parent mapping"
+            );
         }
-        new_ids
+        match new_ids.as_slice() {
+            // The first two cases are an optimization for the common case of commits with <=2
+            // parents
+            [_singleton] => new_ids,
+            [a, b] if a != b => new_ids,
+            _ => {
+                // De-duplicate ids
+                let new_ids_set: IndexSet<CommitId> = new_ids.into_iter().collect();
+                new_ids_set.into_iter().collect()
+            }
+        }
     }
 
     fn ref_target_update(old_id: CommitId, new_ids: Vec<CommitId>) -> (RefTarget, RefTarget) {
@@ -540,8 +552,18 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
                 &new_parents,
                 &self.options,
             )?;
-            self.rebased
-                .insert(old_commit_id.clone(), new_commit.id().clone());
+            assert_eq!(
+                self.rebased
+                    .insert(old_commit_id.clone(), new_commit.id().clone()),
+                None,
+                "Trying to rebase the same commit in two different ways",
+            );
+            assert_eq!(
+                self.parent_mapping
+                    .insert(old_commit_id.clone(), vec![new_commit.id().clone()]),
+                None,
+                "Trying to rebase the same commit in two different ways",
+            );
             self.update_references(old_commit_id, vec![new_commit.id().clone()], true)?;
             return Ok(Some(RebasedDescendant {
                 old_commit,
