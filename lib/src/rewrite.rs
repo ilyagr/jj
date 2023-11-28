@@ -216,8 +216,22 @@ pub fn back_out_commit(
         .write()?)
 }
 
-/// Assumes that `parent_mapping` does not contain cycles
-/// TODO: More details
+/// This function computes where `old_commits` ended up after the previous
+/// rebases, as recorded by `parent_mapping`.
+///
+/// This function is appropriate when the original plan was to rebase some other
+/// commit onto `old_commits`, but some rebases had to happen first.
+///
+/// May Panic:
+///  - If any values in `parent_mapping` are empty vectors.
+///  - If `parent_mapping` contains cycles. For example, if `(A, [B,C])`` is in
+/// there, the mapping cannot contain `(B, [A, anything])`; longer cycles are
+/// also disallowed.
+///
+/// One way to avoid cycles is as follows: when inserting `(A, [B,C])` into the
+/// parent_mapping, make sure that neither `B` nor `C` are there already. Often,
+/// this will be a consequence of the order of rebases, but it can also be
+/// checked explicitly.
 pub fn new_parents_via_mapping(
     old_ids: &[CommitId],
     parent_mapping: &HashMap<CommitId, Vec<CommitId>>,
@@ -254,7 +268,7 @@ pub fn new_parents_via_mapping(
         [_singleton] => new_ids,
         [a, b] if a != b => new_ids,
         _ => {
-            // De-duplicate ids
+            // De-duplicate ids while preserving the order
             let new_ids_set: IndexSet<CommitId> = new_ids.into_iter().collect();
             new_ids_set.into_iter().collect()
         }
