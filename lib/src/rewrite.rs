@@ -260,9 +260,11 @@ pub struct DescendantRebaser<'settings, 'repo> {
     new_commits: HashSet<CommitId>,
     rebased: HashMap<CommitId, CommitId>,
     // Names of branches where local target includes the commit id in the key.
+    // IndexSet or BTreeSet would make sense in values
     branches: HashMap<CommitId, HashSet<String>>,
     // Parents of rebased/abandoned commit that should become new heads once their descendants
     // have been rebased.
+    // IndexSet would make sense here
     heads_to_add: HashSet<CommitId>,
     heads_to_remove: Vec<CommitId>,
 
@@ -280,7 +282,9 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
     pub fn new(
         settings: &'settings UserSettings,
         mut_repo: &'repo mut MutableRepo,
+        // IndexMap and IndexSet would make sense
         rewritten: HashMap<CommitId, HashSet<CommitId>>,
+        // IndexSet would make sense
         abandoned: HashSet<CommitId>,
     ) -> DescendantRebaser<'settings, 'repo> {
         let store = mut_repo.store();
@@ -304,6 +308,7 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
         let to_visit_revset = to_visit_expression.evaluate_programmatic(mut_repo).unwrap();
         let to_visit: Vec<_> = to_visit_revset.iter().commits(store).try_collect().unwrap();
         drop(to_visit_revset);
+        // IndexSet would work well here
         let to_visit_set: HashSet<CommitId> =
             to_visit.iter().map(|commit| commit.id().clone()).collect();
         let mut visited = HashSet::new();
