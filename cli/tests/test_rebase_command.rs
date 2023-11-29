@@ -820,68 +820,52 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     // simplified if and only if it's simplified in the above case.
     test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
     let stderr = test_env.jj_cmd_panic(&repo_path, &["rebase", "-r", "base", "-d", "b"]);
-    assert!(stderr.contains("graph has cycle"));
-    // // At time of writing:
-    // insta::assert_snapshot!(stderr, @r###"
-    // thread 'main' panicked at lib/src/dag_walk.rs:113:13:
-    // graph has cycle
-    // stack backtrace:
-    //    0: rust_begin_unwind
-    //              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/std/src/panicking.rs:
-    // 645:5    1: core::panicking::panic_fmt
-    //              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/panicking.
-    // rs:72:14    2: jj_lib::dag_walk::topo_order_forward_ok
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:113:13
-    //    3: jj_lib::dag_walk::topo_order_reverse_ok
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:160:22
-    //    4: jj_lib::dag_walk::topo_order_reverse
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:142:5
-    //    5: jj_lib::rewrite::DescendantRebaser::new
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/lib/src/rewrite.rs:306:24
-    //    6: jj_lib::repo::MutableRepo::create_descendant_rebaser
-    //              at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:844:9
-    //    7: jj_lib::repo::MutableRepo::rebase_descendants_return_rebaser
-    //              at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:861:27
-    //    8: jj_lib::repo::MutableRepo::rebase_descendants_with_options
-    //              at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:872:12
-    //    9: jj_lib::repo::MutableRepo::rebase_descendants
-    //              at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:878:9
-    //   10: jj_cli::commands::rebase::rebase_revision
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:420:22
-    //   11: jj_cli::commands::rebase::cmd_rebase
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:197:9
-    //   12: jj_cli::commands::run_command
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/mod.rs:187:39   13:
-    // core::ops::function::FnOnce::call_once              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/
-    // function.rs:250:5   14: core::ops::function::FnOnce::call_once{{vtable.
-    // shim}}              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/
-    // function.rs:250:5   15: <alloc::boxed::Box<F,A> as
-    // core::ops::function::FnOnce<Args>>::call_once              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/alloc/src/boxed.rs:
-    // 2007:9   16: jj_cli::cli_util::CliRunner::run_internal
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/cli/src/cli_util.rs:2867:9
-    //   17: jj_cli::cli_util::CliRunner::run
-    //              at
-    // /usr/local/google/home/ilyagr/dev/jj/cli/src/cli_util.rs:2884:22
-    //   18: jj::main
-    //              at /usr/local/google/home/ilyagr/dev/jj/cli/src/main.rs:18:5
-    //   19: core::ops::function::FnOnce::call_once
-    //              at
-    // /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/
-    // function.rs:250:5 note: Some details are omitted, run with
-    // `RUST_BACKTRACE=full` for a verbose backtrace. "###);
+    insta::assert_snapshot!(stderr, @r###"
+    thread 'main' panicked at lib/src/dag_walk.rs:113:13:
+    graph has cycle
+    stack backtrace:
+       0: rust_begin_unwind
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/std/src/panicking.rs:645:5
+       1: core::panicking::panic_fmt
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/panicking.rs:72:14
+       2: jj_lib::dag_walk::topo_order_forward_ok
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:113:13
+       3: jj_lib::dag_walk::topo_order_reverse_ok
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:160:22
+       4: jj_lib::dag_walk::topo_order_reverse
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/dag_walk.rs:142:5
+       5: jj_lib::rewrite::DescendantRebaser::new
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/rewrite.rs:307:24
+       6: jj_lib::repo::MutableRepo::create_descendant_rebaser
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:844:9
+       7: jj_lib::repo::MutableRepo::rebase_descendants_return_rebaser
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:861:27
+       8: jj_lib::repo::MutableRepo::rebase_descendants_with_options
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:872:12
+       9: jj_lib::repo::MutableRepo::rebase_descendants
+                 at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:878:9
+      10: jj_cli::commands::rebase::rebase_revision
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:424:22
+      11: jj_cli::commands::rebase::cmd_rebase
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:197:9
+      12: jj_cli::commands::run_command
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/mod.rs:187:39
+      13: core::ops::function::FnOnce::call_once
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/function.rs:250:5
+      14: core::ops::function::FnOnce::call_once{{vtable.shim}}
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/function.rs:250:5
+      15: <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/alloc/src/boxed.rs:2007:9
+      16: jj_cli::cli_util::CliRunner::run_internal
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/cli_util.rs:2867:9
+      17: jj_cli::cli_util::CliRunner::run
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/cli_util.rs:2884:22
+      18: jj::main
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/main.rs:18:5
+      19: core::ops::function::FnOnce::call_once
+                 at /rustc/6cf088810f66fff15d05bf7135c5f5888b7c93b4/library/core/src/ops/function.rs:250:5
+    note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+    "###);
     //
     // Unsimlified ancestry would look like
     // @  c
