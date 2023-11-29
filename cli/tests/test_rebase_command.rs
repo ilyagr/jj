@@ -792,6 +792,40 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
         test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "base", "-d", "root()"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "57aaa94492aa3e257cbade43d6089dc2c5895e26",
+        ),
+        CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ): CommitId(
+            "c685c3cf6c5f7b71a9d4082621a8cde5335235f6",
+        ),
+        CommitId(
+            "c685c3cf6c5f7b71a9d4082621a8cde5335235f6",
+        ): CommitId(
+            "c8495a71a779883479795fd125056c7aecc69b09",
+        ),
+        CommitId(
+            "2c5b785856e8bc78a64528fdbeb9f0b31b07e26f",
+        ): CommitId(
+            "f0dfda28544909e765c97bed688d4ed9ae00bb09",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "0c61db1be8c827d8b4f0c6b99fb1d20d179f833e",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "0000000000000000000000000000000000000000",
+            ),
+        },
+    ]
     Also rebased 4 descendant commits onto parent of rebased commit
     Working copy now at: vruxwmqv 57aaa944 c | c
     Parent commit      : royxmykx c8495a71 b | b
@@ -821,6 +855,40 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     test_env.jj_cmd_ok(&repo_path, &["op", "restore", &setup_opid]);
     let stderr = test_env.jj_cmd_panic(&repo_path, &["rebase", "-r", "base", "-d", "b"]);
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ): CommitId(
+            "a8fb66ca18baac5a3edc8af31f75eb7930b93ac5",
+        ),
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "a72f0141a0ce3f9e6ec83c2d8b61acdf43a173d5",
+        ),
+        CommitId(
+            "2c5b785856e8bc78a64528fdbeb9f0b31b07e26f",
+        ): CommitId(
+            "d34be1afc4177370f11be8b5be3a07ca536f42e0",
+        ),
+        CommitId(
+            "a8fb66ca18baac5a3edc8af31f75eb7930b93ac5",
+        ): CommitId(
+            "7033e7756b576cf7717829f496c48d6327321837",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "0c61db1be8c827d8b4f0c6b99fb1d20d179f833e",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "a8fb66ca18baac5a3edc8af31f75eb7930b93ac5",
+            ),
+        },
+    ]
     thread 'main' panicked at lib/src/dag_walk.rs:113:13:
     graph has cycle
     stack backtrace:
@@ -845,7 +913,7 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
        9: jj_lib::repo::MutableRepo::rebase_descendants
                  at /usr/local/google/home/ilyagr/dev/jj/lib/src/repo.rs:878:9
       10: jj_cli::commands::rebase::rebase_revision
-                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:424:22
+                 at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:429:22
       11: jj_cli::commands::rebase::cmd_rebase
                  at /usr/local/google/home/ilyagr/dev/jj/cli/src/commands/rebase.rs:197:9
       12: jj_cli::commands::run_command
@@ -892,6 +960,40 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "base", "-d", "a"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "2c5b785856e8bc78a64528fdbeb9f0b31b07e26f",
+        ): CommitId(
+            "85a3f47d9b8973aa1746228b38e1bb50fe806888",
+        ),
+        CommitId(
+            "6baf9ad8045642a1621f0d44ed2a123125b33908",
+        ): CommitId(
+            "fb94498901c0a7028bf79d26af0e69a7a7cb49dc",
+        ),
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "0b91d0eb4bbb402e9741178112e8afcefb0cbe75",
+        ),
+        CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ): CommitId(
+            "6baf9ad8045642a1621f0d44ed2a123125b33908",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "0c61db1be8c827d8b4f0c6b99fb1d20d179f833e",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "85a3f47d9b8973aa1746228b38e1bb50fe806888",
+            ),
+        },
+    ]
     Also rebased 4 descendant commits onto parent of rebased commit
     Working copy now at: vruxwmqv 0b91d0eb c | c
     Parent commit      : royxmykx fb944989 b | b
@@ -921,6 +1023,30 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "a", "-d", "root()"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ): CommitId(
+            "bfc7c538cbbe0410774888fbe999e83f7c0fadcc",
+        ),
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "f366e099ba5cc6bb788e1c1d65fe5cb3158cda99",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "2c5b785856e8bc78a64528fdbeb9f0b31b07e26f",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "0000000000000000000000000000000000000000",
+            ),
+        },
+    ]
     Also rebased 2 descendant commits onto parent of rebased commit
     Working copy now at: vruxwmqv f366e099 c | c
     Parent commit      : royxmykx bfc7c538 b | b
@@ -941,6 +1067,25 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "b", "-d", "root()"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "4d1fd26725498dcb018801c231ace596140807b4",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "0000000000000000000000000000000000000000",
+            ),
+        },
+    ]
     Also rebased 1 descendant commits onto parent of rebased commit
     Working copy now at: vruxwmqv 4d1fd267 c | c
     Parent commit      : zsuskuln 2c5b7858 a | a
@@ -970,6 +1115,25 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "b", "-d", "c"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {
+        CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ): CommitId(
+            "0bacac667d38cf8572dc3c0c93a98128a23aa743",
+        ),
+    }
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "9039f68d4c4f85c9db529db4a810eaf78960d3e1",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "0bacac667d38cf8572dc3c0c93a98128a23aa743",
+            ),
+        },
+    ]
     Also rebased 1 descendant commits onto parent of rebased commit
     Working copy now at: vruxwmqv 0bacac66 c | c
     Parent commit      : zsuskuln 2c5b7858 a | a
@@ -989,6 +1153,19 @@ fn test_rebase_with_child_and_descendant_bug_2600() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["rebase", "-r", "c", "-d", "a"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    [cli/src/commands/rebase.rs:412] &rebased_commit_ids = {}
+    [cli/src/commands/rebase.rs:426] &old_commit = Commit {
+        id: CommitId(
+            "5140ced3454deb9cc91a4d7554ef4f72e8522265",
+        ),
+    }
+    [cli/src/commands/rebase.rs:427] &new_parents = [
+        Commit {
+            id: CommitId(
+                "2c5b785856e8bc78a64528fdbeb9f0b31b07e26f",
+            ),
+        },
+    ]
     Working copy now at: vruxwmqv e64d4b0d c | c
     Parent commit      : zsuskuln 2c5b7858 a | a
     Added 0 files, modified 0 files, removed 1 files

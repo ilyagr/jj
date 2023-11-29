@@ -409,7 +409,7 @@ fn rebase_revision(
     let new_parents: Vec<_> = new_parents
         .iter()
         .map(|new_parent| {
-            rebased_commit_ids
+            dbg!(&rebased_commit_ids)
                 .get(new_parent.id())
                 .map_or(Ok(new_parent.clone()), |rebased_new_parent_id| {
                     tx.repo().store().get_commit(rebased_new_parent_id)
@@ -420,7 +420,12 @@ fn rebase_revision(
     // Finally, it's safe to rebase `old_commit`. At this point, it should no longer
     // have any children; they have all been rebased and the originals have been
     // abandoned.
-    rebase_commit(settings, tx.mut_repo(), &old_commit, &new_parents)?;
+    rebase_commit(
+        settings,
+        tx.mut_repo(),
+        dbg!(&old_commit),
+        dbg!(&new_parents),
+    )?;
     debug_assert_eq!(tx.mut_repo().rebase_descendants(settings)?, 0);
 
     if num_rebased_descendants > 0 {
