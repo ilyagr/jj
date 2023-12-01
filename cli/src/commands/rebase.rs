@@ -18,7 +18,7 @@ use std::sync::Arc;
 use clap::ArgGroup;
 use indexmap::IndexSet;
 use itertools::Itertools;
-use jj_lib::backend::{CommitId, ObjectId};
+use jj_lib::backend::ObjectId;
 use jj_lib::commit::Commit;
 use jj_lib::repo::{ReadonlyRepo, Repo};
 use jj_lib::revset::{RevsetExpression, RevsetIteratorExt};
@@ -340,36 +340,28 @@ fn rebase_revision(
         workspace_command.start_transaction(&format!("rebase commit {}", old_commit.id().hex()));
     let mut rebased_commit_ids = HashMap::new();
     for child_commit in &child_commits {
-        let new_child_parent_ids: Vec<CommitId> = child_commit
+        // TODO(ilyagr): Are child_commits in topo order, now that they can be
+        // descendants of each other? They probably need to be, need to add tests.
+        // situation.
+        let mut new_child_parents: Vec<Commit> = child_commit
             .parents()
             .iter()
             .flat_map(|c| {
                 if c == &old_commit {
-                    old_commit
-                        .parents()
-                        .iter()
-                        .map(|c| c.id().clone())
-                        .collect()
+                    old_commit.parents().iter().cloned().collect_vec()
                 } else {
-                    [c.id().clone()].to_vec()
+                    [c.clone()].to_vec()
                 }
             })
+            .unique()
             .collect();
-
-        // Some of the new parents may be ancestors of others as in
-        // `test_rebase_single_revision`.
-        let new_child_parents_expression = RevsetExpression::commits(new_child_parent_ids.clone())
-            .minus(
-                &RevsetExpression::commits(new_child_parent_ids.clone())
-                    .parents()
-                    .ancestors(),
-            );
-        let new_child_parents: Vec<Commit> = new_child_parents_expression
-            .evaluate_programmatic(tx.base_repo().as_ref())
-            .unwrap()
-            .iter()
-            .commits(tx.base_repo().store())
-            .try_collect()?;
+        if new_child_parents.len() > 1 {
+            // Simplify ancestry for the root commit, since the Git backend does not allow a
+            // commit to be both the child of a root commit and a merge commit. Failing in
+            // this case is aloso an option, but can lead to unexpected errors, see
+            // `rebase_test_single_revision`.
+            new_child_parents.retain(|commit| commit.id() != tx.repo().store().root_commit_id());
+        }
 
         rebased_commit_ids.insert(
             child_commit.id().clone(),
