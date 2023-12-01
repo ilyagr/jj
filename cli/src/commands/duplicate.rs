@@ -31,6 +31,22 @@ pub(crate) struct DuplicateArgs {
     /// The revision(s) to duplicate
     #[arg(default_value = "@")]
     revisions: Vec<RevisionArg>,
+    /// Edit the duplicated commit; currently only works when duplicating a
+    /// single commit
+    // TODO(ilyagr): When several commtis are given, this could edit an arbitrary head of the
+    // duplicated commits. We could also create `--edit-head` and `--edit-root`, where `--edit`
+    // would be an alias for the former.
+    // TODO(ilyagr): Should it behave differently if the working copy is one of the commits being
+    // duplicated?
+    #[arg(long, conflicts_with = "checkout")]
+    edit: bool,
+    /// Create a new commit on top of the duplicated commit; currently only
+    /// works when duplicating a single commit
+    // TODO(ilyagr): With multiple commits *and* multiple heads, there is a choice between checking
+    // out an arbitrary head or creating a merge commit of all heads. The former is probably more
+    // useful.
+    #[arg(long)]
+    checkout: bool,
     /// Ignored (but lets you pass `-r` for consistency with other commands)
     #[arg(short = 'r', hide = true)]
     unused_revision: bool,
@@ -50,6 +66,12 @@ pub(crate) fn cmd_duplicate(
         .any(|commit| commit.id() == workspace_command.repo().store().root_commit_id())
     {
         return Err(user_error("Cannot duplicate the root commit"));
+    }
+    if to_duplicate.len() != 1 && (args.edit || args.checkout) {
+        return Err(user_error(
+            "--edit and --checkout are currently only implemented when duplicating more exactly \
+             one commit",
+        ));
     }
     let mut duplicated_old_to_new: IndexMap<Commit, Commit> = IndexMap::new();
 
@@ -95,6 +117,27 @@ pub(crate) fn cmd_duplicate(
         )?;
         tx.write_commit_summary(ui.stderr_formatter().as_mut(), new)?;
         writeln!(ui.stderr())?;
+    }
+    if args.edit || args.checkout {
+        assert_eq!(
+            duplicated_old_to_new.len(),
+            1,
+            "There was exactly one commit to duplciate."
+        );
+        let (_, commit_to_edit) = duplicated_old_to_new.first().unwrap();
+        let mut commit_to_edit = commit_to_edit.clone();
+        if args.checkout {
+            let tree = commit_to_edit.tree()?;
+            commit_to_edit = tx
+                .mut_repo()
+                .new_commit(
+                    command.settings(),
+                    vec![commit_to_edit.id().clone()],
+                    tree.id(),
+                )
+                .write()?;
+        }
+        tx.edit(&commit_to_edit)?;
     }
     tx.finish(ui, format!("duplicating {} commit(s)", to_duplicate.len()))?;
     Ok(())

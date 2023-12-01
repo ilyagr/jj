@@ -687,7 +687,7 @@ See `jj restore` if you want to move entire files from one revision to another. 
 
 Create a new change with the same content as an existing one
 
-**Usage:** `jj duplicate [REVISIONS]...`
+**Usage:** `jj duplicate [OPTIONS] [REVISIONS]...`
 
 ###### **Arguments:**
 
@@ -696,6 +696,14 @@ Create a new change with the same content as an existing one
   Default value: `@`
 
 ###### **Options:**
+
+* `--edit` — Edit the duplicated commit; currently only works when duplicating a single commit
+
+  Possible values: `true`, `false`
+
+* `--checkout` — Create a new commit on top of the duplicated commit; currently only works when duplicating a single commit
+
+  Possible values: `true`, `false`
 
 * `-r` — Ignored (but lets you pass `-r` for consistency with other commands)
 

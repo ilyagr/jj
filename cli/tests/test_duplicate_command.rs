@@ -86,6 +86,65 @@ fn test_duplicate() {
     ├─╯
     ◉  000000000000
     "###);
+
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["undo"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @"");
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["duplicate", "--edit"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Duplicated 17a00fc21654 as nkmrtpmo bf92a19b c
+    Working copy now at: nkmrtpmo bf92a19b c
+    Parent commit      : rlvkpnrz 2443ea76 a | a
+    Parent commit      : zsuskuln d370aee1 b | b
+    "###);
+    // Note that the working copy is at a different commit than in the previous
+    // test.
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    @    bf92a19bcf2c   c
+    ├─╮
+    │ │ ◉  17a00fc21654   c
+    ╭─┬─╯
+    │ ◉  d370aee184ba   b
+    ◉ │  2443ea76b0b1   a
+    ├─╯
+    ◉  000000000000
+    "###);
+
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["undo"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Working copy now at: royxmykx 17a00fc2 c | c
+    Parent commit      : rlvkpnrz 2443ea76 a | a
+    Parent commit      : zsuskuln d370aee1 b | b
+    "###);
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["duplicate", "--checkout"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Duplicated 17a00fc21654 as xtnwkqum 151e26d7 c
+    Working copy now at: pqrnrkux 883d6245 (empty) (no description set)
+    Parent commit      : xtnwkqum 151e26d7 c
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    @  883d62458805
+    ◉    151e26d7025f   c
+    ├─╮
+    │ │ ◉  17a00fc21654   c
+    ╭─┬─╯
+    │ ◉  d370aee184ba   b
+    ◉ │  2443ea76b0b1   a
+    ├─╯
+    ◉  000000000000
+    "###);
+
+    let stderr = test_env.jj_cmd_cli_error(&repo_path, &["duplicate", "--checkout", "--edit"]);
+    insta::assert_snapshot!(stderr, @r###"
+    error: the argument '--checkout' cannot be used with '--edit'
+
+    Usage: jj duplicate --checkout [REVISIONS]...
+
+    For more information, try '--help'.
+    "###);
 }
 
 #[test]
@@ -241,6 +300,27 @@ fn test_duplicate_many() {
     │ ├─╯
     │ ◉  2443ea76b0b1   a
     ├─╯
+    ◉  000000000000
+    "###);
+
+    // --edit and --checkout do not work
+    test_env.jj_cmd_ok(&repo_path, &["undo"]);
+    let stderr = test_env.jj_cmd_failure(&repo_path, &["duplicate", "a::", "--edit"]);
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --edit and --checkout are currently only implemented when duplicating more exactly one commit
+    "###);
+    let stderr = test_env.jj_cmd_failure(&repo_path, &["duplicate", "a::", "--checkout"]);
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --edit and --checkout are currently only implemented when duplicating more exactly one commit
+    "###);
+    insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
+    @    921dde6e55c0   e
+    ├─╮
+    │ ◉  ebd06dba20ec   d
+    │ ◉  c0cb3a0b73e7   c
+    ◉ │  1394f625cbbd   b
+    ├─╯
+    ◉  2443ea76b0b1   a
     ◉  000000000000
     "###);
 }
