@@ -521,7 +521,15 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
 
     // TODO: Perhaps change the interface since it's not just about rebasing
     // commits.
+    // TODO: To make this work, see
+    // https://stackoverflow.com/questions/47698194/can-i-make-an-object-public-for-integration-tests-and-or-benchmarks-only
+    // https://internals.rust-lang.org/t/pub-test-visibility-modifier/12587/8
+    #[cfg(test)]
     pub fn rebase_next(&mut self) -> Result<Option<RebasedDescendant>, TreeMergeError> {
+        self.rebase_next_internal()
+    }
+
+    fn rebase_next_internal(&mut self) -> Result<Option<RebasedDescendant>, TreeMergeError> {
         while let Some(old_commit) = self.to_visit.pop() {
             let old_commit_id = old_commit.id().clone();
             if let Some(new_parent_ids) = self.parent_mapping.get(&old_commit_id).cloned() {
@@ -606,7 +614,7 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
     }
 
     pub fn rebase_all(&mut self) -> Result<(), TreeMergeError> {
-        while self.rebase_next()?.is_some() {}
+        while self.rebase_next_internal()?.is_some() {}
         Ok(())
     }
 }
