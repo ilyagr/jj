@@ -116,14 +116,19 @@ fn test_move() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["move", "--from", "@--"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Working copy now at: kmkuslsw c8d83075 f | (no description set)
-    Parent commit      : znkkpsqq 2c50bfc5 e | (no description set)
+    Working copy now at: kmkuslsw?? d43eca3d f | (no description set)
+    Parent commit      : znkkpsqq?? 2c50bfc5 e | (no description set)
+    Added 0 files, modified 1 files, removed 0 files
     "###);
     // The change has been removed from the source (the change pointed to by 'd'
     // became empty and was abandoned)
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
-    @  c8d83075e8c2 f
-    ◉  2c50bfc59c68 e
+    ◉  2c830086e3df
+    ◉  e9515f21068c
+    ◉  bdd835cae844
+    │ @  d43eca3d32c6 f
+    │ ◉  2c50bfc59c68 e
+    ├─╯
     │ ◉  caa4d0b23201 c
     │ ◉  55171e33db26 b
     ├─╯
