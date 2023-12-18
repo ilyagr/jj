@@ -869,6 +869,7 @@ impl MutableRepo {
     /// to become the descendants of parent(s) of `old_id`. Any branches at
     /// `old_id` would be moved to the parent(s) of `old_id` as well.
     pub fn record_abandoned_commit(&mut self, old_id: CommitId) {
+        // TODO: Move this assertion and similar one above
         assert_ne!(old_id, *self.store().root_commit_id());
         self.abandoned_commits.insert(old_id);
     }
@@ -878,6 +879,7 @@ impl MutableRepo {
         self.abandoned_commits.clear();
     }
 
+    // TODO: Make it clear this is about the DescendantRebaser
     pub fn has_rewrites(&self) -> bool {
         !(self.rewritten_commits.is_empty() && self.abandoned_commits.is_empty())
     }

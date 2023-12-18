@@ -106,6 +106,7 @@ fn test_rebase_descendants_sideways() {
     );
 }
 
+// TODO(ilyagr): It is unclear to me why this does not panic.
 #[test]
 fn test_rebase_descendants_forward() {
     let settings = testutils::user_settings();

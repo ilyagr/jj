@@ -593,6 +593,8 @@ impl<'settings, 'repo> DescendantRebaser<'settings, 'repo> {
     pub fn rebase_all(&mut self) -> Result<(), TreeMergeError> {
         while self.rebase_next()?.is_some() {}
         // TODO: As the TODO above says, we should probably change the API.
+        // TODO: Does DescendantRebaser even need to hold on to a `mut_repo`?? Maybe
+        // it's sufficient for this function to get it as an argument?
         let mut view = self.mut_repo.view().store_view().clone();
         for commit_id in &self.heads_to_remove {
             view.head_ids.remove(commit_id);
