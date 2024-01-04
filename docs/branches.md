@@ -113,13 +113,17 @@ $ # The local branch (e.g. stuff) is unaffected. It may or may not still
 $ # be tracking branches on other remotes (e.g. stuff@upstream).
 ```
 
+When
+[`git.auto-local-branch=false`](#automatic-tracking-of-branches--gitauto-local-branch-option)
+(as is the default), `jj branch forget stuff` will forget, and therefore de
+facto untrack, all the remote branches named `stuff`.
+
 ### Listing tracked branches
 
 To list tracked branches, you can `jj branch list --tracked` or `jj branch list -t`.
 This command omits local Git-tracking branches by default.
 
 You can see if a specific branch is tracked with `jj branch list --tracked <branch name>`.
-
 
 ### Automatic tracking of branches & `git.auto-local-branch` option
 
@@ -134,9 +138,15 @@ well for repositories where multiple people work on a large number of branches.
 
 The default can be changed by setting the config `git.auto-local-branch = true`.
 Then, `jj git fetch` tracks every *newly fetched* branch with a local branch.
-Branches that already existed before the `jj git fetch` are not affected. This
-is similar to Mercurial, which fetches all its bookmarks (equivalent to Git
+This is similar to Mercurial, which fetches all its bookmarks (equivalent to Git
 branches) by default.
+
+Remote branches that `jj` was already aware of before the `jj git fetch` are not
+affected by the value of `git.auto-local-branch`. If you'd like remote branches
+named `<branch name>` to be affected, you can `jj branch forget <branch name>`
+before fetching. (Currently, `jj branch forget <branch name>@<remote name>` is
+not implemented).
+
 
 ## Branch movement
 
