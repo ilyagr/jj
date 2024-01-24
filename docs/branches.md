@@ -93,6 +93,10 @@ $ # A local branch <branch name> should have been created or updated while fetch
 $ jj new <branch name> # Do some local testing, etc.
 ```
 
+You can track multiple branches at once using globs. For example,
+`jj branch track 'glob:main@*'` or `jj branch track 'glob:jjfan-*@upstream'`
+will track all currently exisitng remote branches matching the pattern.
+
 ### Untracking a branch
 
 To stop following a remote branch, you can `jj branch untrack` it. After that,
@@ -112,6 +116,9 @@ $ # From this point on, this remote branch won't be imported anymore.
 $ # The local branch (e.g. stuff) is unaffected. It may or may not still
 $ # be tracking branches on other remotes (e.g. stuff@upstream).
 ```
+
+You can use globs to untrack all remote branches matching a local branch, for
+example with `jj branch untrack 'glob:stuff@*'`.
 
 When
 [`git.auto-local-branch=false`](#automatic-tracking-of-branches--gitauto-local-branch-option)
