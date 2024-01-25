@@ -214,4 +214,31 @@ To resolve a conflicted state in a remote branch (e.g. `main@origin`), simply
 pull from the remote (e.g. `jj git fetch`). The conflict resolution will also
 propagate to the local branch (which was presumably also conflicted).
 
+
+## Pushing a branch and how it can fail
+
+See `jj help git push` for an overview of how branches are pushed. In this
+section, we cover some details and describe why `jj`  might refuse to push a
+branch.
+
+For `jj git push --remote <remote name> --branch <branch name>` to succeed, the
+following conditions must be satisfied:
+
+1. The local branch `<branch name>` must not be [conflicted](#conflicts). It is
+   OK if the local branch does not exist at all; in this case succesfully
+   pushing the branch would mean deleting the branch on the remote.
+2. If `jj` has a record of `<branch name>@<remote name>`, then this remote
+   branch must be [tracked](#remotes-and-tracked-branches) before it is pushed
+   to. It is OK if `jj` has no record of such a remote branch (assuming the
+   actual remote does not have such a branch either, so that the next condition
+   is satisfied). If so, a successful `jj git push` will create this record and
+   mark the remote branch as tracked automatically. 
+3. `jj` will contact the remote and check that the actual state of the remote
+   branch matches `jj`'s record of its last known position. If they do not point
+   to the same commit, or if only one of them exists, `jj` will refuse to push
+   the branch. In this case, you need to `jj git fetch --remote <remote name>`.
+   This may create some branch conflics, which you'll need to resolve before
+   trying `jj git push` again.
+
+
 [design]: design/tracking-branches.md
