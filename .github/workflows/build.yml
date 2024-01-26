@@ -36,6 +36,13 @@ jobs:
       run: cargo test --workspace --all-targets --verbose ${{ matrix.cargo_flags }}
       env:
         RUST_BACKTRACE: 1
+    - name: Generate command-line documentation
+      # This is done here since this would rebuild `jj-cli` if it wasn't already built.
+      # See .cargo/config.toml
+      run: cargo gen-cli-reference
+    - name: Check for uncommitted changes (run `cargo gen-cli-reference` on error)
+      run: git diff --exit-code
+
 
   check-protos:
     name: Check protos
@@ -48,7 +55,7 @@ jobs:
       - run: sudo apt update && sudo apt-get -y install protobuf-compiler
       - name: Generate Rust code from .proto files
         run: cargo run -p gen-protos
-      - name: Check for uncommitted changes
+      - name: Check for uncommitted changes (install prerequisites and run `cargo run -p gen-protos` on error)
         run: git diff --exit-code
 
   rustfmt:
