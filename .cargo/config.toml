@@ -1,0 +1,3 @@
+# Not quite https://github.com/matklad/cargo-xtask
+[alias]
+gen-cli-reference = "run -p jj-cli -- util markdown-help docs/cli-reference.md"

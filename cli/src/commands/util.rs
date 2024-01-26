@@ -13,6 +13,7 @@
 // limitations under the License.
 
 use std::io::Write;
+use std::path::PathBuf;
 use std::slice;
 use std::time::{Duration, SystemTime};
 
@@ -80,9 +81,11 @@ pub(crate) struct UtilGcArgs {
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct UtilMangenArgs {}
 
-/// Print the CLI help for all subcommands in Markdown
+/// Print the CLI help for all subcommands in Markdown or output it to a file
 #[derive(clap::Args, Clone, Debug)]
-pub(crate) struct UtilMarkdownHelp {}
+pub(crate) struct UtilMarkdownHelp {
+    output_path: Option<PathBuf>,
+}
 
 /// Print the JSON schema for the jj TOML config format.
 #[derive(clap::Args, Clone, Debug)]
@@ -161,12 +164,16 @@ fn cmd_util_mangen(
 fn cmd_util_markdownhelp(
     ui: &mut Ui,
     command: &CommandHelper,
-    _args: &UtilMarkdownHelp,
+    args: &UtilMarkdownHelp,
 ) -> Result<(), CommandError> {
     // If we ever need more flexibility, the code of `clap_markdown` is simple and
     // readable. We could reimplement the parts we need without trouble.
-    let markdown = clap_markdown::help_markdown_command(command.app()).into_bytes();
-    ui.stdout_formatter().write_all(&markdown)?;
+    let markdown: Vec<u8> = clap_markdown::help_markdown_command(command.app()).into_bytes();
+    if let Some(outfile) = args.output_path.as_ref() {
+        std::fs::write(outfile, &markdown)?;
+    } else {
+        ui.stdout_formatter().write_all(&markdown)?;
+    }
     Ok(())
 }
 
