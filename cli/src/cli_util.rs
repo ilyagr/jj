@@ -731,6 +731,8 @@ impl ReadonlyUserRepo {
 
 // Provides utilities for writing a command that works on a workspace (like most
 // commands do).
+// TODO: Make a version of this that doesn't fix `user_repo` (which implies
+// fixing an operation)? Should it track workspace, or just settings and ui?
 pub struct WorkspaceCommandHelper {
     cwd: PathBuf,
     string_args: Vec<String>,
@@ -1212,6 +1214,7 @@ Set which revision the branch points to with `jj branch set {branch_name} -r <RE
         Ok(revset_expression.evaluate(self.repo().as_ref())?)
     }
 
+    // TODO: Move to workspace?
     pub(crate) fn revset_parse_context(&self) -> RevsetParseContext {
         let workspace_context = RevsetWorkspaceContext {
             cwd: &self.cwd,

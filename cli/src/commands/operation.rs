@@ -22,10 +22,11 @@ use jj_lib::op_store::OperationId;
 use jj_lib::op_walk;
 use jj_lib::operation::Operation;
 use jj_lib::repo::Repo;
+use jj_lib::revset::RevsetExpression;
 
 use crate::cli_util::{
     short_operation_hash, user_error, user_error_with_hint, CommandError, CommandHelper,
-    LogContentFormat,
+    LogContentFormat, RevisionArg,
 };
 use crate::graphlog::{get_graphlog, Edge};
 use crate::operation_templater;
@@ -53,6 +54,8 @@ pub struct OperationLogArgs {
     /// Don't show the graph, show a flat list of operations
     #[arg(long)]
     no_graph: bool,
+    #[arg(long, visible_alias = "rev")]
+    revisions: Vec<RevisionArg>,
     /// Render each operation using the given template
     ///
     /// For the syntax, see https://github.com/martinvonz/jj/blob/main/docs/templates.md
@@ -173,10 +176,34 @@ fn cmd_op_log(
     )?;
     let with_content_format = LogContentFormat::new(ui, command.settings())?;
 
+    let workspace_command = command.workspace_helper_no_snapshot(ui)?;
+    let maybe_revset_expression = {
+        if args.revisions.is_empty() {
+            None
+        } else {
+            let expressions: Vec<_> = args
+                .revisions
+                .iter()
+                .map(|revision_str| workspace_command.parse_revset(revision_str, Some(ui)))
+                .try_collect()?;
+            Some(RevsetExpression::union_all(&expressions))
+        }
+    };
+
     ui.request_pager();
     let mut formatter = ui.stdout_formatter();
     let formatter = formatter.as_mut();
     let iter = op_walk::walk_ancestors(&head_ops).take(args.limit.unwrap_or(usize::MAX));
+
+    let iter = iter.filter(|op_result| {
+        let (Some(revset_expression), Ok(op)) = (maybe_revset_expression.as_ref(), op_result)
+        else {
+            return true;
+        };
+
+        // TODO!
+        false
+    });
     if !args.no_graph {
         let mut graph = get_graphlog(command.settings(), formatter.raw());
         let default_node_symbol = graph.default_node_symbol().to_owned();
