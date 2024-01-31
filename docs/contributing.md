@@ -177,7 +177,9 @@ These are listed roughly in order of decreasing importance.
    On Linux, you may be able to speed up `nextest` even further by using
    the `mold` linker, as explained below.
 
-### Using `mold` for faster tests on Linux
+### Tips for faster test execution
+
+#### Using `mold` for faster tests on Linux
 
 On a machine with a multi-core CPU, one way to speed up
 `cargo nextest` on Linux is to use the multi-threaded [`mold`
@@ -206,6 +208,14 @@ to use" instructions](https://github.com/rui314/mold#how-to-use).
 On recent versions of MacOS, the default linker Rust uses is already
 multi-threaded. It should use all the CPU cores without any configuration.
 
+
+#### Dealing with `XprotectService` on MacOS
+
+On recent versions of MacOS, linking is slowed down significantly by Apple's
+malware-detection software, `XProtectService`.
+
+- Adding `cargo` to the list does not help
+- Adding `tmux` to the list does help
 
 ## Previewing the HTML documentation
 
