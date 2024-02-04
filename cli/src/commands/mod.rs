@@ -76,7 +76,6 @@ enum Command {
     Branch(branch::BranchCommand),
     #[command(alias = "print")]
     Cat(cat::CatArgs),
-    #[command(hide = true)]
     Checkout(checkout::CheckoutArgs),
     Chmod(chmod::ChmodArgs),
     Commit(commit::CommitArgs),
