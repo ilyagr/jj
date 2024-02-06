@@ -245,9 +245,14 @@ To be more precise, the two commands differ as follows:
 - `jj branch delete` deletes the local branches, but keeps any remote branches
   that were tracked before marked as "tracked". `jj git push` will attempt to
   delete such branches.
-- `jj branch forget` currently forgets not only the local branch, but also all
-  the records that `jj` has of the remote branches of the same name. `jj git
-  push` will refuse to push to unknown or untracked remote branches.
+- `jj branch forget` will also delete the local branch, but it will also insure
+  that each remote branch is either (depending on the options used):
+  
+    1. is also forgotten, making it as though the branch was never fetched from
+  that remote or
+    2. is untracked.
+    
+    `jj git push` will refuse to push to unknown or untracked remote branches.
 
 The details of how `jj git push` decides whether it should push a branch are
   [explained below](#pushing-a-branch-and-how-it-can-fail).
