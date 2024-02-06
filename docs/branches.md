@@ -215,6 +215,44 @@ pull from the remote (e.g. `jj git fetch`). The conflict resolution will also
 propagate to the local branch (which was presumably also conflicted).
 
 
+## Deleteting and forgetting branches
+
+There are two commands that get rid of local branches: `jj branch forget` and
+`jj branch delete`. They differ in how they affect *remote* branches of the same
+name.
+
+- Use `jj branch delete` if you intend to delete the branch not just locally,
+  but also on the remote. While `jj branch delete` will not affect the remote
+  branch immediately, a subsequent `jj git push` to any remote will attempt to
+  delete the branch on that remote (as long as a few sanity checks pass). This
+  will affect other people using that remote and **can be irreversible**.
+
+  You can check `jj branch list` to see what branches are marked for deletion on
+  remotes, and how to unmark them for deletion.
+
+- Use `jj branch forget` if you intend to get rid of the branch *only* locally.
+  For example, you can use it if you `jj git fetch`-ed more branches than you
+  intended. `jj branch forget` will **not** cause a subsequent `jj git push` to
+  change anything on the remote. This is a safe operation.
+
+  If the forgotten branch still exists on a remote, it may be recreated by a `jj
+  git fetch` followed by a `jj branch track`.
+
+### Details
+
+To be more precise, the two commands differ as follows:
+
+- `jj branch delete` deletes the local branches, but keeps any remote branches
+  that were tracked before marked as "tracked". `jj git push` will attempt to
+  delete such branches.
+- `jj branch forget` currently forgets not only the local branch, but also all
+  the records that `jj` has of the remote branches of the same name. `jj git
+  push` will refuse to push to unknown or untracked remote branches.
+
+The details of how `jj git push` decides whether it should push a branch are
+  [explained below](#pushing-a-branch-and-how-it-can-fail).
+
+
 ## Pushing a branch and how it can fail
 
 See `jj help git push` for an overview of how branches are pushed. In this
