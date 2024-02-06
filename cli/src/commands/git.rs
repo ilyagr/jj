@@ -789,7 +789,6 @@ fn cmd_git_push(
         &repo,
         args,
         wc_commit_id,
-        &mut tx,
         change_commits,
         command,
     )?;
@@ -926,11 +925,10 @@ fn git_push_process_args(
     ui: &mut Ui,
     repo: &std::sync::Arc<jj_lib::repo::ReadonlyRepo>,
     args: &GitPushArgs,
-    wc_commit_id: Option<jj_lib::backend::CommitId>,
-    tx: &mut crate::cli_util::WorkspaceCommandTransaction<'_>,
     change_commits: Vec<jj_lib::commit::Commit>,
     command: &CommandHelper,
 ) -> Result<(String, Vec<(String, BranchPushUpdate)>), CommandError> {
+    let workspace_command = command.workspace_helper(ui)?;
     let mut branch_updates = vec![];
     let populate_branch_updates_skip_missing =
         |(branch_name, targets)| -> Result<(), CommandError> {
@@ -982,9 +980,8 @@ fn git_push_process_args(
         )
         .range(&RevsetExpression::commit(wc_commit_id))
         .intersection(&RevsetExpression::branches(StringPattern::everything()));
-        let current_branches_revset = tx
-            .base_workspace_helper()
-            .evaluate_revset(current_branches_expression)?;
+        let current_branches_revset =
+            workspace_command.evaluate_revset(current_branches_expression)?;
         current_branches_revset.iter().collect()
     } else {
         let branches_by_name =
@@ -1009,13 +1006,12 @@ fn git_push_process_args(
             if !seen_branches.insert(branch_name.clone()) {
                 continue;
             }
-            let view = tx.base_repo().view();
+            let view = repo.view();
             if view.get_local_branch(&branch_name).is_absent() {
                 // A local branch with the full change ID doesn't exist already, so use the
                 // short ID if it's not ambiguous (which it shouldn't be most of the time).
                 let short_change_id = short_change_hash(commit.change_id());
-                if tx
-                    .base_workspace_helper()
+                if workspace_command
                     .resolve_single_rev(&short_change_id, ui)
                     .is_ok()
                 {
