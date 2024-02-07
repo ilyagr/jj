@@ -811,23 +811,9 @@ fn cmd_git_push(
     } else {
         let use_default_revset =
             args.branch.is_empty() && args.change.is_empty() && args.revisions.is_empty();
-        let mut seen_branches = hashset! {};
 
-        let revision_commit_ids: HashSet<_> = if use_default_revset {
-            let Some(wc_commit_id) = wc_commit_id else {
-                return Err(user_error("Nothing checked out in this workspace"));
-            };
-            let current_branches_expression = RevsetExpression::remote_branches(
-                StringPattern::everything(),
-                StringPattern::Exact(remote.to_owned()),
-            )
-            .range(&RevsetExpression::commit(wc_commit_id))
-            .intersection(&RevsetExpression::branches(StringPattern::everything()));
-            let current_branches_revset = tx
-                .base_workspace_helper()
-                .evaluate_revset(current_branches_expression)?;
-            current_branches_revset.iter().collect()
-        } else {
+        let mut seen_branches = hashset! {};
+        if !use_default_revset {
             let branches_by_name =
                 find_branches_to_push(repo.view(), &args.branch, &remote, &mut seen_branches)?;
             for (branch_name, targets) in branches_by_name {
@@ -891,7 +877,23 @@ fn cmd_git_push(
                     Err(reason) => return Err(reason.into()),
                 }
             }
+        }
 
+        let revision_commit_ids: HashSet<_> = if use_default_revset {
+            let Some(wc_commit_id) = wc_commit_id else {
+                return Err(user_error("Nothing checked out in this workspace"));
+            };
+            let current_branches_expression = RevsetExpression::remote_branches(
+                StringPattern::everything(),
+                StringPattern::Exact(remote.to_owned()),
+            )
+            .range(&RevsetExpression::commit(wc_commit_id))
+            .intersection(&RevsetExpression::branches(StringPattern::everything()));
+            let current_branches_revset = tx
+                .base_workspace_helper()
+                .evaluate_revset(current_branches_expression)?;
+            current_branches_revset.iter().collect()
+        } else {
             // TODO: Narrow search space to local target commits.
             // TODO: Remove redundant CommitId -> Commit -> CommitId round trip.
             resolve_multiple_nonempty_revsets(&args.revisions, tx.base_workspace_helper(), ui)?
@@ -899,7 +901,6 @@ fn cmd_git_push(
                 .map(|commit| commit.id().clone())
                 .collect()
         };
-
         let branches_targeted = local_remote_branches
             .filter(|(_, targets)| {
                 let mut local_ids = targets.local_target.added_ids();
