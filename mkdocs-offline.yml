@@ -4,6 +4,7 @@
 INHERIT: 'mkdocs.yml'
 plugins:
     - offline
+    - privacy
 # Turns out the `offline` plugin forces the following
 # option no matter what, and therefore shouldn't be
 # used in the main config file.
