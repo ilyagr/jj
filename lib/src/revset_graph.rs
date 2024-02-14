@@ -51,7 +51,7 @@ impl RevsetGraphEdge {
 pub enum RevsetGraphEdgeType {
     Missing,
     Direct,
-    Indirect,
+    Indirect,  // TODO: Change to `Indirect { num_skipped: Option<usize> }`, with None meaning "too many to count"
 }
 
 fn reachable_targets(edges: &[RevsetGraphEdge]) -> impl DoubleEndedIterator<Item = &CommitId> {
