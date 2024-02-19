@@ -132,4 +132,6 @@ jobs:
           # to this version.
           .github/scripts/docs-build-deploy 'https://martinvonz.github.io/jj' "${{ github.event.release.tag_name }}" latest --update-aliases --push
       - name: "Show `git diff --stat`"
-        run: git diff --stat gh-pages^ gh-pages || echo "(No diffs)"
+        run: |
+          git add -N . # `git diff` ignores added files without this
+          git diff --stat gh-pages^ gh-pages || echo "(No diffs)"
