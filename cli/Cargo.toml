@@ -34,6 +34,8 @@ name = "runner"
 cargo_metadata = { workspace = true }
 
 [dependencies]
+# TODO FIXME
+diffedit3 = {path="../../diffedit3/backend-local-server"}
 chrono = { workspace = true }
 clap = { workspace = true }
 clap-markdown = { workspace = true }
@@ -66,6 +68,7 @@ slab = { workspace = true }
 strsim = { workspace = true }
 tempfile = { workspace = true }
 textwrap = { workspace = true }
+tokio = { workspace = true }  # TODO: Make optional
 thiserror = { workspace = true }
 timeago = { workspace = true }
 toml_edit = { workspace = true }
