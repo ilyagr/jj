@@ -760,7 +760,7 @@ fn cmd_branch_list(
         if args.all {
             for &(remote, remote_ref) in &untracked_remote_refs {
                 write!(formatter.labeled("branch"), "{name}@{remote}")?;
-                write!(formatter, " (untracked)")?;
+                write!(formatter.labeled("untracked"), " (untracked)")?;
                 print_branch_target(formatter, &remote_ref.target)?;
             }
         }

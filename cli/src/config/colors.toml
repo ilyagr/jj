@@ -21,6 +21,7 @@
 "timestamp" = "cyan"
 "working_copies" = "green"
 "branch" = "magenta"
+"untracked" = "bright black"
 "branches" = "magenta"
 "local_branches" = "magenta"
 "remote_branches" = "magenta"
