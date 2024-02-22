@@ -352,8 +352,8 @@ fn test_branch_track_untrack_undo() {
     );
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: qpvuntsm 270721f5 (empty) commit
-    feature1@origin: qpvuntsm 270721f5 (empty) commit
-    feature2@origin: qpvuntsm 270721f5 (empty) commit
+    feature1@origin (untracked): qpvuntsm 270721f5 (empty) commit
+    feature2@origin (untracked): qpvuntsm 270721f5 (empty) commit
     "###);
 
     test_env.jj_cmd_ok(&repo_path, &["undo"]);
@@ -368,22 +368,22 @@ fn test_branch_track_untrack_undo() {
     test_env.jj_cmd_ok(&repo_path, &["undo"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: qpvuntsm 270721f5 (empty) commit
-    feature1@origin: qpvuntsm 270721f5 (empty) commit
-    feature2@origin: qpvuntsm 270721f5 (empty) commit
+    feature1@origin (untracked): qpvuntsm 270721f5 (empty) commit
+    feature2@origin (untracked): qpvuntsm 270721f5 (empty) commit
     "###);
 
     test_env.jj_cmd_ok(&repo_path, &["branch", "track", "feature1@origin"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: qpvuntsm 270721f5 (empty) commit
       @origin: qpvuntsm 270721f5 (empty) commit
-    feature2@origin: qpvuntsm 270721f5 (empty) commit
+    feature2@origin (untracked): qpvuntsm 270721f5 (empty) commit
     "###);
 
     test_env.jj_cmd_ok(&repo_path, &["undo"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: qpvuntsm 270721f5 (empty) commit
-    feature1@origin: qpvuntsm 270721f5 (empty) commit
-    feature2@origin: qpvuntsm 270721f5 (empty) commit
+    feature1@origin (untracked): qpvuntsm 270721f5 (empty) commit
+    feature2@origin (untracked): qpvuntsm 270721f5 (empty) commit
     "###);
 }
 

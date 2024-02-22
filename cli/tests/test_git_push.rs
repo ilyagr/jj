@@ -789,7 +789,7 @@ fn test_git_push_tracked_vs_all() {
     let stdout = test_env.jj_cmd_success(&workspace_root, &["branch", "list", "--all"]);
     insta::assert_snapshot!(stdout, @r###"
     branch1: vruxwmqv a25f24af (empty) moved branch1
-    branch1@origin: lzmmnrxq 45a3aa29 (empty) description 1
+    branch1@origin (untracked): lzmmnrxq 45a3aa29 (empty) description 1
     branch2 (deleted)
       @origin: rlzusymt 8476341e (empty) description 2
       (this branch will be *deleted permanently* on the remote on the next `jj git push`. Use `jj branch forget` to prevent this)
@@ -811,8 +811,8 @@ fn test_git_push_tracked_vs_all() {
     let stdout = test_env.jj_cmd_success(&workspace_root, &["branch", "list", "--all"]);
     insta::assert_snapshot!(stdout, @r###"
     branch1: vruxwmqv a25f24af (empty) moved branch1
-    branch1@origin: lzmmnrxq 45a3aa29 (empty) description 1
-    branch2@origin: rlzusymt 8476341e (empty) description 2
+    branch1@origin (untracked): lzmmnrxq 45a3aa29 (empty) description 1
+    branch2@origin (untracked): rlzusymt 8476341e (empty) description 2
     branch3: znkkpsqq 998d6a78 (empty) moved branch2
     "###);
 

@@ -80,7 +80,7 @@ fn test_git_fetch_with_default_config() {
 
     test_env.jj_cmd_ok(&repo_path, &["git", "fetch"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    origin@origin: oputwtnw ffecd2d6 message
+    origin@origin (untracked): oputwtnw ffecd2d6 message
     "###);
 }
 
@@ -1282,6 +1282,6 @@ fn test_git_fetch_remote_only_branch() {
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: mzyxwzks 9f01a0e0 message
       @origin: mzyxwzks 9f01a0e0 message
-    feature2@origin: mzyxwzks 9f01a0e0 message
+    feature2@origin (untracked): mzyxwzks 9f01a0e0 message
     "###);
 }

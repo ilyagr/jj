@@ -700,9 +700,9 @@ fn test_branch_track_untrack() {
 
     "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    feature1@origin: sptzoqmo 7b33f629 commit 1
-    feature2@origin: sptzoqmo 7b33f629 commit 1
-    main@origin: sptzoqmo 7b33f629 commit 1
+    feature1@origin (untracked): sptzoqmo 7b33f629 commit 1
+    feature2@origin (untracked): sptzoqmo 7b33f629 commit 1
+    main@origin (untracked): sptzoqmo 7b33f629 commit 1
     "###);
     insta::assert_snapshot!(get_log_output(&test_env, &repo_path), @r###"
     ◉  feature1@origin feature2@origin main@origin 7b33f6295eda
@@ -719,7 +719,7 @@ fn test_branch_track_untrack() {
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: sptzoqmo 7b33f629 commit 1
       @origin: sptzoqmo 7b33f629 commit 1
-    feature2@origin: sptzoqmo 7b33f629 commit 1
+    feature2@origin (untracked): sptzoqmo 7b33f629 commit 1
     main: sptzoqmo 7b33f629 commit 1
       @origin: sptzoqmo 7b33f629 commit 1
     "###);
@@ -747,8 +747,8 @@ fn test_branch_track_untrack() {
     );
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: sptzoqmo 7b33f629 commit 1
-    feature1@origin: sptzoqmo 7b33f629 commit 1
-    feature2@origin: sptzoqmo 7b33f629 commit 1
+    feature1@origin (untracked): sptzoqmo 7b33f629 commit 1
+    feature2@origin (untracked): sptzoqmo 7b33f629 commit 1
     main: sptzoqmo 7b33f629 commit 1
       @origin: sptzoqmo 7b33f629 commit 1
     "###);
@@ -778,8 +778,8 @@ fn test_branch_track_untrack() {
     "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: sptzoqmo 7b33f629 commit 1
-    feature1@origin: mmqqkyyt 40dabdaf commit 2
-    feature2@origin: mmqqkyyt 40dabdaf commit 2
+    feature1@origin (untracked): mmqqkyyt 40dabdaf commit 2
+    feature2@origin (untracked): mmqqkyyt 40dabdaf commit 2
     main: mmqqkyyt 40dabdaf commit 2
       @origin: mmqqkyyt 40dabdaf commit 2
     "###);
@@ -815,8 +815,8 @@ fn test_branch_track_untrack() {
     "###);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: sptzoqmo 7b33f629 commit 1
-    feature1@origin: wwnpyzpo 3f0f86fa commit 3
-    feature2@origin: wwnpyzpo 3f0f86fa commit 3
+    feature1@origin (untracked): wwnpyzpo 3f0f86fa commit 3
+    feature2@origin (untracked): wwnpyzpo 3f0f86fa commit 3
     feature3: wwnpyzpo 3f0f86fa commit 3
       @origin: wwnpyzpo 3f0f86fa commit 3
     main: wwnpyzpo 3f0f86fa commit 3
@@ -929,7 +929,7 @@ fn test_branch_track_untrack_patterns() {
     feature1: omvolwpu 1336caed commit
       @git: omvolwpu 1336caed commit
       @origin: omvolwpu 1336caed commit
-    feature2@origin: omvolwpu 1336caed commit
+    feature2@origin (untracked): omvolwpu 1336caed commit
     main: qpvuntsm 230dd059 (empty) (no description set)
       @git: qpvuntsm 230dd059 (empty) (no description set)
     "###);
@@ -944,8 +944,8 @@ fn test_branch_track_untrack_patterns() {
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
     feature1: omvolwpu 1336caed commit
       @git: omvolwpu 1336caed commit
-    feature1@origin: omvolwpu 1336caed commit
-    feature2@origin: omvolwpu 1336caed commit
+    feature1@origin (untracked): omvolwpu 1336caed commit
+    feature2@origin (untracked): omvolwpu 1336caed commit
     main: qpvuntsm 230dd059 (empty) (no description set)
       @git: qpvuntsm 230dd059 (empty) (no description set)
     "###);
@@ -1029,7 +1029,7 @@ fn test_branch_list() {
       @origin: zwtyzrop c761c7ea (empty) remote-sync
     remote-unsync: wqnwkozp 4e887f78 (empty) local-only
       @origin (ahead by 1 commits, behind by 1 commits): qpsqxpyq 38ef8af7 (empty) remote-unsync
-    remote-untrack@origin: vmortlor 71a16b05 (empty) remote-untrack
+    remote-untrack@origin (untracked): vmortlor 71a16b05 (empty) remote-untrack
     "###);
 }
 

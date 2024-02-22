@@ -435,8 +435,8 @@ fn test_git_init_colocated_via_git_repo_path_imported_refs() {
     insta::assert_snapshot!(get_branch_output(&test_env, &local_path), @r###"
     local-remote: vvkvtnvv 230dd059 (empty) (no description set)
       @git: vvkvtnvv 230dd059 (empty) (no description set)
-    local-remote@origin: vvkvtnvv 230dd059 (empty) (no description set)
-    remote-only@origin: vvkvtnvv 230dd059 (empty) (no description set)
+    local-remote@origin (untracked): vvkvtnvv 230dd059 (empty) (no description set)
+    remote-only@origin (untracked): vvkvtnvv 230dd059 (empty) (no description set)
     "###);
 }
 

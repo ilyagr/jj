@@ -358,7 +358,7 @@ fn test_git_clone_remote_default_branch() {
     "###);
     insta::assert_snapshot!(
         get_branch_output(&test_env, &test_env.env_root().join("clone2")), @r###"
-    feature1@origin: mzyxwzks 9f01a0e0 message
+    feature1@origin (untracked): mzyxwzks 9f01a0e0 message
     main: mzyxwzks 9f01a0e0 message
       @origin: mzyxwzks 9f01a0e0 message
     "###);
