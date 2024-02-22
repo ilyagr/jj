@@ -149,6 +149,7 @@ pub struct GitInitArgs {
     git_repo: Option<String>,
 }
 
+// TODO: Think about https://github.com/martinvonz/jj/issues/2295
 /// Fetch from a Git remote
 #[derive(clap::Args, Clone, Debug)]
 pub struct GitFetchArgs {
@@ -156,8 +157,13 @@ pub struct GitFetchArgs {
     ///
     /// By default, the specified name matches exactly. Use `glob:` prefix to
     /// expand `*` as a glob. The other wildcard characters aren't supported.
+    ///
+    /// This does not fetch any tags unless --tags is also specified.
     #[arg(long, short, default_value = "glob:*", value_parser = parse_string_pattern)]
     branch: Vec<StringPattern>,
+    /// Fetch all tags. Won't fetch branches unless --branch is also specified
+    #[arg(long)]
+    tags: bool,
     /// The remote to fetch from (only named remotes are supported, can be
     /// repeated)
     #[arg(long = "remote", value_name = "remote")]
