@@ -557,6 +557,48 @@ pub fn edit_diff_external(
     snapshot_diffedit_results(diff_wc, base_ignores, instructions_path_to_cleanup)
 }
 
+pub fn edit_diff_web(
+    left_tree: &MergedTree,
+    right_tree: &MergedTree,
+    matcher: &dyn Matcher,
+    instructions: Option<&str>,
+    base_ignores: Arc<GitIgnoreFile>,
+) -> Result<MergedTreeId, DiffEditError> {
+    let store = left_tree.store();
+    let (diff_wc, instructions_path_to_cleanup) = check_out_trees_for_diffedit(
+        store,
+        left_tree,
+        right_tree,
+        matcher,
+        Some(DiffSide::Right),
+        instructions,
+    )?;
+
+    // TODO(ilyagr): We may want to keep the files in-memory for the internal diff
+    // editor instead of treating the internal editor like an external tool. The
+    // main (minor) difficulty is to extract the functions to render and load
+    // conflicted files.
+    let diffedit_input = diffedit3::ThreeDirInput {
+        left: diff_wc.left_working_copy_path().to_path_buf(),
+        right: diff_wc.right_working_copy_path().to_path_buf(),
+        edit: diff_wc.output_working_copy_path().unwrap().to_path_buf(),
+    };
+    tracing::info!(?diffedit_input, "Starting the diffedit3 local server");
+    // 17376 is a verified random number, as in https://xkcd.com/221/ :). I am
+    // trying to avoid 8000 or 8080 in case those, more commonly used, port
+    // numbers are used for something else.
+    //
+    // TODO: allow changing the ports and whether to open the browser.
+    match diffedit3::local_server::run_server_sync(Box::new(diffedit_input), 17376, 17380, true) {
+        Ok(()) => {}
+        Err(e) => {
+            return Err(DiffEditError::InternalWebTool(Box::new(e)));
+        }
+    };
+
+    snapshot_diffedit_results(diff_wc, base_ignores, instructions_path_to_cleanup)
+}
+
 /// Generates textual diff by the specified `tool`, and writes into `writer`.
 pub fn generate_diff(
     ui: &Ui,
