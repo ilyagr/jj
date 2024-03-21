@@ -82,6 +82,7 @@ fn check_out(
     std::fs::create_dir(&wc_dir).map_err(DiffCheckoutError::SetUpDir)?;
     std::fs::create_dir(&state_dir).map_err(DiffCheckoutError::SetUpDir)?;
     let mut tree_state = TreeState::init(store, wc_dir, state_dir)?;
+    // Could set options here
     tree_state.set_sparse_patterns(sparse_patterns)?;
     tree_state.check_out(tree)?;
     Ok(tree_state)
@@ -130,6 +131,7 @@ pub(crate) fn check_out_trees(
     matcher: &dyn Matcher,
     output_is: Option<DiffSide>,
 ) -> Result<DiffWorkingCopies, DiffCheckoutError> {
+    // Diff happens here
     let changed_files: Vec<_> = left_tree
         .diff_stream(right_tree, matcher)
         .map(|(path, _diff)| path)

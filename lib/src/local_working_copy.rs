@@ -283,6 +283,9 @@ impl<'a> IntoIterator for FileStates<'a> {
     }
 }
 
+// TODO: Should probably include conflict materialization options
+// The other option would be to only do this for `update` methods. This would
+// make sense if we do *not* have user-facing config for this.
 pub struct TreeState {
     store: Arc<Store>,
     working_copy_path: PathBuf,
@@ -1393,6 +1396,7 @@ impl TreeState {
                     panic!("unexpected tree entry in diff at {path:?}");
                 }
                 MaterializedTreeValue::Conflict { id: _, contents } => {
+                    // At this point, `contents` is alerady materialized
                     self.write_conflict(&disk_path, contents)?
                 }
             };

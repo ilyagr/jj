@@ -182,6 +182,7 @@ pub async fn materialize_tree_value(
         }
         Err(conflict) => {
             let mut contents = vec![];
+            // Conflict actually materialized here
             materialize(&conflict, store, path, &mut contents)
                 .await
                 .expect("Failed to materialize conflict to in-memory buffer");
