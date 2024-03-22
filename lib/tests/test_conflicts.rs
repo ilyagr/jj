@@ -337,6 +337,144 @@ fn test_materialize_parse_roundtrip() {
     "###);
 }
 
+// BUG: This test demoes a corner case where conflict handling becomes buggy
+#[test]
+fn test_materialize_parse_roundtrip_with_conflict_markers() {
+    let test_repo = TestRepo::init();
+    let store = test_repo.repo.store();
+
+    let path = RepoPath::from_internal_string("file");
+    let base_id = testutils::write_file(
+        store,
+        path,
+        indoc! {"
+            <<<<<<<
+            +++++++
+            Not actually conflicted
+            %%%%%%%
+            >>>>>>>
+            Base
+            Something
+        "},
+    );
+    let left_id = testutils::write_file(
+        store,
+        path,
+        indoc! {"
+            <<<<<<<
+            +++++++
+            Not actually conflicted
+            %%%%%%%
+            >>>>>>>
+            Left side
+            Something
+        "},
+    );
+    let right_id = testutils::write_file(
+        store,
+        path,
+        indoc! {"
+            <<<<<<<
+            +++++++
+            Not actually conflicted
+            %%%%%%%
+            >>>>>>>
+            Right side
+            >>>>>>>
+            Still part of the conflict
+        "},
+    );
+
+    let conflict = Merge::from_removes_adds(
+        vec![Some(base_id.clone())],
+        vec![Some(left_id.clone()), Some(right_id.clone())],
+    );
+    let materialized = materialize_conflict_string(store, path, &conflict);
+
+    // PROBLEM: The way this is materialized leaves the conflict ambiguous.
+    //
+    // A completely non-ambiguous way to present such conflicts would be
+    // awkward, but possible. One possibility is to lengthen the conflict
+    // markers in this case, and also wrap any conflict markers that are not
+    // parts of actual conflicts (like the first few lines of our example) in
+    // trivial conflicts. Our example, materialized, would look like this:
+    //
+    // <<<<<<<<<<<<<<
+    // ++++++++++++++
+    // <<<<<<<
+    // +++++++
+    // Not actually conflicted
+    // %%%%%%%
+    // >>>>>>>
+    // %%%%%%%%%%%%%%
+    // >>>>>>>>>>>>>>
+    // <<<<<<<<<<<<<<
+    // %%%%%%%%%%%%%%
+    // -Base
+    // +Left side
+    //  Something
+    // ++++++++++++++
+    // Right side
+    // >>>>>>>
+    // Still part of the conflict
+    // >>>>>>>>>>>>>>
+    //
+    // The downside of this approach is that it will be difficult for others to know
+    // about this issue if they ever want to parse our conflict format. A correct
+    // implementation would become complicated in a way that matters only in
+    // very rare cases.
+    insta::assert_snapshot!(
+        materialized,
+        @r###"
+    <<<<<<<
+    +++++++
+    Not actually conflicted
+    %%%%%%%
+    >>>>>>>
+    <<<<<<<
+    %%%%%%%
+    -Base
+    +Left side
+     Something
+    +++++++
+    Right side
+    >>>>>>>
+    Still part of the conflict
+    >>>>>>>
+    "###
+    );
+
+    // BUG: "Not actually conflcited" lost the conflict markers that were
+    // present in all three versions. "Still part of the conflict" should not be
+    // resolved, but a part of the right side. The ">>>>>>>" is also now in the
+    // wrong position.
+    insta::assert_debug_snapshot!(
+        parse_conflict(materialized.as_bytes(), conflict.num_sides()),
+        @r###"
+    Some(
+        [
+            Conflicted(
+                [
+                    "Not actually conflicted\n",
+                    "",
+                    "",
+                ],
+            ),
+            Conflicted(
+                [
+                    "Left side\nSomething\n",
+                    "Base\nSomething\n",
+                    "Right side\n",
+                ],
+            ),
+            Resolved(
+                "Still part of the conflict\n>>>>>>>\n",
+            ),
+        ],
+    )
+    "###);
+}
+
 #[test]
 fn test_materialize_conflict_modify_delete() {
     let test_repo = TestRepo::init();
