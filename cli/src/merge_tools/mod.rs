@@ -33,7 +33,7 @@ use thiserror::Error;
 use self::builtin::{edit_diff_builtin, edit_merge_builtin, BuiltinToolError};
 use self::diff_working_copies::DiffCheckoutError;
 use self::external::{edit_diff_external, ExternalToolError};
-pub use self::external::{generate_diff, ExternalMergeTool};
+pub use self::external::{generate_diff, get_external_tool_config, ExternalMergeTool};
 use crate::config::CommandNameAndArgs;
 use crate::ui::Ui;
 
@@ -142,29 +142,6 @@ fn get_tool_config(settings: &UserSettings, name: &str) -> Result<Option<MergeTo
         Ok(Some(MergeTool::Builtin))
     } else {
         Ok(get_external_tool_config(settings, name)?.map(MergeTool::external))
-    }
-}
-
-/// Loads external diff/merge tool options from `[merge-tools.<name>]`.
-pub fn get_external_tool_config(
-    settings: &UserSettings,
-    name: &str,
-) -> Result<Option<ExternalMergeTool>, ConfigError> {
-    const TABLE_KEY: &str = "merge-tools";
-    let tools_table = settings.config().get_table(TABLE_KEY)?;
-    if let Some(v) = tools_table.get(name) {
-        let mut result: ExternalMergeTool = v
-            .clone()
-            .try_deserialize()
-            // add config key, deserialize error is otherwise unclear
-            .map_err(|e| ConfigError::Message(format!("{TABLE_KEY}.{name}: {e}")))?;
-
-        if result.program.is_empty() {
-            result.program.clone_from(&name.to_string());
-        };
-        Ok(Some(result))
-    } else {
-        Ok(None)
     }
 }
 

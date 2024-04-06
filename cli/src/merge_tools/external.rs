@@ -3,6 +3,7 @@ use std::io::{self, Write};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 
+use config::ConfigError;
 use itertools::Itertools;
 use jj_lib::backend::{FileId, MergedTreeId, TreeValue};
 use jj_lib::conflicts::{self, materialize_merge_result};
@@ -11,6 +12,7 @@ use jj_lib::matchers::Matcher;
 use jj_lib::merge::{Merge, MergedTreeValue};
 use jj_lib::merged_tree::{MergedTree, MergedTreeBuilder};
 use jj_lib::repo_path::RepoPath;
+use jj_lib::settings::UserSettings;
 use pollster::FutureExt;
 use regex::{Captures, Regex};
 use thiserror::Error;
@@ -22,9 +24,76 @@ use super::{ConflictResolveError, DiffEditError, DiffGenerateError};
 use crate::config::CommandNameAndArgs;
 use crate::ui::Ui;
 
-/// Merge/diff tool loaded from the settings.
-#[derive(Clone, Debug, Eq, PartialEq, serde::Deserialize)]
+/// Merge/diff tool entry in settings, may extend other entries
+#[derive(Clone, Debug, Default, Eq, PartialEq, serde::Deserialize)]
 #[serde(default, rename_all = "kebab-case")]
+struct ExternalMergeToolEntry {
+    pub extends: Option<String>,
+    /// Program to execute.
+    pub program: Option<String>,
+    /// Arguments to pass to the program when generating diffs.
+    /// `$left` and `$right` are replaced with the corresponding directories.
+    pub diff_args: Vec<String>,
+    /// Arguments to pass to the program when editing diffs.
+    /// `$left` and `$right` are replaced with the corresponding directories.
+    pub edit_args: Vec<String>,
+    /// Arguments to pass to the program when resolving 3-way conflicts.
+    /// `$left`, `$right`, `$base`, and `$output` are replaced with
+    /// paths to the corresponding files.
+    pub merge_args: Vec<String>,
+    /// If false (default), the `$output` file starts out empty and is accepted
+    /// as a full conflict resolution as-is by `jj` after the merge tool is
+    /// done with it. If true, the `$output` file starts out with the
+    /// contents of the conflict, with JJ's conflict markers. After the
+    /// merge tool is done, any remaining conflict markers in the
+    /// file parsed and taken to mean that the conflict was only partially
+    /// resolved.
+    // TODO: Instead of a boolean, this could denote the flavor of conflict markers to put in
+    // the file (`jj` or `diff3` for example).
+    pub merge_tool_edits_conflict_markers: Option<bool>,
+}
+
+/// Loads external diff/merge tool options from `[merge-tools.<name>]`.
+pub fn get_external_tool_config(
+    settings: &UserSettings,
+    name: &str,
+) -> Result<Option<ExternalMergeTool>, ConfigError> {
+    const TABLE_KEY: &str = "merge-tools";
+    let tools_table = settings.config().get_table(TABLE_KEY)?;
+    if let Some(v) = tools_table.get(name) {
+        let mut extends_sequence = vec![v.clone()];
+        loop {
+            let entry: ExternalMergeToolEntry = extends_sequence
+                .last()
+                .unwrap()
+                .clone()
+                .try_deserialize()
+                // add config key, deserialize error is otherwise unclear
+                .map_err(|e| ConfigError::Message(format!("{TABLE_KEY}.{name}: {e}")))?;
+            let Some(extends) = entry.extends else { break };
+            let Some(v) = tools_table.get(&extends) else {
+                todo!();
+                //return Err(...);
+            };
+            extends_sequence.push(v.clone());
+        }
+
+        let mut result = ExternalMergeToolEntry::default();
+        for entry in extends_sequence.iter().rev() {
+            result.ingest(entry);
+        }
+
+        if result.program.is_none() {
+            result.program = Some(name.to_string());
+        };
+        Ok(Some(result.try_into()?))
+    } else {
+        Ok(None)
+    }
+}
+
+/// Merge/diff tool loaded from the settings.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExternalMergeTool {
     /// Program to execute. Must be defined; defaults to the tool name
     /// if not specified in the config.
