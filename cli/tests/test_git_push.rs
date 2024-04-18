@@ -348,6 +348,260 @@ fn test_git_push_creation_unexpectedly_already_exists() {
     "###);
 }
 
+/// This tests a rather strange situation: a push that is a fastforward but the
+/// branch also moved unexpectedly moved on a remote.
+///
+/// The test performs `jj git push --branch1` in the situation set up as
+/// follows:
+///
+/// o    local position of branch1
+/// |
+/// o    actual position of branch1 at origin
+/// |
+/// o
+/// | o  local remote-tracking branch for branch1@origin
+/// |/
+/// o    root
+///
+/// (Also compare this to the following test)
+///
+/// AFAIU, regular Git would consider this a fast-forward and succeed on a `git
+/// push`, but `git push --force-with-lease` would fail.
+///
+/// `jj` should probably succeed on such a push, mainly for consistency with the
+/// fact that `jj git fetch` would not create a conflict in this situation.
+//
+// TODO: demonstrate the statement about `jj git fetch` in the test
+#[test]
+fn test_git_push_fastforward_but_unexpectedly_moved_sideways_on_remote() {
+    let (test_env, workspace_root) = set_up();
+
+    let origin_path = test_env.env_root().join("origin");
+    let pre_move_origin_operation_id = test_env.current_operation_id(&origin_path);
+
+    // Move branch1 sideways on the remote
+    test_env.jj_cmd_ok(&origin_path, &["new", "root()", "-m=remote"]);
+    std::fs::write(origin_path.join("remote"), "remote").unwrap();
+    test_env.jj_cmd_ok(
+        &origin_path,
+        &["branch", "set", "branch1", "--allow-backwards"],
+    );
+    let assert = test_env
+        .jj_cmd(&origin_path, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: znkkpsqq a0c93395 remote
+      @git (ahead by 2 commits, behind by 1 commits): kkmpptxz 3571d60e (empty) description 1
+    branch2: mzvwutvl 132be02d (empty) description 2
+      @git: mzvwutvl 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    test_env.jj_cmd_ok(&origin_path, &["git", "export"]);
+
+    // Move branch1 forward to another commit locally
+    test_env.jj_cmd_ok(&workspace_root, &["new", "branch1", "-m=local"]);
+    std::fs::write(workspace_root.join("local"), "local").unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "set", "branch1"]);
+
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: lylxulpl 7a722cf0 local
+      @origin (behind by 1 commits): urkzutzp 3571d60e (empty) description 1
+    branch2: zkxzmtrq 132be02d (empty) description 2
+      @origin: zkxzmtrq 132be02d (empty) description 2
+    "###);
+
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    // Now, our goal is to move branch1@remote without moving branch1. We do this by
+    // fetching and then restoring the position of branch1.
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "create", "tmp"]);
+    test_env.jj_cmd_ok(&workspace_root, &["git", "fetch"]);
+    test_env.jj_cmd_ok(
+        &workspace_root,
+        &["branch", "set", "branch1", "-rtmp", "--allow-backwards"],
+    );
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "tmp"]);
+
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: lylxulpl 7a722cf0 local
+      @origin (ahead by 1 commits, behind by 3 commits): ukxpovnr a0c93395 remote
+    branch2: zkxzmtrq 132be02d (empty) description 2
+      @origin: zkxzmtrq 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+
+    // Finally, we undo the branch move on the remote, so that the actual remote
+    // branch position is the parent of the local branch position.
+    test_env.jj_cmd_ok(
+        &origin_path,
+        &["op", "restore", &pre_move_origin_operation_id],
+    );
+    let assert = test_env
+        .jj_cmd(&origin_path, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    let mut stdout = "======= ORIGIN branch position =======\n".to_string();
+    stdout.push_str(&get_stdout_string(&assert));
+    insta::assert_snapshot!(stdout, @r###"
+    ======= ORIGIN branch position =======
+    branch1: kkmpptxz 3571d60e (empty) description 1
+      @git: kkmpptxz 3571d60e (empty) description 1
+    branch2: mzvwutvl 132be02d (empty) description 2
+      @git: mzvwutvl 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    test_env.jj_cmd_ok(&origin_path, &["git", "export"]);
+
+    // Pushing succeeds, but for a wrong reason?
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["git", "push", "-bbranch1"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @"");
+    insta::assert_snapshot!(get_stderr_string(&assert), @r###"
+    Branch changes to push to origin:
+      Force branch branch1 from a0c93395c0a3 to 7a722cf0a4d8
+    "###);
+}
+
+/// This tests a rather strange situation: a push that is a fastforward but the
+/// branch also moved unexpectedly moved on a remote.
+///
+/// The test performs `jj git push --branch1` in the situation set up as
+/// follows:
+///
+/// o local position of branch1
+/// |
+/// o actual position of branch1 at origin
+/// |
+/// o local remote-tracking branch for branch1@origin
+/// |
+/// o root
+///
+/// This currently causes `jj` to treat this as a fast-forward, which succeeds
+/// because the remote doesn't care about the location of our local
+/// remote-tracking branch.
+///
+/// AFAIU, regular Git would also consider this a fast-forward and succeed on a
+/// `git push`, but `git push --force-with-lease` would fail.
+///
+/// `jj` should probably succeed on such a push, mainly for consistency with the
+/// fact that `jj git fetch` would not create a conflict in this situation.
+//
+// TODO: demonstrate the statement about `jj git fetch` in the test
+// TODO: explain why it matters that here the remote moves up
+#[test]
+fn test_git_push_fastforward_but_unexpectedly_moved_up_on_remote() {
+    let (test_env, workspace_root) = set_up();
+
+    let origin_path = test_env.env_root().join("origin");
+    let pre_move_origin_operation_id = test_env.current_operation_id(&origin_path);
+
+    // Move branch1 **up** on the remote
+    test_env.jj_cmd_ok(
+        &origin_path,
+        &[
+            "branch",
+            "set",
+            "branch1",
+            "-rbranch1-",
+            "--allow-backwards",
+        ],
+    );
+    let assert = test_env
+        .jj_cmd(&origin_path, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: qpvuntsm 8144f454 (empty) parent of branch1
+      @git (ahead by 1 commits): kkmpptxz 3571d60e (empty) description 1
+    branch2: mzvwutvl 132be02d (empty) description 2
+      @git: mzvwutvl 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    test_env.jj_cmd_ok(&origin_path, &["git", "export"]);
+
+    // Move branch1 forward to another commit locally
+    test_env.jj_cmd_ok(&workspace_root, &["new", "branch1", "-m=local"]);
+    std::fs::write(workspace_root.join("local"), "local").unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "set", "branch1"]);
+
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: wqnwkozp 9a0388ce local
+      @origin (behind by 1 commits): urkzutzp 3571d60e (empty) description 1
+    branch2: zkxzmtrq 132be02d (empty) description 2
+      @origin: zkxzmtrq 132be02d (empty) description 2
+    "###);
+
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    // Now, our goal is to move branch1@remote without moving branch1. We do this by
+    // fetching and then restoring the position of branch1.
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "create", "tmp"]);
+    test_env.jj_cmd_ok(&workspace_root, &["git", "fetch"]);
+    test_env.jj_cmd_ok(
+        &workspace_root,
+        &["branch", "set", "branch1", "-rtmp", "--allow-backwards"],
+    );
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "tmp"]);
+
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @r###"
+    branch1: wqnwkozp 9a0388ce local
+      @origin (behind by 2 commits): txzknzvm 8144f454 (empty) parent of branch1
+    branch2: zkxzmtrq 132be02d (empty) description 2
+      @origin: zkxzmtrq 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+
+    // Finally, we undo the branch move on the remote, so that the actual remote
+    // branch position is the parent of the local branch position.
+    test_env.jj_cmd_ok(
+        &origin_path,
+        &["op", "restore", &pre_move_origin_operation_id],
+    );
+    let assert = test_env
+        .jj_cmd(&origin_path, &["branch", "list", "--all"])
+        .assert()
+        .success();
+    let mut stdout = "======= ORIGIN branch position =======\n".to_string();
+    stdout.push_str(&get_stdout_string(&assert));
+    insta::assert_snapshot!(stdout, @r###"
+    ======= ORIGIN branch position =======
+    branch1: kkmpptxz 3571d60e (empty) description 1
+      @git: kkmpptxz 3571d60e (empty) description 1
+    branch2: mzvwutvl 132be02d (empty) description 2
+      @git: mzvwutvl 132be02d (empty) description 2
+    "###);
+    insta::assert_snapshot!(get_stderr_string(&assert), @"");
+    test_env.jj_cmd_ok(&origin_path, &["git", "export"]);
+
+    // Pushing succeeds, but for a wrong reason?
+    let assert = test_env
+        .jj_cmd(&workspace_root, &["git", "push", "-bbranch1"])
+        .assert()
+        .success();
+    insta::assert_snapshot!(get_stdout_string(&assert), @"");
+    insta::assert_snapshot!(get_stderr_string(&assert), @r###"
+    Branch changes to push to origin:
+      Move branch branch1 from 8144f454db0f to 9a0388ceac79
+    "###);
+}
+
 #[test]
 fn test_git_push_locally_created_and_rewritten() {
     let (test_env, workspace_root) = set_up();
