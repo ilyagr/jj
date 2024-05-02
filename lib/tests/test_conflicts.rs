@@ -116,6 +116,49 @@ fn test_materialize_conflict_basic() {
     );
 }
 
+/// Test the conflict of a creation of an empty file vs creation of a nonempty
+/// file
+#[test]
+fn test_materialize_conflict_bug_3223() {
+    let test_repo = TestRepo::init();
+    let store = test_repo.repo.store();
+
+    let path = RepoPath::from_internal_string("file");
+    let left_id = testutils::write_file(store, path, "");
+    let right_id = testutils::write_file(
+        store,
+        path,
+        indoc! {"
+          nonempty file
+        "},
+    );
+
+    // The left side should come first. The diff should be use the smaller (right)
+    // side, and the left side should be a snapshot.
+    let conflict = Merge::from_removes_adds(
+        vec![None],
+        vec![Some(left_id.clone()), Some(right_id.clone())],
+    );
+    insta::assert_snapshot!(
+        &materialize_conflict_string(store, path, &conflict),
+        @r###"
+    nonempty file
+    "###
+    );
+    // Swap the positive terms in the conflict. The diff should still use the right
+    // side, but now the right side should come first.
+    let conflict = Merge::from_removes_adds(
+        vec![None],
+        vec![Some(right_id.clone()), Some(left_id.clone())],
+    );
+    insta::assert_snapshot!(
+        &materialize_conflict_string(store, path, &conflict),
+        @r###"
+    nonempty file
+    "###
+    );
+}
+
 #[test]
 fn test_materialize_conflict_multi_rebase_conflicts() {
     let test_repo = TestRepo::init();
