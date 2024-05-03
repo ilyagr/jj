@@ -20,6 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use indoc::indoc;
+use insta::{assert_debug_snapshot, assert_snapshot};
 use itertools::Itertools;
 use jj_lib::backend::{MergedTreeId, TreeId, TreeValue};
 use jj_lib::file_util::{check_symlink_support, try_symlink};
@@ -383,6 +384,59 @@ fn test_acl() {
     assert!(!secret_deleted_path.to_fs_path(&workspace_root).is_file());
     assert!(!became_secret_path.to_fs_path(&workspace_root).is_file());
     assert!(became_public_path.to_fs_path(&workspace_root).is_file());
+}
+
+#[test]
+fn test_conflict_empty_vs_nonempty_issue_3223() {
+    let settings = testutils::user_settings();
+    let mut test_workspace = TestWorkspace::init(&settings);
+    let repo = &test_workspace.repo;
+
+    let path = RepoPath::from_internal_string("file");
+    let empty_tree = create_tree(repo, &[]);
+    let tree1 = create_tree(repo, &[(path, "")]); // empty file
+    let tree2 = create_tree(repo, &[(path, "nonempty")]);
+    let merged_tree = tree1.merge(&empty_tree, &tree2).unwrap();
+    // The tree representation is conflicted...
+    assert_debug_snapshot!(tree_entries(&merged_tree), @r###"
+    [
+        (
+            "file",
+            Some(
+                Conflicted(
+                    [
+                        Some(
+                            File {
+                                id: FileId(
+                                    "482ae5a29fbe856c7272",
+                                ),
+                                executable: false,
+                            },
+                        ),
+                        None,
+                        Some(
+                            File {
+                                id: FileId(
+                                    "2f381f1aab1e326fe57d",
+                                ),
+                                executable: false,
+                            },
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    ]
+    "###);
+    let merged_commit = commit_with_tree(repo.store(), merged_tree.id());
+    let repo = &test_workspace.repo;
+    let ws = &mut test_workspace.workspace;
+    ws.check_out(repo.op_id().clone(), None, &merged_commit)
+        .unwrap();
+    let file_contents = std::fs::read_to_string(path.to_fs_path(ws.workspace_root())).unwrap();
+    // BUG: The file on disk does *not* have conflict markers. So, it's
+    // impossible to resolve the conflict.
+    assert_snapshot!(file_contents, @"nonempty");
 }
 
 #[test]
