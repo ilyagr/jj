@@ -237,12 +237,19 @@ pub fn materialize_merge_result(
         })
     });
 
-    let slices = single_hunk.map(|content| {
-        content
-            .as_ref()
-            .map_or([].as_slice(), |ContentHunk(data)| data.as_slice())
-    });
-    let merge_result = files::merge(&slices);
+    let merge_result = if single_hunk.iter().all(|maybe_hunk| maybe_hunk.is_some()) {
+        let slices = single_hunk.map(|content| content.as_ref().unwrap().0.as_slice());
+        files::merge(&slices)
+    } else {
+        // If there are deletions, we will have a single hunk. We avoid calling
+        // `files::merge` so that empty files are not simplified against missing files
+        // (#3223).
+        // TODO(#3795): We could have a placeholder along the lines `JJ NA: Missing
+        // File` for missing files if we use similar placeholders for other things.
+        MergeResult::Conflict(vec![
+            single_hunk.into_map(|side| side.unwrap_or(ContentHunk(vec![])))
+        ])
+    };
     match merge_result {
         MergeResult::Resolved(content) => {
             output.write_all(&content.0)?;

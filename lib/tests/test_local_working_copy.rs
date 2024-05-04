@@ -437,7 +437,11 @@ fn test_conflict_empty_vs_nonempty_issue_3223() {
     // BUG: The file on disk does *not* have conflict markers. So, it's
     // impossible to resolve the conflict.
     assert_snapshot!(file_contents, @r###"
+    <<<<<<< Conflict 1 of 1
+    %%%%%%% Changes from base to side #1
+    +++++++ Contents of side #2
     nonempty
+    >>>>>>> Conflict 1 of 1 ends
     "###);
 }
 
