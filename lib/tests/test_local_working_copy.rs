@@ -436,7 +436,9 @@ fn test_conflict_empty_vs_nonempty_issue_3223() {
     let file_contents = std::fs::read_to_string(path.to_fs_path(ws.workspace_root())).unwrap();
     // BUG: The file on disk does *not* have conflict markers. So, it's
     // impossible to resolve the conflict.
-    assert_snapshot!(file_contents, @"nonempty");
+    assert_snapshot!(file_contents, @r###"
+    nonempty
+    "###);
 }
 
 #[test]
