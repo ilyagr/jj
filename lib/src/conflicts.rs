@@ -107,6 +107,9 @@ pub async fn extract_as_single_hunk(
     store: &Store,
     path: &RepoPath,
 ) -> BackendResult<Merge<ContentHunk>> {
+    // TODO: Perhaps we have enough info here to fix #3223?? Don't simplify this
+    // merge?
+    // TODO: Mention that file was deleted in conflict markers?
     let builder: MergeBuilder<ContentHunk> = futures::stream::iter(merge.iter())
         .then(|term| get_file_contents(store, path, term))
         .try_collect()
