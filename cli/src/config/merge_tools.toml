@@ -11,6 +11,8 @@ merge-args = ["$left", "$base", "$right", "-o", "$output", "--auto-merge"]
 program="meld"
 # If using this as a template, note that `$output` is repeated twice below
 edit-args = ["$left", "$output", "$right", "-o", "$output"]
+diff-args = false
+merge-args = false
 
 [merge-tools.vimdiff]
 program = "vim"
@@ -31,3 +33,5 @@ merge-args = ["--wait", "--merge", "$left", "$right", "$base", "$output"]
 # markers. Unfortunately, it does not seem to be able to output conflict markers when
 # the user only resolves some of the conflicts.
 merge-tool-edits-conflict-markers = true
+diff-args = false
+edit-args = false
