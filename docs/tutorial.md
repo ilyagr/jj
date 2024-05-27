@@ -117,7 +117,7 @@ working copy. Any further changes in the working copy will then amend the
 commit. Whether you choose to create a new change and squash, or to edit,
 typically depends on how done you are with the change; if the change is almost
 done, it makes sense to use `jj new` so you can easily review your adjustments
-with `jj diff` before running `jj squash`. 
+with `jj diff` before running `jj squash`.
 
 To view how a change has evolved over time, we can use `jj obslog` to see each
 recorded change for the current commit. This records changes to the working
@@ -151,7 +151,7 @@ to commands that take revisions as arguments. We will generally prefer change
 IDs because they stay the same when the commit is rewritten.
 
 By default, `jj log` lists your local commits, with some remote commits added
-for context.  The `~` indicates that the commit has parents that are not
+for context. The `~` indicates that the commit has parents that are not
 included in the graph. We can use the `--revisions`/`-r` flag to select a
 different set of revisions to list. The flag accepts a ["revset"](revsets.md),
 which is an expression in a simple language for specifying revisions. For
@@ -448,12 +448,13 @@ using space. Once complete, press `c` to confirm changes, or `q` to exit without
 saving. You can also use the mouse to click on the menu items to see more
 options (keyboard navigation is currently limited).
 
-[^alternative_diff_editors]: There are many other diff editors you could use.
-For example, if you have [Meld](https://meldmerge.org) installed and in the
-PATH, you can use it via `jj squash -i --tool meld` or a fancier config with `jj
+[^alternative_diff_editors]:
+    There are many other diff editors you could use.
+    For example, if you have [Meld](https://meldmerge.org) installed and in the
+    PATH, you can use it via `jj squash -i --tool meld` or a fancier config with `jj
 squash -i --tool meld-3`. You can configure the default with the
-[`ui.diff-editor` option](config.md#editing-diffs); those docs also explain how
-to specify a path to an executable if it is not in the PATH.
+    [`ui.diff-editor` option](config.md#editing-diffs); those docs also explain how
+    to specify a path to an executable if it is not in the PATH.
 
 If we look at the diff of the second commit, we now see
 that all three lines got capitalized:
@@ -466,7 +467,7 @@ Modified regular file file:
    3    3: cC
 ```
 
-The child change ("ABCD" in our case) will have the same content *state* after
+The child change ("ABCD" in our case) will have the same content _state_ after
 the `jj squash` command. That means that you can move any changes you want into
 the parent change, even if they touch the same word, and it won't cause any
 conflicts.
