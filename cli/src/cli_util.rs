@@ -2310,7 +2310,9 @@ impl fmt::Display for RemoteBranchNamePattern {
 
 /// Jujutsu (An experimental VCS)
 ///
-/// To get started, see the tutorial at https://github.com/martinvonz/jj/blob/main/docs/tutorial.md.
+/// To get started, try `jj git init` or `jj git clone REMOTE`. For more
+/// details, run commands with `--help` and see the tutorial at
+/// https://martinvonz.github.io/jj/latest/tutorial/.
 #[allow(rustdoc::bare_urls)]
 #[derive(clap::Parser, Clone, Debug)]
 #[command(name = "jj")]

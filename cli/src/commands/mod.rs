@@ -99,6 +99,7 @@ enum Command {
     Fix(fix::FixArgs),
     #[command(subcommand)]
     Git(git::GitCommand),
+    #[command(hide = true)]
     Init(init::InitArgs),
     Interdiff(interdiff::InterdiffArgs),
     Log(log::LogArgs),

@@ -24,7 +24,8 @@ use crate::cli_util::CommandHelper;
 use crate::command_error::{user_error_with_hint, user_error_with_message, CommandError};
 use crate::ui::Ui;
 
-/// Create a new repo in the given directory
+/// Create a new repo in the given directory with the native backend. You likely
+/// want to use jj git init` or another backend instead!
 ///
 /// If the given directory does not exist, it will be created. If no directory
 /// is given, the current directory is used.
