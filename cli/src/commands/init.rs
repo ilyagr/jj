@@ -25,7 +25,7 @@ use crate::command_error::{user_error_with_hint, user_error_with_message, Comman
 use crate::ui::Ui;
 
 /// Create a new repo in the given directory with the native backend. You likely
-/// want to use jj git init` or another backend instead!
+/// want to use `jj git init` or another backend instead!
 ///
 /// If the given directory does not exist, it will be created. If no directory
 /// is given, the current directory is used.
@@ -43,6 +43,9 @@ pub(crate) struct InitArgs {
     /// Path to a git repo the jj repo will be backed by
     #[arg(long, hide = true, value_hint = clap::ValueHint::DirPath)]
     git_repo: Option<String>,
+    /// NON-FUNCTIONAL: Use `jj git init`
+    #[arg(long, hide = true)]
+    colocate: bool,
 }
 
 #[instrument(skip_all)]
@@ -59,6 +62,13 @@ pub(crate) fn cmd_init(
 
     // Preserve existing behaviour where `jj init` is not able to create
     // a colocated repo.
+    if args.colocate {
+        return Err(user_error_with_hint(
+            "`jj init` cannot be used to create repos co-located with Git.",
+            "Did you mean to call `jj git init --colocate`?  Use of `jj init` to create Git repos \
+             is deprecated.",
+        ));
+    }
     let colocate = false;
     if args.git || args.git_repo.is_some() {
         git::init::do_init(ui, command, &wc_path, colocate, args.git_repo.as_deref())?;
