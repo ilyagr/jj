@@ -210,7 +210,7 @@ fn cmd_util_markdownhelp(
 ) -> Result<(), CommandError> {
     // If we ever need more flexibility, the code of `clap_markdown` is simple and
     // readable. We could reimplement the parts we need without trouble.
-    let markdown = clap_markdown::help_markdown_command(command.app()).into_bytes();
+    let markdown = clap_markdown_dfir::help_markdown_command(command.app()).into_bytes();
     ui.stdout_formatter().write_all(&markdown)?;
     Ok(())
 }
