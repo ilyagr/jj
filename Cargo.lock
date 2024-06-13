@@ -388,8 +388,6 @@ dependencies = [
 [[package]]
 name = "clap-markdown-dfir"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab533b2e36fe7d2b5ef22ad06eb610e5232993bc15a7b8d2e49ace9d64f300df"
 dependencies = [
  "clap",
 ]
