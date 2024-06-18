@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use jj_lib::op_store::RefTarget;
 use jj_lib::str_util::StringPattern;
 use jj_lib::view::View;
 
@@ -41,6 +42,27 @@ pub struct BranchForgetArgs {
     /// the remote-tracking branches, and possibly the local branch as well.
     #[arg(long, short, group = "scope")]
     pub global: bool,
+
+    /// Forget the local branch (if it exists) and untrack all of its remote
+    /// counterparts
+    ///
+    /// This does not affect remote-tracking `branchname@remote` branches. If
+    /// any remote-tracking branches exist, you can recreate a local branch with
+    /// `jj branch track branchname@remote`.
+    ///
+    /// This operation is sufficient to prevent `jj git push` from trying to
+    /// move or delete the remote branches, until one of the remote branches
+    /// becomes tracked again.
+    ///
+    /// This operation does affect the local git repo's branches if you are
+    /// using `jj git export` or are in a repository that's co-located with Git.
+    //
+    // TODO(ilyagr): This could become the default in the future.
+    // TODO(ilyagr): We may want to have a third scope option: `--from-remote
+    // REMOTE` (or just `--remote`). This only seems compatible with making `--local` the default if
+    // we disallow `jj branch forget --local --remote REMOTE`.
+    #[arg(long, short, group = "scope")]
+    pub local: bool,
 }
 
 pub fn cmd_branch_forget(
@@ -51,15 +73,41 @@ pub fn cmd_branch_forget(
     let mut workspace_command = command.workspace_helper(ui)?;
     let view = workspace_command.repo().view();
     let names = find_forgettable_branches(view, &args.names)?;
-    // Short-term TODO: implement --local
-    assert!(args.global);
-    let mut tx = workspace_command.start_transaction();
-    for branch_name in names.iter() {
-        tx.mut_repo().remove_branch(branch_name);
-    }
-    tx.finish(ui, format!("forget {}", make_branch_term(&names)))?;
-    if names.len() > 1 {
-        writeln!(ui.status(), "Forgot {} branches.", names.len())?;
+
+    if args.global {
+        let mut tx = workspace_command.start_transaction();
+        for branch_name in names.iter() {
+            tx.mut_repo().remove_branch(branch_name);
+        }
+        tx.finish(ui, format!("forget {} globally", make_branch_term(&names)))?;
+        if names.len() > 1 {
+            writeln!(
+                ui.status(),
+                "Forgot {} branches and their state on the remotes.",
+                names.len()
+            )?;
+        }
+    } else if args.local {
+        let mut tx = workspace_command.start_transaction();
+        for branch_name in names.iter() {
+            // TODO: UI. Count untracked branches?
+            for ((_name, remote), _remote_ref) in
+                tx.base_repo().clone().view().remote_branches_matching(
+                    &StringPattern::Exact(branch_name.to_string()),
+                    &StringPattern::glob("*").unwrap(),
+                )
+            {
+                tx.mut_repo().untrack_remote_branch(branch_name, remote)
+            }
+            tx.mut_repo()
+                .set_local_branch_target(branch_name, RefTarget::absent());
+        }
+        tx.finish(ui, format!("forget {} locally", make_branch_term(&names)))?;
+        if names.len() > 1 {
+            writeln!(ui.status(), "Forgot {} local branches", names.len())?;
+        }
+    } else {
+        unreachable!("clap should ensure --local or --global is specified");
     }
     Ok(())
 }

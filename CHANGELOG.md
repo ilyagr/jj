@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * New command `jj branch move` let you update branches by name pattern or source
   revision.
 
+* `jj branch forget` gained a `--local` argument that only forgets the local
+  branch and untracks all of the corresponding remote branches. You now need to
+  explicitly specify a new `--global` argument to forget both the local branch
+  and all the remote-tracking branches.
 
 * New diff option `jj diff --name-only` allows for easier shell scripting.
 
