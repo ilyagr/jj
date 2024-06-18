@@ -238,7 +238,7 @@ For information about branches, see https://martinvonz.github.io/jj/latest/branc
 
 * `create` — Create a new branch
 * `delete` — Delete an existing branch and propagate the deletion to remotes on the next push
-* `forget` — Forget everything about a branch, including its local and remote targets
+* `forget` — Forget a branch without marking it for deletion
 * `list` — List branches and their targets
 * `move` — Move existing branches to target revision
 * `rename` — Rename `old` branch name to `new` branch name
@@ -280,17 +280,23 @@ Delete an existing branch and propagate the deletion to remotes on the next push
 
 ## `jj branch forget`
 
-Forget everything about a branch, including its local and remote targets
+Forget a branch without marking it for deletion
 
-A forgotten branch will not impact remotes on future pushes. It will be recreated on future pulls if it still exists in the remote.
+A forgotten branch will not impact remotes on future pushes. It may be recreated on future pulls if it still exists in the remote.
 
-**Usage:** `jj branch forget <NAMES>...`
+**Usage:** `jj branch forget <--global> <NAMES>...`
 
 ###### **Arguments:**
 
 * `<NAMES>` — The branches to forget
 
    By default, the specified name matches exactly. Use `glob:` prefix to select branches by wildcard pattern. For details, see https://martinvonz.github.io/jj/latest/revsets/#string-patterns.
+
+###### **Options:**
+
+* `-g`, `--global` — Forget everything about a branch, including its local and remote targets
+
+   Fetching from remotes that contain a branch of this name will recreate the remote-tracking branches, and possibly the local branch as well.
 
 
 

@@ -7,7 +7,7 @@ new_tmp_dir
     jj git clone https://github.com/octocat/Hello-World
     cd Hello-World
     jj abandon --ignore-immutable octocat-patch-1@origin
-    jj branch forget octocat-patch-1
+    jj branch forget --global octocat-patch-1
     jj branch track test@origin
 } > /dev/null 2>&1
 

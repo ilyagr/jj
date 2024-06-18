@@ -464,6 +464,26 @@ fn test_branch_rename_colocated() {
 }
 
 #[test]
+fn test_branch_forget_cli() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
+    let repo_path = test_env.env_root().join("repo");
+
+    test_env.jj_cmd_ok(&repo_path, &["branch", "create", "foo-1"]);
+
+    // `jj branch forget` requires `--local` or `--global`
+    let stderr = test_env.jj_cmd_cli_error(&repo_path, &["branch", "forget", "foo-1"]);
+    insta::assert_snapshot!(stderr, @r###"
+    error: the following required arguments were not provided:
+      <--global>
+
+    Usage: jj branch forget <--global> <NAMES>...
+
+    For more information, try '--help'.
+    "###);
+}
+
+#[test]
 fn test_branch_forget_glob() {
     let test_env = TestEnvironment::default();
     test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
@@ -478,13 +498,19 @@ fn test_branch_forget_glob() {
     @  bar-2 foo-1 foo-3 foo-4 230dd059e1b0
     ◆   000000000000
     "###);
-    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "glob:foo-[1-3]"]);
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &repo_path,
+        &["branch", "forget", "--global", "glob:foo-[1-3]"],
+    );
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
     Forgot 2 branches.
     "###);
     test_env.jj_cmd_ok(&repo_path, &["undo"]);
-    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "glob:foo-[1-3]"]);
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &repo_path,
+        &["branch", "forget", "--global", "glob:foo-[1-3]"],
+    );
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
     Forgot 2 branches.
@@ -498,7 +524,14 @@ fn test_branch_forget_glob() {
     // multiple glob patterns, shouldn't produce an error.
     let (stdout, stderr) = test_env.jj_cmd_ok(
         &repo_path,
-        &["branch", "forget", "foo-4", "glob:foo-*", "glob:foo-*"],
+        &[
+            "branch",
+            "forget",
+            "--global",
+            "foo-4",
+            "glob:foo-*",
+            "glob:foo-*",
+        ],
     );
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
@@ -510,7 +543,10 @@ fn test_branch_forget_glob() {
     "###);
 
     // Malformed glob
-    let stderr = test_env.jj_cmd_cli_error(&repo_path, &["branch", "forget", "glob:foo-[1-3"]);
+    let stderr = test_env.jj_cmd_cli_error(
+        &repo_path,
+        &["branch", "forget", "--global", "glob:foo-[1-3"],
+    );
     insta::assert_snapshot!(stderr, @r###"
     error: invalid value 'glob:foo-[1-3' for '<NAMES>...': Pattern syntax error near position 4: invalid range pattern
 
@@ -520,7 +556,14 @@ fn test_branch_forget_glob() {
     // We get an error if none of the globs match anything
     let stderr = test_env.jj_cmd_failure(
         &repo_path,
-        &["branch", "forget", "glob:bar*", "glob:baz*", "glob:boom*"],
+        &[
+            "branch",
+            "forget",
+            "--global",
+            "glob:bar*",
+            "glob:baz*",
+            "glob:boom*",
+        ],
     );
     insta::assert_snapshot!(stderr, @r###"
     Error: No matching branches for patterns: baz*, boom*
@@ -616,7 +659,10 @@ fn test_branch_delete_glob() {
     "###);
 
     // Unknown pattern kind
-    let stderr = test_env.jj_cmd_cli_error(&repo_path, &["branch", "forget", "whatever:branch"]);
+    let stderr = test_env.jj_cmd_cli_error(
+        &repo_path,
+        &["branch", "forget", "--global", "whatever:branch"],
+    );
     insta::assert_snapshot!(stderr, @r###"
     error: invalid value 'whatever:branch' for '<NAMES>...': Invalid string pattern kind "whatever:"
 
@@ -650,6 +696,11 @@ fn test_branch_delete_export() {
     "###);
 }
 
+// TODOs: Forget local and push, forget local deletion and push, check that
+// remote-tracking branches still exist
+//
+// Git-tracking branches
+
 #[test]
 fn test_branch_forget_export() {
     let test_env = TestEnvironment::default();
@@ -666,7 +717,7 @@ fn test_branch_forget_export() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["git", "export"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @"");
-    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "foo"]);
+    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "--global", "foo"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
     Forgot 1 branches.
@@ -735,7 +786,7 @@ fn test_branch_forget_fetched_branch() {
 
     // TEST 1: with export-import
     // Forget the branch
-    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "feature1"]);
+    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "--global", "feature1"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 
     // At this point `jj git export && jj git import` does *not* recreate the
@@ -768,7 +819,7 @@ fn test_branch_forget_fetched_branch() {
     "###);
 
     // TEST 2: No export/import (otherwise the same as test 1)
-    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "feature1"]);
+    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "--global", "feature1"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
     // Fetch works even without the export-import
     let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["git", "fetch", "--remote=origin"]);
@@ -794,7 +845,8 @@ fn test_branch_forget_fetched_branch() {
             &[&git_repo.find_commit(first_git_repo_commit).unwrap()],
         )
         .unwrap();
-    let (stdout, stderr) = test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "feature1"]);
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "--global", "feature1"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
     Forgot 1 branches.
@@ -861,11 +913,14 @@ fn test_branch_forget_deleted_or_nonexistent_branch() {
     // ============ End of test setup ============
 
     // We can forget a deleted branch
-    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "feature1"]);
+    test_env.jj_cmd_ok(&repo_path, &["branch", "forget", "--global", "feature1"]);
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @"");
 
     // Can't forget a non-existent branch
-    let stderr = test_env.jj_cmd_failure(&repo_path, &["branch", "forget", "i_do_not_exist"]);
+    let stderr = test_env.jj_cmd_failure(
+        &repo_path,
+        &["branch", "forget", "--global", "i_do_not_exist"],
+    );
     insta::assert_snapshot!(stderr, @r###"
     Error: No such branch: i_do_not_exist
     "###);
