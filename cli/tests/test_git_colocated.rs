@@ -366,7 +366,7 @@ fn test_git_colocated_branches() {
 }
 
 #[test]
-fn test_git_colocated_branch_forget() {
+fn test_git_colocated_branch_forget_global() {
     let test_env = TestEnvironment::default();
     let workspace_root = test_env.env_root().join("repo");
     let _git_repo = git2::Repository::init(&workspace_root).unwrap();
@@ -387,7 +387,7 @@ fn test_git_colocated_branch_forget() {
         test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "--global", "foo"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Forgot 1 branches.
+    Forgot 1 branches and their state on the remotes.
     "###);
     // A forgotten branch is deleted in the git repo. For a detailed demo explaining
     // this, see `test_branch_forget_export` in `test_branch_command.rs`.
@@ -422,6 +422,35 @@ fn test_git_colocated_branch_at_root() {
     Warning: Failed to export some branches:
       foo: Ref cannot point to the root commit in Git
     "###);
+}
+
+#[test]
+fn test_git_colocated_branch_forget_local() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    let _git_repo = git2::Repository::init(&workspace_root).unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["git", "init", "--git-repo", "."]);
+    test_env.jj_cmd_ok(&workspace_root, &["new"]);
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "create", "foo"]);
+    insta::assert_snapshot!(get_log_output(&test_env, &workspace_root), @r###"
+    @  65b6b74e08973b88d38404430f119c8c79465250 foo
+    ○  230dd059e1b059aefc0da06a2e5a7dbf22362f22 HEAD@git
+    ◆  0000000000000000000000000000000000000000
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &workspace_root), @r###"
+    foo: rlvkpnrz 65b6b74e (empty) (no description set)
+      @git: rlvkpnrz 65b6b74e (empty) (no description set)
+    "###);
+
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "--local", "foo"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Forgot 1 local branches.
+    "###);
+    // A forgotten branch is deleted in the git repo. For a detailed demo explaining
+    // this, see `test_branch_forget_export` in `test_branch_command.rs`.
+    insta::assert_snapshot!(get_branch_output(&test_env, &workspace_root), @"");
 }
 
 #[test]

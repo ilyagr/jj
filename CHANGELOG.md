@@ -67,6 +67,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `jj workspace forget` now abandons the workspace's working-copy commit if it
   was empty.
 
+* `jj branch forget` gained a `--local` argument that only forgets the local
+  branch and untracks all of the corresponding remote branches. You now need to
+  explicitly specify a new `--global` argument to forget both the local branch
+  and all the remote-tracking branches.
+
 * `jj backout` now includes the backed out commit's subject in the new commit
   message.
 
