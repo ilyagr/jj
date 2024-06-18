@@ -20,12 +20,12 @@ use crate::cli_util::CommandHelper;
 use crate::command_error::CommandError;
 use crate::ui::Ui;
 
-/// Forget everything about a branch, including its local and remote
-/// targets
+/// Forget a branch without marking it for deletion
 ///
-/// A forgotten branch will not impact remotes on future pushes. It will be
+/// A forgotten branch will not impact remotes on future pushes. It may be
 /// recreated on future pulls if it still exists in the remote.
 #[derive(clap::Args, Clone, Debug)]
+#[command(group = clap::ArgGroup::new("scope").multiple(false).required(true))]
 pub struct BranchForgetArgs {
     /// The branches to forget
     ///
@@ -34,6 +34,13 @@ pub struct BranchForgetArgs {
     /// https://github.com/martinvonz/jj/blob/main/docs/revsets.md#string-patterns.
     #[arg(required = true, value_parser = StringPattern::parse)]
     names: Vec<StringPattern>,
+
+    /// Forget everything about a branch, including its local and remote targets
+    ///
+    /// Fetching from remotes that contain a branch of this name will recreate
+    /// the remote-tracking branches, and possibly the local branch as well.
+    #[arg(long, short, group = "scope")]
+    pub global: bool,
 }
 
 pub fn cmd_branch_forget(
@@ -44,6 +51,8 @@ pub fn cmd_branch_forget(
     let mut workspace_command = command.workspace_helper(ui)?;
     let view = workspace_command.repo().view();
     let names = find_forgettable_branches(view, &args.names)?;
+    // Short-term TODO: implement --local
+    assert!(args.global);
     let mut tx = workspace_command.start_transaction();
     for branch_name in names.iter() {
         tx.mut_repo().remove_branch(branch_name);

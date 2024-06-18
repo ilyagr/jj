@@ -381,7 +381,8 @@ fn test_git_colocated_branch_forget() {
       @git: rlvkpnrz 65b6b74e (empty) (no description set)
     "###);
 
-    let (stdout, stderr) = test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "foo"]);
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "--global", "foo"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @"");
     // A forgotten branch is deleted in the git repo. For a detailed demo explaining
