@@ -7,7 +7,7 @@ new_tmp_dir
     jj git clone https://github.com/octocat/Hello-World 
     cd Hello-World
     jj abandon test
-    jj branch forget test
+    jj branch forget --global test
 } > /dev/null
 
 comment "We are on the master branch of the

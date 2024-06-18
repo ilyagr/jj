@@ -402,7 +402,10 @@ fn test_git_push_creation_unexpectedly_already_exists() {
     let (test_env, workspace_root) = set_up();
 
     // Forget branch1 locally
-    test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "branch1"]);
+    test_env.jj_cmd_ok(
+        &workspace_root,
+        &["branch", "forget", "--global", "branch1"],
+    );
 
     // Create a new branh1
     test_env.jj_cmd_ok(&workspace_root, &["new", "root()", "-m=new branch1"]);
