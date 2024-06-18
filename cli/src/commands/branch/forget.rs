@@ -45,6 +45,27 @@ pub struct BranchForgetArgs {
     /// the remote-tracking branches, and possibly the local branch as well.
     #[arg(long, short, group = "scope")]
     pub global: bool,
+
+    /// Forget the local branch (if it exists) and untrack all of its remote
+    /// counterparts
+    ///
+    /// This does not affect remote-tracking `branchname@remote` branches. If
+    /// any remote-tracking branches exist, you can recreate a local branch with
+    /// `jj branch track branchname@remote`.
+    ///
+    /// This operation is sufficient to prevent `jj git push` from trying to
+    /// move or delete the remote branches, until one of the remote branches
+    /// becomes tracked again.
+    ///
+    /// This operation does affect the local git repo's branches if you are
+    /// using `jj git export` or are in a repository that's co-located with Git.
+    //
+    // TODO(ilyagr): This could become the default in the future.
+    // TODO(ilyagr): We may want to have a third scope option: `--from-remote
+    // REMOTE` (or just `--remote`). This only seems compatible with making `--local` the default if
+    // we disallow `jj branch forget --local --remote REMOTE`.
+    #[arg(long, short, group = "scope")]
+    pub local: bool,
 }
 
 pub fn cmd_branch_forget(
@@ -55,24 +76,46 @@ pub fn cmd_branch_forget(
     let mut workspace_command = command.workspace_helper(ui)?;
     let repo = workspace_command.repo().clone();
     let matched_branches = find_forgettable_branches(repo.view(), &args.names)?;
-    // Short-term TODO: implement --local
-    assert!(args.global);
+
     let mut tx = workspace_command.start_transaction();
+    assert!(
+        args.local || args.global,
+        "clap should ensure --local or --global is specified"
+    );
+
     for (name, branch_target) in &matched_branches {
         tx.repo_mut()
             .set_local_branch_target(name, RefTarget::absent());
         for (remote_name, _) in &branch_target.remote_refs {
-            tx.repo_mut()
-                .set_remote_branch(name, remote_name, RemoteRef::absent());
+            if args.global {
+                tx.repo_mut()
+                    .set_remote_branch(name, remote_name, RemoteRef::absent());
+            } else if args.local {
+                tx.repo_mut().untrack_remote_branch(name, remote_name)
+            }
         }
     }
-    writeln!(ui.status(), "Forgot {} branches.", matched_branches.len())?;
+    if args.global {
+        writeln!(
+            ui.status(),
+            "Forgot {} branches and their state on the remotes.",
+            matched_branches.len()
+        )?;
+    } else {
+        writeln!(
+            ui.status(),
+            "Forgot {} local branches.",
+            matched_branches.len()
+        )?;
+    }
+    let matched_branches_str = matched_branches.iter().map(|(name, _)| name).join(", ");
     tx.finish(
         ui,
-        format!(
-            "forget branch {}",
-            matched_branches.iter().map(|(name, _)| name).join(", ")
-        ),
+        if args.global {
+            format!("forget branch {matched_branches_str} globally",)
+        } else {
+            format!("forget branch {matched_branches_str} locally",)
+        },
     )?;
     Ok(())
 }

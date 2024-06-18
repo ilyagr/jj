@@ -284,7 +284,7 @@ Forget a branch without marking it for deletion
 
 A forgotten branch will not impact remotes on future pushes. It may be recreated on future pulls if it still exists in the remote.
 
-**Usage:** `jj branch forget <--global> <NAMES>...`
+**Usage:** `jj branch forget <--global|--local> <NAMES>...`
 
 ###### **Arguments:**
 
@@ -297,6 +297,13 @@ A forgotten branch will not impact remotes on future pushes. It may be recreated
 * `-g`, `--global` — Forget everything about a branch, including its local and remote targets
 
    Fetching from remotes that contain a branch of this name will recreate the remote-tracking branches, and possibly the local branch as well.
+* `-l`, `--local` — Forget the local branch (if it exists) and untrack all of its remote counterparts
+
+   This does not affect remote-tracking `branchname@remote` branches. If any remote-tracking branches exist, you can recreate a local branch with `jj branch track branchname@remote`.
+
+   This operation is sufficient to prevent `jj git push` from trying to move or delete the remote branches, until one of the remote branches becomes tracked again.
+
+   This operation does affect the local git repo's branches if you are using `jj git export` or are in a repository that's co-located with Git.
 
 
 
