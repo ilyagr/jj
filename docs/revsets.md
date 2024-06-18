@@ -78,7 +78,8 @@ only symbols.
 You can use parentheses to control evaluation order, such as `(x & y) | z` or
 `x & (y | z)`.
 
-??? examples
+
+!!! examples
 
     Given this history:
     ```
@@ -92,6 +93,42 @@ You can use parentheses to control evaluation order, such as `(x & y) | z` or
     |
     o root()
     ```
+
+    | Revset `x`   | `x+`                | `x::`               | `x..`                                                | `x-`                | `::x`               | `..x`               |
+    | ------------ | ------------------- | ------------------- | ---------------------------------------------------- | ------------------- | ------------------- | ------------------- |
+    | `D`          | `{}` (AKA `none()`) | `D::` ⇒ `{D}`       | `{}` (AKA `none()`)                                  | `D-` ⇒`{C,B}`       | `{D,C,B,A, root()}` | `{D,C,B,A}`         |
+    | `B`          | `B+` ⇒`{D}`         | `{D,B}`             | `{D,C}` (note that, unlike `B::`, this includes `C`) | `{A}`               | `{B,A, root()}`     | `{B,A}`             |
+    | `A`          | `{B,C}`             | `{D,C,B,A}`         | `{D,C,B}`                                            | `{root()}`          | `{A, root()}`       | `{A}`               |
+    | `root()`     | `{A}`               | `{D,C,B,A, root()}` | `{D,C,B,A}`                                          | `{}` (AKA `none()`) | `{root()}`          | `{}` (AKA `none()`) |
+    | `none()`     | `{}` (AKA `none()`) | `{}` (AKA `none()`) | `{D,C,B,A, root()}`                                  | `{}` (AKA `none()`) | `{}` (AKA `none()`) | `{}` (AKA `none()`) |
+    | `(C|B)`      | `D`                 | `{D,C,B}`           | `{D}`                                                | `{A}`               | `{C,B,A, root()}`   | `{C,B,A}`           |
+    | `(B|root())` | `{D,A}`             |                     |                                                      |                     |                     |                     |
+    | `(D|A)`      |                     |                     |                                                      | `{C, B, root()}`    |                     |                     |
+
+    (TODO: Reorder?)
+    (TODO: Change back to `???`?)
+    
+    | Revset `x`   | `x+`                | `x::`               | `x..`                                                |
+    | ------------ | ------------------- | ------------------- | ---------------------------------------------------- |
+    | `D`          | `{}` (AKA `none()`) | `D::` ⇒ `{D}`       | `{}` (AKA `none()`)                                  |
+    | `B`          | `B+` ⇒`{D}`         | `{D,B}`             | `{D,C}` (note that, unlike `B::`, this includes `C`) |
+    | `A`          | `{B,C}`             | `{D,C,B,A}`         | `{D,C,B}`                                            |
+    | `root()`     | `{A}`               | `{D,C,B,A, root()}` | `{D,C,B,A}`                                          |
+    | `none()`     | `{}` (AKA `none()`) | `{}` (AKA `none()`) | `{D,C,B,A, root()}`                                  |
+    | `(C|B)`      | `D`                 | `{D,C,B}`           | `{D}`                                                |
+    | `(B|root())` | `{D,A}`             |                     |                                                      |
+
+    | Revset `x` | `x-`                | `::x`               | `..x`               |
+    | ---------- | ------------------- | ------------------- | ------------------- |
+    | `D`        | `D-` ⇒`{C,B}`       | `{D,C,B,A, root()}` | `{D,C,B,A}`         |
+    | `B`        | `{A}`               | `{B,A, root()}`     | `{B,A}`             |
+    | `A`        | `{root()}`          | `{A, root()}`       | `{A}`               |
+    | `root()`   | `{}` (AKA `none()`) | `{root()}`          | `{}` (AKA `none()`) |
+    | `none()`   | `{}` (AKA `none()`) | `{}` (AKA `none()`) | `{}` (AKA `none()`) |
+    | `(C|B)`    | `{A}`               | `{C,B,A, root()}`   | `{C,B,A}`           |
+    | `(D|A)`    | `{C, B, root()}`    |                     |                     |
+
+
 
     **Operator** `x-`
 
