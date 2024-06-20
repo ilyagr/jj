@@ -393,9 +393,9 @@ fn test_conflict_some_and_more_issue_3223() {
     let repo = &test_workspace.repo;
 
     let path = RepoPath::from_internal_string("file");
-    let empty_tree = create_tree(repo, &[(path, "B\n")]);
-    let tree1 = create_tree(repo, &[(path, "A\n")]); // empty file
-    let tree2 = create_tree(repo, &[(path, "A\nC\n")]);
+    let empty_tree = create_tree(repo, &[(path, "B\nQQQQQQ\n")]);
+    let tree1 = create_tree(repo, &[(path, "A\nAA\nAAA\nQQQQQQ\n")]); // empty file
+    let tree2 = create_tree(repo, &[(path, "A\nAA\nAAA\nQQQQQQ\nC\n")]);
     let merged_tree = tree1.merge(&empty_tree, &tree2).unwrap();
     // The tree representation is conflicted...
     assert_debug_snapshot!(tree_entries(&merged_tree), @r###"
@@ -403,33 +403,15 @@ fn test_conflict_some_and_more_issue_3223() {
         (
             "file",
             Some(
-                Conflicted(
-                    [
-                        Some(
-                            File {
-                                id: FileId(
-                                    "1c5c06be70ae033fe5fb",
-                                ),
-                                executable: false,
-                            },
-                        ),
-                        Some(
-                            File {
-                                id: FileId(
-                                    "54b59f5ab966db7bcaf6",
-                                ),
-                                executable: false,
-                            },
-                        ),
-                        Some(
-                            File {
-                                id: FileId(
-                                    "262e12058803139983d4",
-                                ),
-                                executable: false,
-                            },
-                        ),
-                    ],
+                Resolved(
+                    Some(
+                        File {
+                            id: FileId(
+                                "d0c4d47a56bd15b824e8",
+                            ),
+                            executable: false,
+                        },
+                    ),
                 ),
             ),
         ),
@@ -446,14 +428,11 @@ fn test_conflict_some_and_more_issue_3223() {
     // The file on disk does *not* have conflict markers.
     // So, it's impossible to resolve the conflict.
     assert_snapshot!(file_contents, @r###"
-    <<<<<<< Conflict 1 of 1
-    %%%%%%% Changes from base to side #1
-    -B
-    +A
-    +++++++ Contents of side #2
     A
+    AA
+    AAA
+    QQQQQQ
     C
-    >>>>>>> Conflict 1 of 1 ends
     "###);
 }
 
