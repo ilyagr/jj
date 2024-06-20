@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use jj_lib::backend::{FileId, MergedTreeId, TreeValue};
-use jj_lib::conflicts::{self, materialize_merge_result};
+use jj_lib::conflicts::{self, materialize_merge_result, maybe_hunk_to_slice};
 use jj_lib::gitignore::GitIgnoreFile;
 use jj_lib::matchers::Matcher;
 use jj_lib::merge::{Merge, MergedTreeValue};
@@ -124,7 +124,7 @@ pub enum ExternalToolError {
 pub fn run_mergetool_external(
     editor: &ExternalMergeTool,
     file_merge: Merge<Option<FileId>>,
-    content: Merge<jj_lib::files::ContentHunk>,
+    content: Merge<Option<jj_lib::files::ContentHunk>>,
     repo_path: &RepoPath,
     conflict: MergedTreeValue,
     tree: &MergedTree,
@@ -139,9 +139,9 @@ pub fn run_mergetool_external(
     };
     assert_eq!(content.num_sides(), 2);
     let files: HashMap<&str, &[u8]> = maplit::hashmap! {
-        "base" => content.get_remove(0).unwrap().0.as_slice(),
-        "left" => content.get_add(0).unwrap().0.as_slice(),
-        "right" => content.get_add(1).unwrap().0.as_slice(),
+        "base" => maybe_hunk_to_slice(content.get_remove(0).unwrap()),
+        "left" => maybe_hunk_to_slice(content.get_add(0).unwrap()),
+        "right" => maybe_hunk_to_slice(content.get_add(1).unwrap()),
         "output" => initial_output_content.as_slice(),
     };
 

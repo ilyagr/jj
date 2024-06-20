@@ -175,6 +175,7 @@ pub fn merge(slices: &Merge<&[u8]>) -> MergeResult {
             }
             DiffHunk::Different(parts) => {
                 if let Some(resolved) = trivial_merge(&parts[..num_diffs], &parts[num_diffs..]) {
+                    // Conflict simplified here in bug_3223
                     resolved_hunk.0.extend(*resolved);
                 } else {
                     if !resolved_hunk.0.is_empty() {

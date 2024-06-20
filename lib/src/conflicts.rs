@@ -80,38 +80,33 @@ fn write_diff_hunks(hunks: &[DiffHunk], file: &mut dyn Write) -> std::io::Result
 async fn get_file_contents(
     store: &Store,
     path: &RepoPath,
-    term: &Option<FileId>,
+    id: &FileId,
 ) -> BackendResult<ContentHunk> {
-    match term {
-        Some(id) => {
-            let mut content = vec![];
-            store
-                .read_file_async(path, id)
-                .await?
-                .read_to_end(&mut content)
-                .map_err(|err| BackendError::ReadFile {
-                    path: path.to_owned(),
-                    id: id.clone(),
-                    source: err.into(),
-                })?;
-            Ok(ContentHunk(content))
-        }
-        // If the conflict had removed the file on one side, we pretend that the file
-        // was empty there.
-        None => Ok(ContentHunk(vec![])),
-    }
+    let mut content = vec![];
+    store
+        .read_file_async(path, id)
+        .await?
+        .read_to_end(&mut content)
+        .map_err(|err| BackendError::ReadFile {
+            path: path.to_owned(),
+            id: id.clone(),
+            source: err.into(),
+        })?;
+    Ok(ContentHunk(content))
 }
 
 pub async fn extract_as_single_hunk(
     merge: &Merge<Option<FileId>>,
     store: &Store,
     path: &RepoPath,
-) -> BackendResult<Merge<ContentHunk>> {
-    // TODO: Perhaps we have enough info here to fix #3223?? Don't simplify this
-    // merge?
-    // TODO: Mention that file was deleted in conflict markers?
-    let builder: MergeBuilder<ContentHunk> = futures::stream::iter(merge.iter())
-        .then(|term| get_file_contents(store, path, term))
+) -> BackendResult<Merge<Option<ContentHunk>>> {
+    let builder: MergeBuilder<Option<ContentHunk>> = futures::stream::iter(merge.iter())
+        .then(|term| async {
+            match term.clone() {
+                None => Ok(None),
+                Some(id) => get_file_contents(store, path, &id.clone()).await.map(Some),
+            }
+        })
         .try_collect()
         .await?;
     Ok(builder.build())
@@ -217,11 +212,19 @@ async fn materialize_tree_value_no_access_denied(
     }
 }
 
+// TODO: clean up somehow?
+/// None represents deletion
+pub fn maybe_hunk_to_slice(hunk: &Option<ContentHunk>) -> &[u8] {
+    hunk.as_ref()
+        .map_or([].as_slice(), |hunk| hunk.0.as_slice())
+}
+
 pub fn materialize_merge_result(
-    single_hunk: &Merge<ContentHunk>,
+    single_hunk: &Merge<Option<ContentHunk>>,
     output: &mut dyn Write,
 ) -> std::io::Result<()> {
-    let slices = single_hunk.map(|content| content.0.as_slice());
+    // TODO: Fix?
+    let slices = single_hunk.map(maybe_hunk_to_slice);
     let merge_result = files::merge(&slices);
     match merge_result {
         MergeResult::Resolved(content) => {

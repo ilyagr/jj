@@ -602,10 +602,10 @@ fn make_merge_sections(
 pub fn edit_merge_builtin(
     tree: &MergedTree,
     path: &RepoPath,
-    content: Merge<ContentHunk>,
+    content: Merge<Option<ContentHunk>>,
 ) -> Result<MergedTreeId, BuiltinToolError> {
-    let slices = content.map(|ContentHunk(v)| v.as_slice());
-    let merge_result = files::merge(&slices);
+    let slices = content.map(|hunk| hunk.clone().map_or(vec![], |ContentHunk(v)| v));
+    let merge_result = files::merge(&slices.map(|v| v.as_slice()));
     let sections = make_merge_sections(merge_result)?;
     let mut input = scm_record::helpers::CrosstermInput;
     let recorder = scm_record::Recorder::new(
@@ -630,7 +630,7 @@ pub fn edit_merge_builtin(
 
 #[cfg(test)]
 mod tests {
-    use jj_lib::conflicts::extract_as_single_hunk;
+    use jj_lib::conflicts::{extract_as_single_hunk, maybe_hunk_to_slice};
     use jj_lib::merge::MergedTreeValue;
     use jj_lib::repo::Repo;
     use testutils::TestRepo;
@@ -1017,7 +1017,7 @@ mod tests {
         let content = extract_as_single_hunk(&merge, store, path)
             .block_on()
             .unwrap();
-        let slices = content.map(|ContentHunk(buf)| buf.as_slice());
+        let slices = content.map(maybe_hunk_to_slice);
         let merge_result = files::merge(&slices);
         let sections = make_merge_sections(merge_result).unwrap();
         insta::assert_debug_snapshot!(sections, @r###"
