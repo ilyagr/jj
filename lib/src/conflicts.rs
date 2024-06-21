@@ -223,9 +223,15 @@ pub fn materialize_merge_result(
     single_hunk: &Merge<Option<ContentHunk>>,
     output: &mut dyn Write,
 ) -> std::io::Result<()> {
-    // TODO: Fix?
-    let slices = single_hunk.map(maybe_hunk_to_slice);
-    let merge_result = files::merge(&slices);
+    let merge_result = if single_hunk.iter().any(|piece| piece.is_none()) {
+        MergeResult::Conflict(vec![single_hunk
+            .map(maybe_hunk_to_slice)
+            .map(|s| files::ContentHunk(Vec::from(*s)))])
+    } else {
+        // let slices = single_hunk.map(maybe_hunk_to_slice);
+        let slices = single_hunk.map(|piece| piece.as_ref().unwrap().0.as_slice());
+        files::merge(&slices)
+    };
     match merge_result {
         MergeResult::Resolved(content) => {
             output.write_all(&content.0)?;

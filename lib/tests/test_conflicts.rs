@@ -142,7 +142,11 @@ fn test_materialize_conflict_bug_3223() {
     insta::assert_snapshot!(
         &materialize_conflict_string(store, path, &conflict),
         @r###"
+    <<<<<<< Conflict 1 of 1
+    %%%%%%% Changes from base to side #1
+    +++++++ Contents of side #2
     nonempty file
+    >>>>>>> Conflict 1 of 1 ends
     "###
     );
     // Swap the positive terms in the conflict. The diff should still use the right
@@ -154,7 +158,11 @@ fn test_materialize_conflict_bug_3223() {
     insta::assert_snapshot!(
         &materialize_conflict_string(store, path, &conflict),
         @r###"
+    <<<<<<< Conflict 1 of 1
+    +++++++ Contents of side #1
     nonempty file
+    %%%%%%% Changes from base to side #2
+    >>>>>>> Conflict 1 of 1 ends
     "###
     );
 }

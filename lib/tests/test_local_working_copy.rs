@@ -468,7 +468,12 @@ fn test_conflict_empty_vs_nonempty_issue_3223() {
     let tree1 = create_tree(repo, &[(path, "")]); // empty file
     let tree2 = create_tree(repo, &[(path, "nonempty")]);
     let merged_tree = tree1.merge(&empty_tree, &tree2).unwrap();
-    // The tree representation is conflicted...
+
+    // The tree representation is conflicted.
+    //
+    // Aside: It would be OK, and perhaps slightly more consistent, for this
+    // conflict to be auto-resolved instead of conflicted. This is a composition
+    // of a "A - B + A" conflict for file creation and an unconflicted edit.
     assert_debug_snapshot!(tree_entries(&merged_tree), @r###"
     [
         (
@@ -505,9 +510,41 @@ fn test_conflict_empty_vs_nonempty_issue_3223() {
     ws.check_out(repo.op_id().clone(), None, &merged_commit)
         .unwrap();
     let file_contents = std::fs::read_to_string(path.to_fs_path(ws.workspace_root())).unwrap();
-    // BUG: The file on disk does *not* have conflict markers. So, it's
-    // impossible to resolve the conflict.
-    assert_snapshot!(file_contents, @"nonempty");
+    // Importantly, the file on disk has conflict markers. This is crucial given
+    // that the tree is conflicted. Before
+    // https://github.com/martinvonz/jj/issues/3223 was fixed, there were no
+    // conflict markers and the conflict was impossible to resolve.
+    assert_snapshot!(file_contents, @r###"
+    <<<<<<< Conflict 1 of 1
+    %%%%%%% Changes from base to side #1
+    +++++++ Contents of side #2
+    nonempty>>>>>>> Conflict 1 of 1 ends
+    "###);
+    // IMPORTANT TODO! Why did the last two lines get merged?
+
+    // Check that we can resolve the conflict by editing the file.
+    std::fs::write(path.to_fs_path(ws.workspace_root()), "Resolution\n").unwrap();
+    let new_tree = test_workspace.snapshot().unwrap();
+    // The file is now resolved
+    assert_debug_snapshot!(tree_entries(&new_tree), @r###"
+    [
+        (
+            "file",
+            Some(
+                Resolved(
+                    Some(
+                        File {
+                            id: FileId(
+                                "9149f67cef88d47ea21c",
+                            ),
+                            executable: false,
+                        },
+                    ),
+                ),
+            ),
+        ),
+    ]
+    "###);
 }
 
 #[test]
