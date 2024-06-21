@@ -54,8 +54,8 @@ only symbols.
 * `x+`: Children of `x`, can be empty.
 * `x::`: Descendants of `x`, including the commits in `x` itself. Shorthand for
   `x::visible_heads()`.
-* `x..`: Revisions that are not ancestors of `x`. Shorthand for
-  `x..visible_heads()`.
+* `x..`: Revisions that are not ancestors of `x`. Never includes commits in `x`
+  itself. Shorthand for `x..visible_heads()`.
 * `::x`: Ancestors of `x`, including the commits in `x` itself. Shorthand for
   `root()::x`.
 * `..x`: Ancestors of `x`, including the commits in `x` itself, but excluding
