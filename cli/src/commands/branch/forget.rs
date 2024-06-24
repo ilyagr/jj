@@ -97,7 +97,9 @@ pub fn cmd_branch_forget(
                     &StringPattern::glob("*").unwrap(),
                 )
             {
-                tx.mut_repo().untrack_remote_branch(branch_name, remote)
+                if remote != jj_lib::git::REMOTE_NAME_FOR_LOCAL_GIT_REPO {
+                    tx.mut_repo().untrack_remote_branch(branch_name, remote)
+                }
             }
             tx.mut_repo()
                 .set_local_branch_target(branch_name, RefTarget::absent());

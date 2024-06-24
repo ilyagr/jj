@@ -652,7 +652,8 @@ fn test_branch_forget_local_export() {
     // Forgetting a branch DOES NOT deletes local and remote-tracking branches
     // including the corresponding git-tracking branch.
     insta::assert_snapshot!(get_branch_output(&test_env, &repo_path), @r###"
-    foo@git: rlvkpnrz 65b6b74e (empty) (no description set)
+    foo (deleted)
+      @git: rlvkpnrz 65b6b74e (empty) (no description set)
     "###);
     let stderr = test_env.jj_cmd_failure(&repo_path, &["log", "-r=foo", "--no-graph"]);
     insta::assert_snapshot!(stderr, @r###"
