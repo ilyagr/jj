@@ -1475,7 +1475,7 @@ impl TreeState {
                     executable,
                 } => {
                     let mut data = vec![];
-                    materialize_merge_result(&contents, &mut data)
+                    materialize_merge_result(contents, &mut data)
                         .expect("Failed to materialize conflict to in-memory buffer");
                     self.write_conflict(&disk_path, data, executable)?
                 }

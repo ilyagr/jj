@@ -212,7 +212,7 @@ fn read_file_contents(
             executable: _,
         } => {
             let mut buf = Vec::new();
-            materialize_merge_result(&contents, &mut buf)
+            materialize_merge_result(contents, &mut buf)
                 .expect("Failed to materialize conflict to in-memory buffer");
             // TODO: Render the ID somehow?
             let contents = buf_to_file_contents(None, buf);

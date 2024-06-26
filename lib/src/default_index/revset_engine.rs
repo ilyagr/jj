@@ -1272,7 +1272,7 @@ fn to_file_content(path: &RepoPath, value: MaterializedTreeValue) -> BackendResu
         MaterializedTreeValue::GitSubmodule(_) => Ok(vec![]),
         MaterializedTreeValue::FileConflict { contents, .. } => {
             let mut content = vec![];
-            materialize_merge_result(&contents, &mut content)
+            materialize_merge_result(contents, &mut content)
                 .expect("Failed to materialize conflict to in-memory buffer");
             Ok(content)
         }

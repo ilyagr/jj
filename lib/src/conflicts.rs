@@ -232,10 +232,10 @@ async fn materialize_tree_value_no_access_denied(
 }
 
 pub fn materialize_merge_result(
-    single_hunk: &Merge<BString>,
+    single_hunk: Merge<BString>,
     output: &mut dyn Write,
 ) -> std::io::Result<()> {
-    let merge_result = files::merge(single_hunk);
+    let merge_result = files::merge(&single_hunk);
     match merge_result {
         MergeResult::Resolved(content) => {
             output.write_all(&content)?;
@@ -526,7 +526,7 @@ pub async fn update_from_content(
     // copy.
     let mut old_content = Vec::with_capacity(content.len());
     let merge_hunk = extract_as_single_hunk(simplified_file_ids, store, path).await?;
-    materialize_merge_result(&merge_hunk, &mut old_content).unwrap();
+    materialize_merge_result(merge_hunk, &mut old_content).unwrap();
     if content == old_content {
         return Ok(file_ids.clone());
     }
