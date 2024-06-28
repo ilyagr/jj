@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   move` to ensure that the target branch already exists.
   [#3584](https://github.com/martinvonz/jj/issues/3584)
 
+* `jj branch forget` now requires a `--global` argument to work as it did before.
+
 ### Deprecations
 
 * Replacing `-l` shorthand for `--limit` with `-n` in `jj log`, `jj op log` and `jj obslog`.
@@ -60,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * New command `jj branch move` let you update branches by name pattern or source
   revision.
+
+* `jj branch forget` gained a `--local` argument that only forgets the local
+  branch and untracks all of the corresponding remote branches. You now need to
+  explicitly specify a new `--global` argument to forget both the local branch
+  and all the remote-tracking branches.
 
 * New diff option `jj diff --name-only` allows for easier shell scripting.
 
