@@ -93,6 +93,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   This simplifies the use case of configuring code formatters for specific file
   types. See `jj help fix` for details.
 
+* `jj describe` can now update the description of multiple commits.
+
 ### Fixed bugs
 
 * `jj diff --git` no longer shows the contents of binary files.
