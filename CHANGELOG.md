@@ -35,6 +35,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Error on `trunk()` revset resolution is now handled gracefully.
   [#4616](https://github.com/martinvonz/jj/issues/4616)
 
+* Conflicts involving non-empty files that do not end in a newline no longer
+  look broken when materialized.
+  [#3968](https://github.com/martinvonz/jj/issues/3968)
+
+* Conflicts involving sides that themselves contain conflict markers can now be
+  materialized in a way that `jj` can parse correctly.
+  [#3975](https://github.com/martinvonz/jj/issues/3968)
+
 ## [0.22.0] - 2024-10-02
 
 ### Breaking changes
@@ -370,7 +378,7 @@ Thanks to the people who made this release happen!
 * Vladimír Čunát (@vcunat)
 * Vladimir (@0xdeafbeef)
 * Yuya Nishihara (@yuja)
-
+  
 ## [0.19.0] - 2024-07-03
 
 ### Breaking changes

@@ -19,6 +19,7 @@ use std::io::Write;
 use std::iter::zip;
 
 use bstr::BString;
+use bstr::ByteVec;
 use futures::stream::BoxStream;
 use futures::try_join;
 use futures::Stream;
@@ -67,6 +68,12 @@ const CONFLICT_PLUS_LINE_CHAR: u8 = CONFLICT_PLUS_LINE[0];
 // markers inside the text of the conflicts.
 static CONFLICT_MARKER_REGEX: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
     RegexBuilder::new(r"^(<{7}|>{7}|%{7}|\-{7}|\+{7})( .*)?$")
+        .multi_line(true)
+        .build()
+        .unwrap()
+});
+static DIRECTIVE_LINE_REGEX: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+    RegexBuilder::new(r"^\\JJ")
         .multi_line(true)
         .build()
         .unwrap()
@@ -235,6 +242,11 @@ pub fn materialize_merge_result(
     single_hunk: Merge<BString>,
     output: &mut dyn Write,
 ) -> std::io::Result<()> {
+    let single_hunk = single_hunk.map_owned(|side| encode_unmaterializeable_lines(side.into()));
+
+    // From now on, we assume some invariants guaranteed by the encoding function
+    // above. See its docstring for details.
+
     let merge_result = files::merge(&single_hunk);
     match merge_result {
         MergeResult::Resolved(content) => {
@@ -393,7 +405,7 @@ pub fn parse_merge_result(input: &[u8], num_sides: usize) -> Option<Merge<BStrin
         }
     }
 
-    Some(result)
+    Some(result.map_owned(decode_materialized_side))
 }
 
 fn parse_conflict_into_list_of_hunks(
@@ -587,4 +599,110 @@ pub async fn update_from_content(
         Merge::from_vec(new_file_ids)
     };
     Ok(new_file_ids)
+}
+
+const JJ_NO_NEWLINE_AT_EOF: &[u8] = b"\n\\JJ: No newline at the end of file\n";
+const JJ_VERBATIM_LINE: &str = "\\JJ Verbatim Line:";
+static JJ_VERBATIM_LINE_REPLACEMENT: once_cell::sync::Lazy<Vec<u8>> =
+    once_cell::sync::Lazy::new(|| format!("{JJ_VERBATIM_LINE}$0").into_bytes());
+static VERBATIM_LINE_REGEX: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
+    RegexBuilder::new(&format!("^{}", regex::escape(JJ_VERBATIM_LINE)))
+        .multi_line(true)
+        .build()
+        .unwrap()
+});
+
+/// Encode a side of a conflict to satisfy some invariants
+///
+/// - The result will not contain any conflict markers
+/// - The result will contain 0 or more newline-terminated lines. In other
+///   words, it is either empty or ends in a newline.
+///
+/// This transformation is reversible and it is hoped that the result is
+/// human-readable. See the tests below for examples.
+fn encode_unmaterializeable_lines(mut side: Vec<u8>) -> Vec<u8> {
+    replace_all_avoid_cloning(
+        &DIRECTIVE_LINE_REGEX,
+        &mut side,
+        JJ_VERBATIM_LINE_REPLACEMENT.as_slice(),
+    );
+    replace_all_avoid_cloning(
+        &CONFLICT_MARKER_REGEX,
+        &mut side,
+        JJ_VERBATIM_LINE_REPLACEMENT.as_slice(),
+    );
+    if !side.is_empty() && !side.ends_with(b"\n") {
+        side.push_str(JJ_NO_NEWLINE_AT_EOF);
+    }
+    side
+}
+
+/// Undo the transformation done by `encode_unmaterializeable_lines`
+fn decode_materialized_side(mut side: BString) -> BString {
+    if side.ends_with(JJ_NO_NEWLINE_AT_EOF) {
+        let len = side.len();
+        side.truncate(len - JJ_NO_NEWLINE_AT_EOF.len());
+    }
+    replace_all_avoid_cloning(&VERBATIM_LINE_REGEX, &mut side, b"");
+    side
+}
+
+fn replace_all_avoid_cloning(regex: &Regex, side: &mut Vec<u8>, replacement: &[u8]) {
+    // TODO(ilyagr): The optimization to avoid the clone in the common case
+    // might be premature. See also
+    // https://github.com/rust-lang/regex/issues/676 for other options. I like
+    // my proposal there in theory, but it would take work that I haven't done
+    // to make sure it works, and ideally it would be a crate.
+    if regex.is_match(side) {
+        *side = regex.replace_all(side, replacement).to_vec();
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use bstr::BString;
+    use indoc::indoc;
+
+    use super::{decode_materialized_side, encode_unmaterializeable_lines};
+
+    #[test]
+    fn test_conflict_side_encoding_and_decoding() {
+        let initial_text: BString = indoc! {br"
+        <<<<<<<
+        blahblah"}
+        .into();
+
+        let encoded_text: BString = encode_unmaterializeable_lines(initial_text.to_vec()).into();
+        insta::assert_snapshot!(encoded_text, @r###"
+        \JJ Verbatim Line:<<<<<<<
+        blahblah
+        \JJ: No newline at the end of file
+        "###);
+        assert_eq!(decode_materialized_side(encoded_text.clone()), initial_text);
+
+        let doubly_encoded_text: BString =
+            encode_unmaterializeable_lines(encoded_text.clone().into()).into();
+        insta::assert_snapshot!(doubly_encoded_text, @r###"
+        \JJ Verbatim Line:\JJ Verbatim Line:<<<<<<<
+        blahblah
+        \JJ Verbatim Line:\JJ: No newline at the end of file
+        "###);
+        // The above should (and does) decode to a file with a newline at the end
+        assert_eq!(decode_materialized_side(doubly_encoded_text), encoded_text);
+    }
+
+    #[test]
+    fn test_conflict_side_encoding_and_decoding2() {
+        let initial_text = br"\JJ: No newline at the end of file";
+
+        let encoded_text: BString = encode_unmaterializeable_lines(initial_text.to_vec()).into();
+        insta::assert_snapshot!(encoded_text, @r###"
+        \JJ Verbatim Line:\JJ: No newline at the end of file
+        \JJ: No newline at the end of file
+        "###);
+        assert_eq!(
+            decode_materialized_side(encoded_text.clone()),
+            BString::from(initial_text)
+        );
+    }
 }
