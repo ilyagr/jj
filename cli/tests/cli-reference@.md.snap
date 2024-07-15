@@ -646,6 +646,7 @@ With the `--from` and/or `--to` options, shows the difference from/to the given 
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1122,6 +1123,7 @@ This excludes changes from other commits by temporarily rebasing `--from` onto `
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1163,6 +1165,7 @@ Spans of revisions that are not included in the graph per `--revisions` are rend
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1276,6 +1279,7 @@ Name is derived from Merciual's obsolescence markers.
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1343,6 +1347,7 @@ Compare changes to the repository between two operations
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1425,6 +1430,7 @@ Show changes to the repository in an operation
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1754,6 +1760,7 @@ Show commit description and changes in a revision
    Typically useful for shell commands like: `jj diff -r @- --name_only | xargs perl -pi -e's/OLD/NEW/g`
 * `--git` — Show a Git-format diff
 * `--color-words` — Show a word-level diff with changes indicated only by color
+* `--structured-conflicts` — Show a diff of conflict sides when sides are conflicted (EXPERIMENTAL)
 * `--tool <TOOL>` — Generate diff by external command
 * `--context <CONTEXT>` — Number of lines of context to show
 
@@ -1836,11 +1843,18 @@ Splitting an empty commit is not supported because the same effect can be achiev
 
 ###### **Options:**
 
-* `-i`, `--interactive` — Interactively choose which parts to split. This is the default if no paths are provided
+* `-i`, `--interactive` — Interactively choose which parts to split. This is the default if no paths are provided and `--from` is not used
 * `--tool <NAME>` — Specify diff editor to be used (implies --interactive)
 * `-r`, `--revision <REVISION>` — The revision to split
 
   Default value: `@`
+* `--restore-from <FROM>` — The revision to copy as the first part of the split (Experimental)
+
+   This option's behavior may change in the future. Experience reports and feedback are appreciated.
+
+   With this option, the first part of the split will contain the changes between the parent of the REVISION and the FROM revision. The second part of the split will contain the changes between the FROM revision and the REVISION revision.
+
+   This is especially useful if the FROM revision is a past version of REVISION, with its commit id obtained via `jj obslog` or `jj log --at-operation`.
 * `-p`, `--parallel` — Split the revision into two parallel revisions instead of a parent and child
 
 
