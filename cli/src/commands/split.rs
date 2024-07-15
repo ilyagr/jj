@@ -80,7 +80,7 @@ pub(crate) struct SplitArgs {
     // with the FROM commit in the middle and the REVISION commit on the RHS.
     #[arg(
         long,
-        conflicts_with = "interactive",
+        conflicts_with_all = ["interactive", "tool"],
         visible_alias = "from",
         value_name = "FROM"
     )]
@@ -119,6 +119,7 @@ pub(crate) fn cmd_split(
     let matcher = workspace_command
         .parse_file_patterns(ui, &args.paths)?
         .to_matcher();
+    // TODO: let interactive = args.interactive || args.tool.is_some() || (...)?
     let diff_selector = workspace_command.diff_selector(
         ui,
         args.tool.as_deref(),
@@ -175,6 +176,8 @@ The remainder will be in the second commit.
         commit_builder.set_tree_id(selected_tree_id);
         // TODO(ilyagr): When --from is used, we could show either both descriptions or
         // one of the descriptions and a diff.
+        // TODO(ilyagr): Do something reasonable when the --from commit has an empty
+        // description.
         if let Some(from_revision) = from_revision {
             commit_builder.set_description(from_revision.description());
         };
