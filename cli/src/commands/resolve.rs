@@ -36,8 +36,11 @@ use crate::ui::Ui;
 /// edit the conflict markers in the conflicted file directly with a text
 /// editor.
 //  TODOs:
-//   - `jj resolve --editor` to resolve a conflict in the default text editor. Should work for
-//     conflicts with 3+ adds. Useful to resolve conflicts in a commit other than the current one.
+//   - `jj file edit` to resolve a conflict (or edit a file) in the default text editor. Should work
+//     for conflicts with 3+ adds. Useful to resolve conflicts in a commit other than the current
+//     one.
+//   - This command could become an alias for `jj file resolve`, while `jj resolve --list` could
+//     instead become a part of `jj file list`.
 //   - A way to help split commits with conflicts that are too complicated (more than two sides)
 //     into commits with simpler conflicts. In case of a tree with many merges, we could for example
 //     point to existing commits with simpler conflicts where resolving those conflicts would help
@@ -58,6 +61,10 @@ pub(crate) struct ResolveArgs {
     /// Specify 3-way merge tool to be used
     #[arg(long, conflicts_with = "list", value_name = "NAME")]
     tool: Option<String>,
+    /// Before invoking the merge tool, change the left and right sides for
+    /// auto-resolved conflicts so that there are no unconflicted diffs
+    #[arg(long, conflicts_with = "list")]
+    redact_unconflicted_diffs: bool,
     /// Restrict to these paths when searching for a conflict to resolve. We
     /// will attempt to resolve the first conflict we can find. You can use
     /// the `--list` argument to find paths to use here.
@@ -99,7 +106,8 @@ pub(crate) fn cmd_resolve(
 
     let (repo_path, _) = conflicts.first().unwrap();
     workspace_command.check_rewritable([commit.id()])?;
-    let merge_editor = workspace_command.merge_editor(ui, args.tool.as_deref())?;
+    let merge_editor =
+        workspace_command.merge_editor(ui, args.tool.as_deref(), args.redact_unconflicted_diffs)?;
     writeln!(
         ui.status(),
         "Resolving conflicts in: {}",
