@@ -10,6 +10,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking changes
 
+### Deprecations
+
+### New features
+
+### Fixed bugs
+
+## [0.20.0] - 2024-08-07
+
+### Note to packagers
+
+* `jj` now links `libgit2` statically by default. To use dynamic linking, you
+  need to set the environment variable `LIBGIT2_NO_VENDOR=1` while compiling.
+  ([#4163](https://github.com/martinvonz/jj/pull/4163))
+
+### Breaking changes
+
 * `jj rebase --skip-empty` has been renamed to `jj rebase --skip-emptied`
 
 * `jj backout --revision` has been renamed to `jj backout --revisions`.
@@ -23,7 +39,23 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Updated defaults for graph node symbol templates `templates.log_node` and
   `templates.op_log_node`.
 
+* [The "fileset" language](docs/filesets.md) is now enabled by default. It can
+  still be disable by setting `ui.allow-filesets=false`.
+
+* On `jj git fetch`/`import`, commits referred to by `HEAD@git` are no longer
+  preserved. If a checked-out named branch gets deleted locally or remotely, the
+  corresponding commits will be abandoned.
+
+* `jj --at-op=@` no longer merges concurrent operations if explicitly specified.
+
+* `jj obslog -p` no longer shows diffs at non-partial squash operations.
+  Previously, it showed the same diffs as the second predecessor.
+
 ### Deprecations
+
+* The original configuration syntax for `jj fix` is now deprecated in favor of
+  one that allows defining multiple tools that can affect different filesets.
+  These can be used in combination for now. See `jj help fix` for details.
 
 ### New features
 
@@ -45,6 +77,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `jj workspace forget` now abandons the workspace's working-copy commit if it
   was empty.
 
+* `jj branch forget` gained a `--local` argument that only forgets the local
+  branch and untracks all of the corresponding remote branches. You now need to
+  explicitly specify a new `--global` argument to forget both the local branch
+  and all the remote-tracking branches.
+
 * `jj backout` now includes the backed out commit's subject in the new commit
   message.
 
@@ -58,6 +95,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   address unconditionally. Only ASCII case folding is currently implemented,
   but this will likely change in the future.
 
+* String patterns now support `regex:"pattern"`.
+
 * New `tracked_remote_branches()` and `untracked_remote_branches()` revset
   functions can be used to select tracked/untracked remote branches.
 
@@ -65,12 +104,69 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 * New `diff_contains()` revset function can be used to search diffs.
 
+* New command `jj operation diff` that can compare changes made between two
+  operations.
+
+* New command `jj operation show` that can show the changes made in a single
+  operation.
+
+* New config setting `git.private-commits` to prevent commits from being pushed.
+
+* [The default commit description template](docs/config.md#default-description)
+  can now be configured by `templates.draft_commit_description`.
+
+* `jj fix` can now be configured to run different tools on different filesets.
+  This simplifies the use case of configuring code formatters for specific file
+  types. See `jj help fix` for details.
+
+* Added revset functions `author_date` and `committer_date`.
+
+* `jj describe` can now update the description of multiple commits.
+
 ### Fixed bugs
+
+* `jj status` will show different messages in a conflicted tree, depending
+  on the state of the working commit. In particular, if a child commit fixes
+  a conflict in the parent, this will be reflected in the hint provided
+  by `jj status`
 
 * `jj diff --git` no longer shows the contents of binary files.
 
 * Windows binaries no longer require `vcruntime140.dll` to be installed
   (normally through Visual Studio.)
+
+* On quit, the builtin pager no longer waits for all outputs to be discarded.
+
+* `jj branch rename` no longer shows a warning in colocated repos.
+
+### Contributors
+
+Thanks to the people who made this release happen!
+
+* Anton Älgmyr (@algmyr)
+* Austin Seipp (@thoughtpolice)
+* Benjamin Tan (@bnjmnt4n)
+* Daniel Ploch (@torquestomp)
+* Danny Hooper (@hooper)
+* Emily (@emilazy)
+* Essien Ita Essien (@essiene)
+* Fedor Sheremetyev (@sheremetyev)
+* Ilya Grigoriev (@ilyagr)
+* Jonathan Tan (@jonathantanmy)
+* Julien Vincent (@julienvincent)
+* Martin von Zweigbergk (@martinvonz)
+* Matt Kulukundis (@fowles)
+* Matt Stark (@matts1)
+* mlcui (@mlcui-corp)
+* Philip Metzger (@PhilipMetzger)
+* Scott Taylor (@scott2000)
+* Skyler Grey (@Minion3665)
+* Stephen Jennings (@jennings)
+* Tim Janik (@tim-janik)
+* Vincent Ging Ho Yim (@cenviity)
+* Vladimír Čunát (@vcunat)
+* Vladimir (@0xdeafbeef)
+* Yuya Nishihara (@yuja)
 
 ## [0.19.0] - 2024-07-03
 

@@ -19,16 +19,16 @@ use std::iter::zip;
 
 use futures::{try_join, Stream, StreamExt, TryStreamExt};
 use itertools::Itertools;
-use regex::bytes::Regex;
+use regex::bytes::{Regex, RegexBuilder};
 
 use crate::backend::{BackendError, BackendResult, CommitId, FileId, SymlinkId, TreeId, TreeValue};
 use crate::diff::{Diff, DiffHunk};
-use crate::files;
 use crate::files::{ContentHunk, MergeResult};
-use crate::merge::{Merge, MergeBuilder, MergedTreeValue};
+use crate::merge::{DiffOfMerges, Merge, MergeBuilder, MergedTreeValue};
 use crate::merged_tree::TreeDiffStream;
 use crate::repo_path::{RepoPath, RepoPathBuf};
 use crate::store::Store;
+use crate::{files, merge};
 
 const CONFLICT_START_LINE: &[u8] = b"<<<<<<<";
 const CONFLICT_END_LINE: &[u8] = b">>>>>>>";
@@ -47,11 +47,10 @@ const CONFLICT_PLUS_LINE_CHAR: u8 = CONFLICT_PLUS_LINE[0];
 // separators. This could be useful to make it possible to allow conflict
 // markers inside the text of the conflicts.
 static CONFLICT_MARKER_REGEX: once_cell::sync::Lazy<Regex> = once_cell::sync::Lazy::new(|| {
-    Regex::new(
-        r"(<{7}|>{7}|%{7}|\-{7}|\+{7})( .*)?
-",
-    )
-    .unwrap()
+    RegexBuilder::new(r"^(<{7}|>{7}|%{7}|\-{7}|\+{7})( .*)?$")
+        .multi_line(true)
+        .build()
+        .unwrap()
 });
 
 fn write_diff_hunks(hunks: &[DiffHunk], file: &mut dyn Write) -> std::io::Result<()> {
@@ -553,4 +552,29 @@ pub async fn update_from_content(
         Merge::from_vec(new_file_ids)
     };
     Ok(new_file_ids)
+}
+
+pub fn optimize_by_textual_distance(
+    diff_of_merges: DiffOfMerges<ContentHunk>,
+) -> DiffOfMerges<ContentHunk> {
+    diff_of_merges
+        .simplify()
+        .rearranged_to_optimize_for_distance(|left_content, right_content| {
+            diff_size(&[DiffHunk::Different(vec![
+                left_content.0.as_slice().into(),
+                right_content.0.as_slice().into(),
+            ])])
+        })
+}
+
+pub fn explain_textual_diff_of_merges(
+    left: Merge<ContentHunk>,
+    right: Merge<ContentHunk>,
+) -> Vec<merge::DiffExplanation<ContentHunk>> {
+    merge::explain_diff_of_merges(left, right, |left_content, right_content| {
+        diff_size(&[DiffHunk::Different(vec![
+            left_content.0.as_slice().into(),
+            right_content.0.as_slice().into(),
+        ])])
+    })
 }

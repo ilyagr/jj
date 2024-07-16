@@ -825,17 +825,21 @@ fn test_log_filtered_by_path() {
     A file2
     "###);
 
-    // Fileset/pattern syntax is disabled by default.
+    // Fileset/pattern syntax can be disabled.
     let stderr = test_env.jj_cmd_failure(
         test_env.env_root(),
-        &["log", "-R", repo_path.to_str().unwrap(), "all()"],
+        &[
+            "log",
+            "--config-toml=ui.allow-filesets=false",
+            "-R",
+            repo_path.to_str().unwrap(),
+            "all()",
+        ],
     );
     insta::assert_snapshot!(stderr.replace('\\', "/"), @r###"
     Error: Path "all()" is not in the repo "repo"
     Caused by: Invalid component ".." in repo-relative path "../all()"
     "###);
-
-    test_env.add_config("ui.allow-filesets = true");
 
     // empty revisions are filtered out by "all()" fileset.
     let stdout = test_env.jj_cmd_success(&repo_path, &["log", "-Tdescription", "-s", "all()"]);
@@ -1370,6 +1374,53 @@ fn test_log_word_wrap() {
        044c0400
        (empty)
        merge
+    "###);
+}
+
+#[test]
+fn test_log_diff_stat_width() {
+    let test_env = TestEnvironment::default();
+    test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
+    let repo_path = test_env.env_root().join("repo");
+    let render = |args: &[&str], columns: u32| {
+        let assert = test_env
+            .jj_cmd(&repo_path, args)
+            .env("COLUMNS", columns.to_string())
+            .assert()
+            .success()
+            .stderr("");
+        get_stdout_string(&assert)
+    };
+
+    std::fs::write(repo_path.join("file1"), "foo\n".repeat(100)).unwrap();
+    test_env.jj_cmd_ok(&repo_path, &["new", "root()"]);
+    std::fs::write(repo_path.join("file2"), "foo\n".repeat(100)).unwrap();
+
+    insta::assert_snapshot!(render(&["log", "--stat", "--no-graph"], 30), @r###"
+    rlvkpnrz test.user@example.com 2001-02-03 08:05:09 287520bf
+    (no description set)
+    file2 | 100 +++++++++++++++
+    1 file changed, 100 insertions(+), 0 deletions(-)
+    qpvuntsm test.user@example.com 2001-02-03 08:05:08 e292def1
+    (no description set)
+    file1 | 100 +++++++++++++++
+    1 file changed, 100 insertions(+), 0 deletions(-)
+    zzzzzzzz root() 00000000
+    0 files changed, 0 insertions(+), 0 deletions(-)
+    "###);
+
+    // Graph width should be subtracted
+    insta::assert_snapshot!(render(&["log", "--stat"], 30), @r###"
+    @  rlvkpnrz test.user@example.com 2001-02-03 08:05:09 287520bf
+    │  (no description set)
+    │  file2 | 100 ++++++++++++
+    │  1 file changed, 100 insertions(+), 0 deletions(-)
+    │ ○  qpvuntsm test.user@example.com 2001-02-03 08:05:08 e292def1
+    ├─╯  (no description set)
+    │    file1 | 100 ++++++++++
+    │    1 file changed, 100 insertions(+), 0 deletions(-)
+    ◆  zzzzzzzz root() 00000000
+       0 files changed, 0 insertions(+), 0 deletions(-)
     "###);
 }
 

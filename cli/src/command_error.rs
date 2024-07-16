@@ -24,7 +24,7 @@ use jj_lib::git::{GitConfigParseError, GitExportError, GitImportError, GitRemote
 use jj_lib::gitignore::GitIgnoreError;
 use jj_lib::op_heads_store::OpHeadResolutionError;
 use jj_lib::op_store::OpStoreError;
-use jj_lib::op_walk::OpsetEvaluationError;
+use jj_lib::op_walk::{OpsetEvaluationError, OpsetResolutionError};
 use jj_lib::repo::{CheckOutCommitError, EditCommitError, RepoLoaderError, RewriteRootCommit};
 use jj_lib::repo_path::{RepoPathBuf, UiPathParseError};
 use jj_lib::revset::{
@@ -36,6 +36,8 @@ use jj_lib::working_copy::{ResetError, SnapshotError, WorkingCopyStateError};
 use jj_lib::workspace::WorkspaceInitError;
 use thiserror::Error;
 
+use crate::cli_util::short_operation_hash;
+use crate::description_util::ParseBulkEditMessageError;
 use crate::diff_util::DiffRenderError;
 use crate::formatter::{FormatRecorder, Formatter};
 use crate::merge_tools::{ConflictResolveError, DiffEditError, MergeToolConfigError};
@@ -291,7 +293,12 @@ impl From<OpHeadResolutionError> for CommandError {
 impl From<OpsetEvaluationError> for CommandError {
     fn from(err: OpsetEvaluationError) -> Self {
         match err {
-            OpsetEvaluationError::OpsetResolution(err) => user_error(err),
+            OpsetEvaluationError::OpsetResolution(err) => {
+                let hint = opset_resolution_error_hint(&err);
+                let mut cmd_err = user_error(err);
+                cmd_err.extend_hints(hint);
+                cmd_err
+            }
             OpsetEvaluationError::OpHeadResolution(err) => err.into(),
             OpsetEvaluationError::OpStore(err) => err.into(),
         }
@@ -535,6 +542,12 @@ impl From<GitIgnoreError> for CommandError {
     }
 }
 
+impl From<ParseBulkEditMessageError> for CommandError {
+    fn from(err: ParseBulkEditMessageError) -> Self {
+        user_error(err)
+    }
+}
+
 fn find_source_parse_error_hint(err: &dyn error::Error) -> Option<String> {
     let source = err.source()?;
     if let Some(source) = source.downcast_ref() {
@@ -580,6 +593,22 @@ fn fileset_parse_error_hint(err: &FilesetParseError) -> Option<String> {
             find_source_parse_error_hint(&err)
         }
         _ => None,
+    }
+}
+
+fn opset_resolution_error_hint(err: &OpsetResolutionError) -> Option<String> {
+    match err {
+        OpsetResolutionError::MultipleOperations {
+            expr: _,
+            candidates,
+        } => Some(format!(
+            "Try specifying one of the operations by ID: {}",
+            candidates.iter().map(short_operation_hash).join(", ")
+        )),
+        OpsetResolutionError::EmptyOperations(_)
+        | OpsetResolutionError::InvalidIdPrefix(_)
+        | OpsetResolutionError::NoSuchOperation(_)
+        | OpsetResolutionError::AmbiguousIdPrefix(_) => None,
     }
 }
 
@@ -630,9 +659,9 @@ fn revset_resolution_error_hint(err: &RevsetResolutionError) -> Option<String> {
 fn string_pattern_parse_error_hint(err: &StringPatternParseError) -> Option<String> {
     match err {
         StringPatternParseError::InvalidKind(_) => {
-            Some("Try prefixing with one of `exact:`, `glob:` or `substring:`".into())
+            Some("Try prefixing with one of `exact:`, `glob:`, `regex:`, or `substring:`".into())
         }
-        StringPatternParseError::GlobPattern(_) => None,
+        StringPatternParseError::GlobPattern(_) | StringPatternParseError::Regex(_) => None,
     }
 }
 
@@ -738,7 +767,6 @@ fn print_error_hints(ui: &Ui, hints: &[ErrorHint]) -> io::Result<()> {
             match hint {
                 ErrorHint::PlainText(message) => {
                     writeln!(formatter, "{message}")?;
-                    Ok(())
                 }
                 ErrorHint::Formatted(recorded) => {
                     recorded.replay(formatter)?;
@@ -747,9 +775,9 @@ fn print_error_hints(ui: &Ui, hints: &[ErrorHint]) -> io::Result<()> {
                     if !recorded.data().ends_with(b"\n") {
                         writeln!(formatter)?;
                     }
-                    Ok(())
                 }
             }
+            io::Result::Ok(())
         })?;
     }
     Ok(())

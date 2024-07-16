@@ -66,7 +66,8 @@ pub(crate) fn cmd_status(
         } else {
             writeln!(formatter, "Working copy changes:")?;
             let diff_renderer = workspace_command.diff_renderer(vec![DiffFormat::Summary]);
-            diff_renderer.show_diff(ui, formatter, &parent_tree, &tree, &matcher)?;
+            let width = ui.term_width();
+            diff_renderer.show_diff(ui, formatter, &parent_tree, &tree, &matcher, width)?;
         }
 
         // TODO: Conflicts should also be filtered by the `matcher`. See the related
@@ -91,21 +92,36 @@ pub(crate) fn cmd_status(
             writeln!(formatter)?;
         }
 
-        let wc_revset = RevsetExpression::commit(wc_commit.id().clone());
-        // Ancestors with conflicts, excluding the current working copy commit.
-        let ancestors_conflicts = workspace_command
-            .attach_revset_evaluator(
-                wc_revset
-                    .parents()
-                    .ancestors()
-                    .filtered(RevsetFilterPredicate::HasConflict)
-                    .minus(&revset_util::parse_immutable_expression(
-                        &workspace_command.revset_parse_context(),
-                    )?),
-            )?
-            .evaluate_to_commit_ids()?
-            .collect();
-        workspace_command.report_repo_conflicts(formatter, repo, ancestors_conflicts)?;
+        if wc_commit.has_conflict()? {
+            let wc_revset = RevsetExpression::commit(wc_commit.id().clone());
+
+            // Ancestors with conflicts, excluding the current working copy commit.
+            let ancestors_conflicts = workspace_command
+                .attach_revset_evaluator(
+                    wc_revset
+                        .parents()
+                        .ancestors()
+                        .filtered(RevsetFilterPredicate::HasConflict)
+                        .minus(&revset_util::parse_immutable_expression(
+                            &workspace_command.revset_parse_context(),
+                        )?),
+                )?
+                .evaluate_to_commit_ids()?
+                .collect();
+
+            workspace_command.report_repo_conflicts(formatter, repo, ancestors_conflicts)?;
+        } else {
+            for parent in wc_commit.parents() {
+                let parent = parent?;
+                if parent.has_conflict()? {
+                    writeln!(
+                        formatter.labeled("hint"),
+                        "Conflict in parent commit has been resolved in working copy"
+                    )?;
+                    break;
+                }
+            }
+        }
     } else {
         writeln!(formatter, "No working copy")?;
     }

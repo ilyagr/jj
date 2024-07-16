@@ -1,16 +1,34 @@
+use std::collections::HashMap;
+use std::io::Write as _;
+
+use bstr::ByteVec as _;
+use indexmap::IndexMap;
+use indoc::indoc;
 use itertools::Itertools;
+use jj_lib::backend::CommitId;
 use jj_lib::commit::Commit;
-use jj_lib::matchers::EverythingMatcher;
-use jj_lib::merged_tree::MergedTree;
 use jj_lib::repo::ReadonlyRepo;
 use jj_lib::settings::UserSettings;
+use thiserror::Error;
 
-use crate::cli_util::{edit_temp_file, WorkspaceCommandHelper};
+use crate::cli_util::{edit_temp_file, short_commit_hash, WorkspaceCommandTransaction};
 use crate::command_error::CommandError;
-use crate::diff_util::DiffFormat;
 use crate::formatter::PlainTextFormatter;
 use crate::text_util;
-use crate::ui::Ui;
+
+/// Cleanup a description by normalizing line endings, and removing leading and
+/// trailing blank lines.
+fn cleanup_description_lines<I>(lines: I) -> String
+where
+    I: IntoIterator,
+    I::Item: AsRef<str>,
+{
+    let description = lines
+        .into_iter()
+        .filter(|line| !line.as_ref().starts_with("JJ: "))
+        .fold(String::new(), |acc, line| acc + line.as_ref() + "\n");
+    text_util::complete_newline(description.trim_matches('\n'))
+}
 
 pub fn edit_description(
     repo: &ReadonlyRepo,
@@ -32,12 +50,126 @@ JJ: Lines starting with "JJ: " (like this one) will be removed.
         settings,
     )?;
 
-    // Normalize line ending, remove leading and trailing blank lines.
-    let description = description
-        .lines()
-        .filter(|line| !line.starts_with("JJ: "))
-        .join("\n");
-    Ok(text_util::complete_newline(description.trim_matches('\n')))
+    Ok(cleanup_description_lines(description.lines()))
+}
+
+/// Edits the descriptions of the given commits in a single editor session.
+pub fn edit_multiple_descriptions(
+    tx: &mut WorkspaceCommandTransaction,
+    repo: &ReadonlyRepo,
+    commits: &[(&CommitId, Commit)],
+    settings: &UserSettings,
+) -> Result<ParsedBulkEditMessage<CommitId>, CommandError> {
+    let mut commits_map = IndexMap::new();
+    let mut bulk_message = String::new();
+
+    bulk_message.push_str(indoc! {r#"
+        JJ: Enter or edit commit descriptions after the `JJ: describe` lines.
+        JJ: Warning:
+        JJ: - The text you enter will be lost on a syntax error.
+        JJ: - The syntax of the separator lines may change in the future.
+
+    "#});
+    for (commit_id, temp_commit) in commits.iter() {
+        let commit_hash = short_commit_hash(commit_id);
+        bulk_message.push_str("JJ: describe ");
+        bulk_message.push_str(&commit_hash);
+        bulk_message.push_str(" -------\n");
+        commits_map.insert(commit_hash, *commit_id);
+        let template = description_template(tx, "", temp_commit)?;
+        bulk_message.push_str(&template);
+        bulk_message.push('\n');
+    }
+    bulk_message.push_str("JJ: Lines starting with \"JJ: \" (like this one) will be removed.\n");
+
+    let bulk_message = edit_temp_file(
+        "description",
+        ".jjdescription",
+        repo.repo_path(),
+        &bulk_message,
+        settings,
+    )?;
+
+    Ok(parse_bulk_edit_message(&bulk_message, &commits_map)?)
+}
+
+#[derive(Debug)]
+pub struct ParsedBulkEditMessage<T> {
+    /// The parsed, formatted descriptions.
+    pub descriptions: HashMap<T, String>,
+    /// Commit IDs that were expected while parsing the edited messages, but
+    /// which were not found.
+    pub missing: Vec<String>,
+    /// Commit IDs that were found multiple times while parsing the edited
+    /// messages.
+    pub duplicates: Vec<String>,
+    /// Commit IDs that were found while parsing the edited messages, but which
+    /// were not originally being edited.
+    pub unexpected: Vec<String>,
+}
+
+#[derive(Debug, Error, PartialEq)]
+pub enum ParseBulkEditMessageError {
+    #[error(r#"Found the following line without a commit header: "{0}""#)]
+    LineWithoutCommitHeader(String),
+}
+
+/// Parse the bulk message of edited commit descriptions.
+fn parse_bulk_edit_message<T>(
+    message: &str,
+    commit_ids_map: &IndexMap<String, &T>,
+) -> Result<ParsedBulkEditMessage<T>, ParseBulkEditMessageError>
+where
+    T: Eq + std::hash::Hash + Clone,
+{
+    let mut descriptions = HashMap::new();
+    let mut duplicates = Vec::new();
+    let mut unexpected = Vec::new();
+
+    let mut messages: Vec<(&str, Vec<&str>)> = vec![];
+    for line in message.lines() {
+        if let Some(commit_id_prefix) = line.strip_prefix("JJ: describe ") {
+            let commit_id_prefix =
+                commit_id_prefix.trim_end_matches(|c: char| c.is_ascii_whitespace() || c == '-');
+            messages.push((commit_id_prefix, vec![]));
+        } else if let Some((_, lines)) = messages.last_mut() {
+            lines.push(line);
+        }
+        // Do not allow lines without a commit header, except for empty lines or comments.
+        else if !line.trim().is_empty() && !line.starts_with("JJ: ") {
+            return Err(ParseBulkEditMessageError::LineWithoutCommitHeader(
+                line.to_owned(),
+            ));
+        };
+    }
+
+    for (commit_id_prefix, description_lines) in messages {
+        let Some(&commit_id) = commit_ids_map.get(commit_id_prefix) else {
+            unexpected.push(commit_id_prefix.to_string());
+            continue;
+        };
+        if descriptions.contains_key(commit_id) {
+            duplicates.push(commit_id_prefix.to_string());
+            continue;
+        }
+        descriptions.insert(
+            commit_id.clone(),
+            cleanup_description_lines(&description_lines),
+        );
+    }
+
+    let missing: Vec<_> = commit_ids_map
+        .iter()
+        .filter(|(_, commit_id)| !descriptions.contains_key(*commit_id))
+        .map(|(commit_id_prefix, _)| commit_id_prefix.to_string())
+        .collect();
+
+    Ok(ParsedBulkEditMessage {
+        descriptions,
+        missing,
+        duplicates,
+        unexpected,
+    })
 }
 
 /// Combines the descriptions from the input commits. If only one is non-empty,
@@ -90,71 +222,191 @@ pub fn join_message_paragraphs(paragraphs: &[String]) -> String {
         .join("\n")
 }
 
-pub fn description_template_for_describe(
-    ui: &Ui,
-    settings: &UserSettings,
-    workspace_command: &WorkspaceCommandHelper,
+/// Renders commit description template, which will be edited by user.
+pub fn description_template(
+    tx: &WorkspaceCommandTransaction,
+    intro: &str,
     commit: &Commit,
 ) -> Result<String, CommandError> {
-    let mut diff_summary_bytes = Vec::new();
-    let diff_renderer = workspace_command.diff_renderer(vec![DiffFormat::Summary]);
-    diff_renderer.show_patch(
-        ui,
-        &mut PlainTextFormatter::new(&mut diff_summary_bytes),
-        commit,
-        &EverythingMatcher,
-    )?;
-    let description = if commit.description().is_empty() {
-        settings.default_description()
-    } else {
-        commit.description().to_owned()
-    };
-    if diff_summary_bytes.is_empty() {
-        Ok(description)
-    } else {
-        Ok(description + "\n" + &diff_summary_to_description(&diff_summary_bytes))
-    }
-}
+    // TODO: Should "ui.default-description" be deprecated?
+    // We might want default description templates per command instead. For
+    // example, "backout_description" template will be rendered against the
+    // commit to be backed out, and the generated description could be set
+    // without spawning editor.
 
-pub fn description_template_for_commit(
-    ui: &Ui,
-    settings: &UserSettings,
-    workspace_command: &WorkspaceCommandHelper,
-    intro: &str,
-    overall_commit_description: &str,
-    from_tree: &MergedTree,
-    to_tree: &MergedTree,
-) -> Result<String, CommandError> {
-    let mut diff_summary_bytes = Vec::new();
-    let diff_renderer = workspace_command.diff_renderer(vec![DiffFormat::Summary]);
-    diff_renderer.show_diff(
-        ui,
-        &mut PlainTextFormatter::new(&mut diff_summary_bytes),
-        from_tree,
-        to_tree,
-        &EverythingMatcher,
-    )?;
-    let mut template_chunks = Vec::new();
+    // Named as "draft" because the output can contain "JJ: " comment lines.
+    let template_key = "templates.draft_commit_description";
+    let template_text = tx.settings().config().get_string(template_key)?;
+    let template = tx.parse_commit_template(&template_text)?;
+
+    let mut output = Vec::new();
     if !intro.is_empty() {
-        template_chunks.push(format!("JJ: {intro}\n"));
+        writeln!(output, "JJ: {intro}").unwrap();
     }
-    template_chunks.push(if overall_commit_description.is_empty() {
-        settings.default_description()
-    } else {
-        overall_commit_description.to_owned()
-    });
-    if !diff_summary_bytes.is_empty() {
-        template_chunks.push("\n".to_owned());
-        template_chunks.push(diff_summary_to_description(&diff_summary_bytes));
-    }
-    Ok(template_chunks.concat())
+    template
+        .format(commit, &mut PlainTextFormatter::new(&mut output))
+        .expect("write() to vec backed formatter should never fail");
+    // Template output is usually UTF-8, but it can contain file content.
+    Ok(output.into_string_lossy())
 }
 
-pub fn diff_summary_to_description(bytes: &[u8]) -> String {
-    let text = std::str::from_utf8(bytes).expect(
-        "Summary diffs and repo paths must always be valid UTF8.",
-        // Double-check this assumption for diffs that include file content.
-    );
-    "JJ: This commit contains the following changes:\n".to_owned()
-        + &textwrap::indent(text, "JJ:     ")
+#[cfg(test)]
+mod tests {
+    use indexmap::indexmap;
+    use indoc::indoc;
+    use maplit::hashmap;
+
+    use super::parse_bulk_edit_message;
+    use crate::description_util::ParseBulkEditMessageError;
+
+    #[test]
+    fn test_parse_complete_bulk_edit_message() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                JJ: describe 1 -------
+                Description 1
+
+                JJ: describe 2
+                Description 2
+
+                JJ: describe 3 --
+                Description 3
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+                "2".to_string() => &2,
+                "3".to_string() => &3,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            result.descriptions,
+            hashmap! {
+                1 => "Description 1\n".to_string(),
+                2 => "Description 2\n".to_string(),
+                3 => "Description 3\n".to_string(),
+            }
+        );
+        assert!(result.missing.is_empty());
+        assert!(result.duplicates.is_empty());
+        assert!(result.unexpected.is_empty());
+    }
+
+    #[test]
+    fn test_parse_bulk_edit_message_with_missing_descriptions() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                JJ: describe 1 -------
+                Description 1
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+                "2".to_string() => &2,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            result.descriptions,
+            hashmap! {
+                1 => "Description 1\n".to_string(),
+            }
+        );
+        assert_eq!(result.missing, vec!["2".to_string()]);
+        assert!(result.duplicates.is_empty());
+        assert!(result.unexpected.is_empty());
+    }
+
+    #[test]
+    fn test_parse_bulk_edit_message_with_duplicate_descriptions() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                JJ: describe 1 -------
+                Description 1
+
+                JJ: describe 1 -------
+                Description 1 (repeated)
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            result.descriptions,
+            hashmap! {
+                1 => "Description 1\n".to_string(),
+            }
+        );
+        assert!(result.missing.is_empty());
+        assert_eq!(result.duplicates, vec!["1".to_string()]);
+        assert!(result.unexpected.is_empty());
+    }
+
+    #[test]
+    fn test_parse_bulk_edit_message_with_unexpected_descriptions() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                JJ: describe 1 -------
+                Description 1
+
+                JJ: describe 3 -------
+                Description 3 (unexpected)
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            result.descriptions,
+            hashmap! {
+                1 => "Description 1\n".to_string(),
+            }
+        );
+        assert!(result.missing.is_empty());
+        assert!(result.duplicates.is_empty());
+        assert_eq!(result.unexpected, vec!["3".to_string()]);
+    }
+
+    #[test]
+    fn test_parse_bulk_edit_message_with_no_header() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                Description 1
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+            },
+        );
+        assert_eq!(
+            result.unwrap_err(),
+            ParseBulkEditMessageError::LineWithoutCommitHeader("Description 1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_bulk_edit_message_with_comment_before_header() {
+        let result = parse_bulk_edit_message(
+            indoc! {"
+                JJ: Custom comment and empty lines below should be accepted
+
+
+                JJ: describe 1 -------
+                Description 1
+            "},
+            &indexmap! {
+                "1".to_string() => &1,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            result.descriptions,
+            hashmap! {
+                1 => "Description 1\n".to_string(),
+            }
+        );
+        assert!(result.missing.is_empty());
+        assert!(result.duplicates.is_empty());
+        assert!(result.unexpected.is_empty());
+    }
 }

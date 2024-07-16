@@ -18,9 +18,7 @@ use tracing::instrument;
 
 use crate::cli_util::CommandHelper;
 use crate::command_error::{user_error, CommandError};
-use crate::description_util::{
-    description_template_for_commit, edit_description, join_message_paragraphs,
-};
+use crate::description_util::{description_template, edit_description, join_message_paragraphs};
 use crate::ui::Ui;
 
 /// Update the description and create a new change on top.
@@ -89,8 +87,7 @@ new working-copy commit.
         matcher.as_ref(),
         format_instructions,
     )?;
-    let middle_tree = tx.repo().store().get_root_tree(&tree_id)?;
-    if !args.paths.is_empty() && middle_tree.id() == base_tree.id() {
+    if !args.paths.is_empty() && tree_id == base_tree.id() {
         writeln!(
             ui.warning_default(),
             "The given paths do not match any file: {}",
@@ -98,32 +95,28 @@ new working-copy commit.
         )?;
     }
 
-    let template = description_template_for_commit(
-        ui,
-        command.settings(),
-        tx.base_workspace_helper(),
-        "",
-        commit.description(),
-        &base_tree,
-        &middle_tree,
-    )?;
+    let mut commit_builder = tx
+        .mut_repo()
+        .rewrite_commit(command.settings(), &commit)
+        .detach();
+    commit_builder.set_tree_id(tree_id);
+    if args.reset_author {
+        commit_builder.set_author(commit_builder.committer().clone());
+    }
 
     let description = if !args.message_paragraphs.is_empty() {
         join_message_paragraphs(&args.message_paragraphs)
     } else {
+        if commit_builder.description().is_empty() {
+            commit_builder.set_description(command.settings().default_description());
+        }
+        let temp_commit = commit_builder.write_hidden()?;
+        let template = description_template(&tx, "", &temp_commit)?;
         edit_description(tx.base_repo(), &template, command.settings())?
     };
+    commit_builder.set_description(description);
+    let new_commit = commit_builder.write(tx.mut_repo())?;
 
-    let mut commit_builder = tx
-        .mut_repo()
-        .rewrite_commit(command.settings(), &commit)
-        .set_tree_id(tree_id)
-        .set_description(description);
-    if args.reset_author {
-        let new_author = commit_builder.committer().clone();
-        commit_builder = commit_builder.set_author(new_author);
-    }
-    let new_commit = commit_builder.write()?;
     let workspace_ids = tx
         .mut_repo()
         .view()

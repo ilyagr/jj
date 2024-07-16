@@ -20,7 +20,7 @@ use crate::cli_util::{CommandHelper, RevisionArg};
 use crate::command_error::{user_error, CommandError};
 use crate::ui::Ui;
 
-/// Run a command across a set of revisions.
+/// (**Stub**, does not work yet) Run a command across a set of revisions.
 ///
 ///
 /// All recorded state will be persisted in the `.jj` directory, so occasionally
@@ -59,9 +59,8 @@ pub fn cmd_run(ui: &mut Ui, command: &CommandHelper, args: &RunArgs) -> Result<(
     // 2. the amount of cores available.
     // 3. a single job, if all of the above fails.
     let _jobs = match args.jobs {
-        Some(0) => return Err(user_error("must pass at least one job")),
+        Some(0) | None => std::thread::available_parallelism().map(|t| t.into()).ok(),
         Some(jobs) => Some(jobs),
-        None => std::thread::available_parallelism().map(|t| t.into()).ok(),
     }
     // Fallback to a single user-visible job.
     .unwrap_or(1usize);

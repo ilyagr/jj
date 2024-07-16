@@ -5,7 +5,7 @@ resolver = "2"
 members = ["cli", "lib", "lib/gen-protos", "lib/proc-macros", "lib/testutils"]
 
 [workspace.package]
-version = "0.19.0"
+version = "0.20.0"
 license = "Apache-2.0"
 rust-version = "1.76"                                 # NOTE: remember to update CI, contributing.md, changelog.md, and flake.nix
 edition = "2021"
@@ -23,42 +23,52 @@ assert_matches = "1.5.0"
 async-trait = "0.1.81"
 backoff = "0.4.0"
 blake2 = "0.10.6"
-bstr = "1.9.1"
+bstr = "1.10.0"
 cargo_metadata = "0.17.0"
-clap = { version = "4.5.9", features = [
+clap = { version = "4.5.13", features = [
     "derive",
     "deprecated",
     "wrap_help",
     "string",
 ] }
-clap_complete = "4.5.8"
-clap_complete_nushell = "4.5.2"
+clap_complete = "4.5.12"
+clap_complete_nushell = "4.5.3"
 clap-markdown = "0.1.4"
 clap_mangen = "0.2.10"
 chrono = { version = "0.4.38", default-features = false, features = [
     "std",
     "clock",
 ] }
+chrono-english = { version = "0.1.7" }
 config = { version = "0.13.4", default-features = false, features = ["toml"] }
 criterion = "0.5.1"
 crossterm = { version = "0.27", default-features = false }
 digest = "0.10.7"
 dirs = "5.0.1"
-dunce = "1.0.4"
+dunce = "1.0.5"
 either = "1.13.0"
 esl01-renderdag = "0.3.0"
 futures = "0.3.30"
-git2 = "0.18.3"
-gix = { version = "0.63.0", default-features = false, features = [
+git2 = { version = "0.18.3", features = [
+    # Do *not* disable this feature even if you'd like dynamic linking. Instead,
+    # set the environment variable `LIBGIT2_NO_VENDOR=1` if dynamic linking must
+    # be used (this will override the Cargo feature), and allow static linking
+    # in other cases. Rationale: If neither the feature nor the environment
+    # variable are set, `git2` may still decide to vendor `libgit2` if it
+    # doesn't find a version of `libgit2` to link to dynamically. See also
+    # https://github.com/rust-lang/git2-rs/commit/3cef4119f
+    "vendored-libgit2"
+] }
+gix = { version = "0.64.0", default-features = false, features = [
     "index",
     "max-performance-safe",
     "blob-diff",
 ] }
-gix-filter = "0.11.2"
+gix-filter = "0.11.3"
 glob = "0.3.1"
 hex = "0.4.3"
 ignore = "0.4.20"
-indexmap = "2.2.5"
+indexmap = "2.3.0"
 indoc = "2.0.4"
 insta = { version = "1.39.0", features = ["filters"] }
 itertools = "0.13.0"
@@ -79,12 +89,12 @@ rand = "0.8.5"
 rand_chacha = "0.3.1"
 rayon = "1.10.0"
 ref-cast = "1.0.23"
-regex = "1.10.5"
+regex = "1.10.6"
 rpassword = "7.3.1"
 rustix = { version = "0.38.34", features = ["fs"] }
 scm-record = "0.3.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.120"
+serde_json = "1.0.122"
 slab = "0.4.9"
 smallvec = { version = "1.13.2", features = [
     "const_generics",
@@ -92,13 +102,13 @@ smallvec = { version = "1.13.2", features = [
     "union",
 ] }
 strsim = "0.11.1"
-syn = "2.0.71"
-tempfile = "3.10.1"
+syn = "2.0.72"
+tempfile = "3.12.0"
 test-case = "3.3.1"
 textwrap = "0.16.1"
-thiserror = "1.0.62"
+thiserror = "1.0.63"
 timeago = { version = "0.4.2", default-features = false }
-tokio = { version = "1.38.1" }
+tokio = { version = "1.39.2" }
 toml_edit = { version = "0.19.15", features = ["serde"] }
 tracing = "0.1.40"
 tracing-chrome = "0.7.2"
@@ -109,7 +119,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
     "fmt",
 ] }
 unicode-width = "0.1.13"
-version_check = "0.9.4"
+version_check = "0.9.5"
 watchman_client = { version = "0.9.0" }
 whoami = "1.5.1"
 winreg = "0.52"
@@ -118,8 +128,8 @@ zstd = "0.12.4"
 # put all inter-workspace libraries, i.e. those that use 'path = ...' here in
 # their own (alphabetically sorted) block
 
-jj-lib = { path = "lib", version = "0.19.0" }
-jj-lib-proc-macros = { path = "lib/proc-macros", version = "0.19.0" }
+jj-lib = { path = "lib", version = "0.20.0" }
+jj-lib-proc-macros = { path = "lib/proc-macros", version = "0.20.0" }
 testutils = { path = "lib/testutils" }
 
 # Insta suggests compiling these packages in opt mode for faster testing.

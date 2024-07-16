@@ -265,6 +265,12 @@ revsets (expressions) as arguments.
 * `committer(pattern)`: Commits with the committer's  name or email matching the
 given [string pattern](#string-patterns).
 
+* `author_date(pattern)`: Commits with author dates matching the specified [date
+  pattern](#date-patterns).
+
+* `committer_date(pattern)`: Commits with committer dates matching the specified
+  [date pattern](#date-patterns).
+
 * `empty()`: Commits modifying no files. This also includes `merges()` without
   user modifications and `root()`.
 
@@ -353,9 +359,31 @@ Functions that perform string matching support the following pattern syntax:
 * `exact:"string"`: Matches strings exactly equal to `string`.
 * `glob:"pattern"`: Matches strings with Unix-style shell [wildcard
   `pattern`](https://docs.rs/glob/latest/glob/struct.Pattern.html).
+* `regex:"pattern"`: Matches substrings with [regular
+  expression `pattern`](https://docs.rs/regex/latest/regex/#syntax).
 
 You can append `-i` after the kind to match case‐insensitively (e.g.
 `glob-i:"fix*jpeg*"`).
+
+## Date patterns
+
+Functions that perform date matching support the following pattern syntax:
+
+* `after:"string"`: Matches dates exactly at or after the given date.
+* `before:"string"`: Matches dates before, but not including, the given date.
+
+Date strings can be specified in several forms, including:
+
+* 2024-02-01
+* 2024-02-01T12:00:00
+* 2024-02-01T12:00:00-08:00
+* 2024-02-01 12:00:00
+* 2 days ago
+* 5 minutes ago
+* yesterday
+* yesterday 5pm
+* yesterday 10:30
+* yesterday 15:30
 
 ## Aliases
 

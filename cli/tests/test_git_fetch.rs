@@ -1098,7 +1098,10 @@ fn test_git_fetch_removed_branch() {
     "###);
 
     // Remove a2 branch in origin
-    test_env.jj_cmd_ok(&source_git_repo_path, &["branch", "forget", "a2"]);
+    test_env.jj_cmd_ok(
+        &source_git_repo_path,
+        &["branch", "forget", "--global", "a2"],
+    );
 
     // Fetch branch a1 from origin and check that a2 is still there
     let (stdout, stderr) =
@@ -1190,7 +1193,10 @@ fn test_git_fetch_removed_parent_branch() {
     "###);
 
     // Remove all branches in origin.
-    test_env.jj_cmd_ok(&source_git_repo_path, &["branch", "forget", "glob:*"]);
+    test_env.jj_cmd_ok(
+        &source_git_repo_path,
+        &["branch", "forget", "--global", "glob:*"],
+    );
 
     // Fetch branches master, trunk1 and a1 from origin and check that only those
     // branches have been removed and that others were not rebased because of

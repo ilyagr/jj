@@ -134,10 +134,8 @@ Use `jj obslog -p` to see how your working-copy commit has evolved. Find the
 commit you want to restore the contents to. Let's say the current commit (with
 the changes intended for a new commit) are in commit X and the state you wanted
 is in commit Y. Note the commit id (normally in blue at the end of the line in
-the log output) of each of them. Now use `jj new` to create a new working-copy
-commit, then run `jj restore --from Y --to @-` to restore the parent commit
-to the old state, and `jj restore --from X` to restore the new working-copy
-commit to the new state.
+the log output) of each of them. Now use `jj split --restore-from Y` to split
+the current commit into its old version and the changes since then.
 
 ### How do I resume working on an existing change?
 
@@ -161,11 +159,6 @@ use their [commit ID]. Most commonly, the way to resolve
 this is to abandon the unneeded commits (using `jj abandon <commit ID>`). If you
 would like to keep both commits with this change ID, you can `jj duplicate` one
 of them before abandoning it.
-
-Usually, the different commits associated with the divergent change ID should all
-appear in the log, but due to #2476, they may not. If that happens, you can
-either use `jj log -r 'all()' | grep <change id>` or disable the
-`revsets.short-prefixes` config option.
 
 ### How do I deal with conflicted branches ('??' after branch name)?
 

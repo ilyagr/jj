@@ -17,7 +17,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::{fs, slice};
@@ -30,14 +29,14 @@ use tracing::instrument;
 use self::dirty_cell::DirtyCell;
 use crate::backend::{
     Backend, BackendError, BackendInitError, BackendLoadError, BackendResult, ChangeId, CommitId,
-    MergedTreeId, SigningFn,
+    MergedTreeId,
 };
 use crate::commit::{Commit, CommitByCommitterTimestamp};
-use crate::commit_builder::CommitBuilder;
+use crate::commit_builder::{CommitBuilder, DetachedCommitBuilder};
 use crate::default_index::{DefaultIndexStore, DefaultMutableIndex};
 use crate::default_submodule_store::DefaultSubmoduleStore;
 use crate::file_util::{IoResultExt as _, PathError};
-use crate::index::{ChangeIdIndex, Index, IndexStore, MutableIndex, ReadonlyIndex};
+use crate::index::{ChangeIdIndex, Index, IndexReadError, IndexStore, MutableIndex, ReadonlyIndex};
 use crate::local_backend::LocalBackend;
 use crate::object_id::{HexPrefix, ObjectId, PrefixResolution};
 use crate::op_heads_store::{self, OpHeadResolutionError, OpHeadsStore};
@@ -58,7 +57,7 @@ use crate::store::Store;
 use crate::submodule_store::SubmoduleStore;
 use crate::transaction::Transaction;
 use crate::view::View;
-use crate::{backend, dag_walk, op_store, revset};
+use crate::{dag_walk, op_store, revset};
 
 pub trait Repo {
     fn store(&self) -> &Arc<Store>;
@@ -95,7 +94,7 @@ pub struct ReadonlyRepo {
     settings: RepoSettings,
     index_store: Arc<dyn IndexStore>,
     submodule_store: Arc<dyn SubmoduleStore>,
-    index: OnceCell<Box<dyn ReadonlyIndex>>,
+    index: Box<dyn ReadonlyIndex>,
     change_id_index: OnceCell<Box<dyn ChangeIdIndex>>,
     // TODO: This should eventually become part of the index and not be stored fully in memory.
     view: View,
@@ -179,7 +178,7 @@ impl ReadonlyRepo {
         let index_store = index_store_initializer(user_settings, &index_path)?;
         let index_type_path = index_path.join("type");
         fs::write(&index_type_path, index_store.name()).context(&index_type_path)?;
-        let index_store = Arc::from(index_store);
+        let index_store: Arc<dyn IndexStore> = Arc::from(index_store);
 
         let submodule_store_path = repo_path.join("submodule_store");
         fs::create_dir(&submodule_store_path).context(&submodule_store_path)?;
@@ -198,6 +197,11 @@ impl ReadonlyRepo {
             root_operation_data,
         );
         let root_view = root_operation.view().expect("failed to read root view");
+        let index = index_store
+            .get_index_at_op(&root_operation, &store)
+            // If the root op index couldn't be read, the index backend wouldn't
+            // be initialized properly.
+            .map_err(|err| BackendInitError(err.into()))?;
         let repo = Arc::new(ReadonlyRepo {
             repo_path,
             store,
@@ -206,7 +210,7 @@ impl ReadonlyRepo {
             operation: root_operation,
             settings: repo_settings,
             index_store,
-            index: OnceCell::new(),
+            index,
             change_id_index: OnceCell::new(),
             view: root_view,
             submodule_store,
@@ -247,15 +251,7 @@ impl ReadonlyRepo {
     }
 
     pub fn readonly_index(&self) -> &dyn ReadonlyIndex {
-        self.index
-            .get_or_init(|| {
-                // TODO: somehow propagate error, but it's weird if all callers
-                // had Result<T, IndexReadError> signature.
-                self.index_store
-                    .get_index_at_op(&self.operation, &self.store)
-                    .unwrap()
-            })
-            .deref()
+        self.index.as_ref()
     }
 
     fn change_id_index(&self) -> &dyn ChangeIdIndex {
@@ -589,6 +585,8 @@ pub enum RepoLoaderError {
     #[error(transparent)]
     Backend(#[from] BackendError),
     #[error(transparent)]
+    IndexRead(#[from] IndexReadError),
+    #[error(transparent)]
     OpHeadResolution(#[from] OpHeadResolutionError),
     #[error(transparent)]
     OpStore(#[from] OpStoreError),
@@ -606,6 +604,26 @@ pub struct RepoLoader {
 }
 
 impl RepoLoader {
+    pub fn new(
+        repo_path: PathBuf,
+        repo_settings: RepoSettings,
+        store: Arc<Store>,
+        op_store: Arc<dyn OpStore>,
+        op_heads_store: Arc<dyn OpHeadsStore>,
+        index_store: Arc<dyn IndexStore>,
+        submodule_store: Arc<dyn SubmoduleStore>,
+    ) -> Self {
+        Self {
+            repo_path,
+            repo_settings,
+            store,
+            op_store,
+            op_heads_store,
+            index_store,
+            submodule_store,
+        }
+    }
+
     pub fn init(
         user_settings: &UserSettings,
         repo_path: &Path,
@@ -669,13 +687,13 @@ impl RepoLoader {
             |op_heads| self._resolve_op_heads(op_heads, user_settings),
         )?;
         let view = op.view()?;
-        Ok(self._finish_load(op, view))
+        self._finish_load(op, view)
     }
 
     #[instrument(skip(self))]
     pub fn load_at(&self, op: &Operation) -> Result<Arc<ReadonlyRepo>, RepoLoaderError> {
         let view = op.view()?;
-        Ok(self._finish_load(op.clone(), view))
+        self._finish_load(op.clone(), view)
     }
 
     pub fn create_from(
@@ -693,11 +711,42 @@ impl RepoLoader {
             settings: self.repo_settings.clone(),
             index_store: self.index_store.clone(),
             submodule_store: self.submodule_store.clone(),
-            index: OnceCell::with_value(index),
+            index,
             change_id_index: OnceCell::new(),
             view,
         };
         Arc::new(repo)
+    }
+
+    /// Merges the given `operations` into a single operation.
+    /// Assumes that there is at least one operation.
+    pub fn merge_operations(
+        &self,
+        settings: &UserSettings,
+        operations: Vec<Operation>,
+        tx_description: Option<&str>,
+    ) -> Result<Operation, RepoLoaderError> {
+        let num_operations = operations.len();
+        let mut operations = operations.into_iter();
+        let base_op = operations.next().unwrap();
+        let final_op = if num_operations > 1 {
+            let base_repo = self.load_at(&base_op)?;
+            let mut tx = base_repo.start_transaction(settings);
+            for other_op in operations {
+                tx.merge_operation(other_op)?;
+                tx.mut_repo().rebase_descendants(settings)?;
+            }
+            let tx_description = tx_description.map_or_else(
+                || format!("merge {} operations", num_operations),
+                |tx_description| tx_description.to_string(),
+            );
+            let merged_repo = tx.write(tx_description).leave_unpublished();
+            merged_repo.operation().clone()
+        } else {
+            base_op
+        };
+
+        Ok(final_op)
     }
 
     fn _resolve_op_heads(
@@ -705,19 +754,19 @@ impl RepoLoader {
         op_heads: Vec<Operation>,
         user_settings: &UserSettings,
     ) -> Result<Operation, RepoLoaderError> {
-        let base_repo = self.load_at(&op_heads[0])?;
-        let mut tx = base_repo.start_transaction(user_settings);
-        for other_op_head in op_heads.into_iter().skip(1) {
-            tx.merge_operation(other_op_head)?;
-            tx.mut_repo().rebase_descendants(user_settings)?;
-        }
-        let merged_repo = tx
-            .write("resolve concurrent operations")
-            .leave_unpublished();
-        Ok(merged_repo.operation().clone())
+        self.merge_operations(
+            user_settings,
+            op_heads,
+            Some("resolve concurrent operations"),
+        )
     }
 
-    fn _finish_load(&self, operation: Operation, view: View) -> Arc<ReadonlyRepo> {
+    fn _finish_load(
+        &self,
+        operation: Operation,
+        view: View,
+    ) -> Result<Arc<ReadonlyRepo>, RepoLoaderError> {
+        let index = self.index_store.get_index_at_op(&operation, &self.store)?;
         let repo = ReadonlyRepo {
             repo_path: self.repo_path.clone(),
             store: self.store.clone(),
@@ -727,11 +776,11 @@ impl RepoLoader {
             settings: self.repo_settings.clone(),
             index_store: self.index_store.clone(),
             submodule_store: self.submodule_store.clone(),
-            index: OnceCell::new(),
+            index,
             change_id_index: OnceCell::new(),
             view,
         };
-        Arc::new(repo)
+        Ok(Arc::new(repo))
     }
 }
 
@@ -817,7 +866,7 @@ impl MutableRepo {
         parents: Vec<CommitId>,
         tree_id: MergedTreeId,
     ) -> CommitBuilder {
-        CommitBuilder::for_new_commit(self, settings, parents, tree_id)
+        DetachedCommitBuilder::for_new_commit(self, settings, parents, tree_id).attach(self)
     }
 
     /// Returns a [`CommitBuilder`] to rewrite an existing commit in the repo.
@@ -826,20 +875,9 @@ impl MutableRepo {
         settings: &UserSettings,
         predecessor: &Commit,
     ) -> CommitBuilder {
-        CommitBuilder::for_rewrite_from(self, settings, predecessor)
+        DetachedCommitBuilder::for_rewrite_from(self, settings, predecessor).attach(self)
         // CommitBuilder::write will record the rewrite in
         // `self.rewritten_commits`
-    }
-
-    /// Only called from [`CommitBuilder::write`]. Use that function instead.
-    pub(crate) fn write_commit(
-        &mut self,
-        commit: backend::Commit,
-        sign_with: Option<&mut SigningFn>,
-    ) -> BackendResult<Commit> {
-        let commit = self.store().write_commit(commit, sign_with)?;
-        self.add_head(&commit)?;
-        Ok(commit)
     }
 
     /// Record a commit as having been rewritten to another commit in this
@@ -1573,6 +1611,10 @@ impl MutableRepo {
         self.view.ensure_clean(|v| self.enforce_view_invariants(v));
         self.merge_view(&base_repo.view, &other_repo.view);
         self.view.mark_dirty();
+    }
+
+    pub fn merge_index(&mut self, other_repo: &ReadonlyRepo) {
+        self.index.merge_in(other_repo.readonly_index());
     }
 
     fn merge_view(&mut self, base: &View, other: &View) {

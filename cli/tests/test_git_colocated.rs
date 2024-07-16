@@ -281,8 +281,8 @@ fn test_git_colocated_rebase_on_import() {
     // refs/heads/master we just exported
     test_env.jj_cmd_ok(&workspace_root, &["st"]);
 
-    // Move `master` and HEAD backwards, which should result in commit2 getting
-    // hidden, and a new working-copy commit at the new position.
+    // Move `master` backwards, which should result in commit2 getting hidden,
+    // and the working-copy commit rebased.
     let commit2_oid = git_repo
         .find_branch("master", git2::BranchType::Local)
         .unwrap()
@@ -292,16 +292,18 @@ fn test_git_colocated_rebase_on_import() {
     let commit2 = git_repo.find_commit(commit2_oid).unwrap();
     let commit1 = commit2.parents().next().unwrap();
     git_repo.branch("master", &commit1, true).unwrap();
-    git_repo.set_head("refs/heads/master").unwrap();
     let (stdout, stderr) = get_log_output_with_stderr(&test_env, &workspace_root);
     insta::assert_snapshot!(stdout, @r###"
-    @  5539e55eb3690b85a7ebd4a37a5e3b57f469ee94
+    @  15b1d70c5e33b5d2b18383292b85324d5153ffed
     ○  47fe984daf66f7bf3ebf31b9cb3513c995afb857 master HEAD@git add a file
     ◆  0000000000000000000000000000000000000000
     "###);
     insta::assert_snapshot!(stderr, @r###"
-    Reset the working copy parent to the new Git HEAD.
     Abandoned 1 commits that are no longer reachable.
+    Rebased 1 descendant commits off of commits rewritten from git
+    Working copy now at: zsuskuln 15b1d70c (empty) (no description set)
+    Parent commit      : qpvuntsm 47fe984d master | add a file
+    Added 0 files, modified 1 files, removed 0 files
     Done importing changes from the underlying Git repo.
     "###);
 }
@@ -364,7 +366,7 @@ fn test_git_colocated_branches() {
 }
 
 #[test]
-fn test_git_colocated_branch_forget() {
+fn test_git_colocated_branch_forget_global() {
     let test_env = TestEnvironment::default();
     let workspace_root = test_env.env_root().join("repo");
     let _git_repo = git2::Repository::init(&workspace_root).unwrap();
@@ -381,10 +383,11 @@ fn test_git_colocated_branch_forget() {
       @git: rlvkpnrz 65b6b74e (empty) (no description set)
     "###);
 
-    let (stdout, stderr) = test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "foo"]);
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "--global", "foo"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
-    Forgot 1 branches.
+    Forgot 1 branches and their state on the remotes.
     "###);
     // A forgotten branch is deleted in the git repo. For a detailed demo explaining
     // this, see `test_branch_forget_export` in `test_branch_command.rs`.
@@ -419,6 +422,35 @@ fn test_git_colocated_branch_at_root() {
     Warning: Failed to export some branches:
       foo: Ref cannot point to the root commit in Git
     "###);
+}
+
+#[test]
+fn test_git_colocated_branch_forget_local() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    let _git_repo = git2::Repository::init(&workspace_root).unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["git", "init", "--git-repo", "."]);
+    test_env.jj_cmd_ok(&workspace_root, &["new"]);
+    test_env.jj_cmd_ok(&workspace_root, &["branch", "create", "foo"]);
+    insta::assert_snapshot!(get_log_output(&test_env, &workspace_root), @r###"
+    @  65b6b74e08973b88d38404430f119c8c79465250 foo
+    ○  230dd059e1b059aefc0da06a2e5a7dbf22362f22 HEAD@git
+    ◆  0000000000000000000000000000000000000000
+    "###);
+    insta::assert_snapshot!(get_branch_output(&test_env, &workspace_root), @r###"
+    foo: rlvkpnrz 65b6b74e (empty) (no description set)
+      @git: rlvkpnrz 65b6b74e (empty) (no description set)
+    "###);
+
+    let (stdout, stderr) =
+        test_env.jj_cmd_ok(&workspace_root, &["branch", "forget", "--local", "foo"]);
+    insta::assert_snapshot!(stdout, @"");
+    insta::assert_snapshot!(stderr, @r###"
+    Forgot 1 local branches.
+    "###);
+    // A forgotten branch is deleted in the git repo. For a detailed demo explaining
+    // this, see `test_branch_forget_export` in `test_branch_command.rs`.
+    insta::assert_snapshot!(get_branch_output(&test_env, &workspace_root), @"");
 }
 
 #[test]

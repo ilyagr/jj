@@ -50,8 +50,13 @@ pub enum OpsetResolutionError {
     // TODO: Maybe empty/multiple operations should be allowed, and rejected by
     // caller as needed.
     /// Expression resolved to multiple operations.
-    #[error(r#"The "{0}" expression resolved to more than one operation"#)]
-    MultipleOperations(String),
+    #[error(r#"The "{expr}" expression resolved to more than one operation"#)]
+    MultipleOperations {
+        /// Source expression.
+        expr: String,
+        /// Matched operation ids.
+        candidates: Vec<OperationId>,
+    },
     /// Expression resolved to no operations.
     #[error(r#"The "{0}" expression resolved to no operations"#)]
     EmptyOperations(String),
@@ -74,8 +79,12 @@ pub fn resolve_op_for_load(
     let op_store = repo_loader.op_store();
     let op_heads_store = repo_loader.op_heads_store().as_ref();
     let get_current_op = || {
-        op_heads_store::resolve_op_heads(op_heads_store, op_store, |_| {
-            Err(OpsetResolutionError::MultipleOperations("@".to_owned()).into())
+        op_heads_store::resolve_op_heads(op_heads_store, op_store, |op_heads| {
+            Err(OpsetResolutionError::MultipleOperations {
+                expr: "@".to_owned(),
+                candidates: op_heads.iter().map(|op| op.id().clone()).collect(),
+            }
+            .into())
         })
     };
     let get_head_ops = || get_current_head_ops(op_store, op_heads_store);
@@ -89,17 +98,25 @@ pub fn resolve_op_with_repo(
     repo: &ReadonlyRepo,
     op_str: &str,
 ) -> Result<Operation, OpsetEvaluationError> {
-    resolve_op_at(repo.op_store(), repo.operation(), op_str)
+    resolve_op_at(repo.op_store(), slice::from_ref(repo.operation()), op_str)
 }
 
-/// Resolves operation set expression at the given head operation.
+/// Resolves operation set expression at the given head operations.
 pub fn resolve_op_at(
     op_store: &Arc<dyn OpStore>,
-    head_op: &Operation,
+    head_ops: &[Operation],
     op_str: &str,
 ) -> Result<Operation, OpsetEvaluationError> {
-    let get_current_op = || Ok(head_op.clone());
-    let get_head_ops = || Ok(vec![head_op.clone()]);
+    let get_current_op = || match head_ops {
+        [head_op] => Ok(head_op.clone()),
+        [] => Err(OpsetResolutionError::EmptyOperations("@".to_owned()).into()),
+        _ => Err(OpsetResolutionError::MultipleOperations {
+            expr: "@".to_owned(),
+            candidates: head_ops.iter().map(|op| op.id().clone()).collect(),
+        }
+        .into()),
+    };
+    let get_head_ops = || Ok(head_ops.to_vec());
     resolve_single_op(op_store, get_current_op, get_head_ops, op_str)
 }
 
@@ -127,7 +144,10 @@ fn resolve_single_op(
         operation = match neighbor_ops.len() {
             0 => Err(OpsetResolutionError::EmptyOperations(op_str.to_owned()))?,
             1 => neighbor_ops.pop().unwrap(),
-            _ => Err(OpsetResolutionError::MultipleOperations(op_str.to_owned()))?,
+            _ => Err(OpsetResolutionError::MultipleOperations {
+                expr: op_str.to_owned(),
+                candidates: neighbor_ops.iter().map(|op| op.id().clone()).collect(),
+            })?,
         };
     }
     Ok(operation)
@@ -162,14 +182,17 @@ pub fn get_current_head_ops(
     op_store: &Arc<dyn OpStore>,
     op_heads_store: &dyn OpHeadsStore,
 ) -> OpStoreResult<Vec<Operation>> {
-    op_heads_store
+    let mut head_ops: Vec<_> = op_heads_store
         .get_op_heads()
         .into_iter()
         .map(|id| -> OpStoreResult<Operation> {
             let data = op_store.read_operation(&id)?;
             Ok(Operation::new(op_store.clone(), id, data))
         })
-        .try_collect()
+        .try_collect()?;
+    // To stabilize output, sort in the same order as resolve_op_heads()
+    head_ops.sort_by_key(|op| op.metadata().end_time.timestamp);
+    Ok(head_ops)
 }
 
 /// Looks up children of the `root_op_id` by traversing from the `head_ops`.
@@ -227,7 +250,7 @@ pub fn walk_ancestors(head_ops: &[Operation]) -> impl Iterator<Item = OpStoreRes
 /// Stats about `reparent_range()`.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReparentStats {
-    /// New head operation ids.
+    /// New head operation ids in order of the old `head_ops`.
     pub new_head_ids: Vec<OperationId>,
     /// The number of rewritten operations.
     pub rewritten_count: usize,

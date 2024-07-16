@@ -94,6 +94,32 @@ fn test_git_init_internal() {
     assert_eq!(read_git_target(&workspace_root), "git");
 }
 
+#[test]
+fn test_git_init_internal_ignore_working_copy() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    std::fs::create_dir(&workspace_root).unwrap();
+    std::fs::write(workspace_root.join("file1"), "").unwrap();
+
+    let stderr =
+        test_env.jj_cmd_cli_error(&workspace_root, &["git", "init", "--ignore-working-copy"]);
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --ignore-working-copy is not respected
+    "###);
+}
+
+#[test]
+fn test_git_init_internal_at_operation() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    std::fs::create_dir(&workspace_root).unwrap();
+
+    let stderr = test_env.jj_cmd_cli_error(&workspace_root, &["git", "init", "--at-op=@-"]);
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --at-op is not respected
+    "###);
+}
+
 #[test_case(false; "full")]
 #[test_case(true; "bare")]
 fn test_git_init_external(bare: bool) {
@@ -205,6 +231,54 @@ fn test_git_init_external_import_trunk(bare: bool) {
     revset-aliases."trunk()" = "trunk@origin"
     "###);
     }
+}
+
+#[test]
+fn test_git_init_external_ignore_working_copy() {
+    let test_env = TestEnvironment::default();
+    let git_repo_path = test_env.env_root().join("git-repo");
+    init_git_repo(&git_repo_path, false);
+    let workspace_root = test_env.env_root().join("repo");
+    std::fs::create_dir(&workspace_root).unwrap();
+    std::fs::write(workspace_root.join("file1"), "").unwrap();
+
+    // No snapshot should be taken
+    let stderr = test_env.jj_cmd_cli_error(
+        &workspace_root,
+        &[
+            "git",
+            "init",
+            "--ignore-working-copy",
+            "--git-repo",
+            git_repo_path.to_str().unwrap(),
+        ],
+    );
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --ignore-working-copy is not respected
+    "###);
+}
+
+#[test]
+fn test_git_init_external_at_operation() {
+    let test_env = TestEnvironment::default();
+    let git_repo_path = test_env.env_root().join("git-repo");
+    init_git_repo(&git_repo_path, false);
+    let workspace_root = test_env.env_root().join("repo");
+    std::fs::create_dir(&workspace_root).unwrap();
+
+    let stderr = test_env.jj_cmd_cli_error(
+        &workspace_root,
+        &[
+            "git",
+            "init",
+            "--at-op=@-",
+            "--git-repo",
+            git_repo_path.to_str().unwrap(),
+        ],
+    );
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --at-op is not respected
+    "###);
 }
 
 #[test]
@@ -561,6 +635,37 @@ fn test_git_init_colocated_dirty_working_copy() {
     Status(INDEX_NEW) new-staged-file
     Status(INDEX_MODIFIED) some-file
     Status(WT_NEW) unstaged-file
+    "###);
+}
+
+#[test]
+fn test_git_init_colocated_ignore_working_copy() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    init_git_repo(&workspace_root, false);
+    std::fs::write(workspace_root.join("file1"), "").unwrap();
+
+    let stderr = test_env.jj_cmd_cli_error(
+        &workspace_root,
+        &["git", "init", "--ignore-working-copy", "--colocate"],
+    );
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --ignore-working-copy is not respected
+    "###);
+}
+
+#[test]
+fn test_git_init_colocated_at_operation() {
+    let test_env = TestEnvironment::default();
+    let workspace_root = test_env.env_root().join("repo");
+    init_git_repo(&workspace_root, false);
+
+    let stderr = test_env.jj_cmd_cli_error(
+        &workspace_root,
+        &["git", "init", "--at-op=@-", "--colocate"],
+    );
+    insta::assert_snapshot!(stderr, @r###"
+    Error: --at-op is not respected
     "###);
 }
 

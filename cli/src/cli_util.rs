@@ -25,9 +25,10 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
-use std::{fs, str};
+use std::{fs, mem, str};
 
 use bstr::ByteVec as _;
+use chrono::TimeZone;
 use clap::builder::{
     MapValueParser, NonEmptyStringValueParser, TypedValueParser, ValueParserFactory,
 };
@@ -300,7 +301,7 @@ impl CommandHelper {
         let workspace = self.load_workspace()?;
         let op_head = self.resolve_operation(ui, workspace.repo_loader())?;
         let repo = workspace.repo_loader().load_at(&op_head)?;
-        self.for_loaded_repo(ui, workspace, repo)
+        WorkspaceCommandHelper::new(ui, self, workspace, repo, self.is_at_head_operation())
     }
 
     pub fn get_working_copy_factory(&self) -> Result<&dyn WorkingCopyFactory, CommandError> {
@@ -327,13 +328,32 @@ impl CommandHelper {
             .map_err(|err| map_workspace_load_error(err, self.global_args.repository.as_deref()))
     }
 
+    /// Returns true if the working copy to be loaded is writable, and therefore
+    /// should usually be snapshotted.
+    pub fn is_working_copy_writable(&self) -> bool {
+        self.is_at_head_operation() && !self.global_args.ignore_working_copy
+    }
+
+    /// Returns true if the current operation is considered to be the head.
+    pub fn is_at_head_operation(&self) -> bool {
+        // TODO: should we accept --at-op=<head_id> as the head op? or should we
+        // make --at-op=@ imply --ignore-workign-copy (i.e. not at the head.)
+        matches!(self.global_args.at_operation.as_deref(), None | Some("@"))
+    }
+
+    /// Resolves the current operation from the command-line argument.
+    ///
+    /// If no `--at-operation` is specified, the head operations will be
+    /// loaded. If there are multiple heads, they'll be merged.
     #[instrument(skip_all)]
     pub fn resolve_operation(
         &self,
         ui: &mut Ui,
         repo_loader: &RepoLoader,
     ) -> Result<Operation, CommandError> {
-        if self.global_args.at_operation == "@" {
+        if let Some(op_str) = &self.global_args.at_operation {
+            Ok(op_walk::resolve_op_for_load(repo_loader, op_str)?)
+        } else {
             op_heads_store::resolve_op_heads(
                 repo_loader.op_heads_store().as_ref(),
                 repo_loader.op_store(),
@@ -364,21 +384,34 @@ impl CommandHelper {
                         .clone())
                 },
             )
-        } else {
-            let operation =
-                op_walk::resolve_op_for_load(repo_loader, &self.global_args.at_operation)?;
-            Ok(operation)
         }
     }
 
+    /// Creates helper for the repo whose view is supposed to be in sync with
+    /// the working copy. If `--ignore-working-copy` is not specified, the
+    /// returned helper will attempt to update the working copy.
     #[instrument(skip_all)]
-    pub fn for_loaded_repo(
+    pub fn for_workable_repo(
         &self,
         ui: &mut Ui,
         workspace: Workspace,
         repo: Arc<ReadonlyRepo>,
     ) -> Result<WorkspaceCommandHelper, CommandError> {
-        WorkspaceCommandHelper::new(ui, self, workspace, repo)
+        let loaded_at_head = true;
+        WorkspaceCommandHelper::new(ui, self, workspace, repo, loaded_at_head)
+    }
+
+    /// Creates helper for the repo whose view might be out of sync with
+    /// the working copy. Therefore, the working copy should not be updated.
+    #[instrument(skip_all)]
+    pub fn for_temporary_repo(
+        &self,
+        ui: &mut Ui,
+        workspace: Workspace,
+        repo: Arc<ReadonlyRepo>,
+    ) -> Result<WorkspaceCommandHelper, CommandError> {
+        let loaded_at_head = false;
+        WorkspaceCommandHelper::new(ui, self, workspace, repo, loaded_at_head)
     }
 }
 
@@ -494,18 +527,18 @@ pub struct WorkspaceCommandHelper {
 
 impl WorkspaceCommandHelper {
     #[instrument(skip_all)]
-    pub fn new(
+    fn new(
         ui: &mut Ui,
         command: &CommandHelper,
         workspace: Workspace,
         repo: Arc<ReadonlyRepo>,
+        loaded_at_head: bool,
     ) -> Result<Self, CommandError> {
         let settings = command.settings.clone();
         let commit_summary_template_text =
             settings.config().get_string("templates.commit_summary")?;
         let revset_aliases_map = revset_util::load_revset_aliases(ui, &command.layered_configs)?;
         let template_aliases_map = command.load_template_aliases(ui)?;
-        let loaded_at_head = command.global_args.at_operation == "@";
         let may_update_working_copy = loaded_at_head && !command.global_args.ignore_working_copy;
         let working_copy_shared_with_git = is_colocated_git_workspace(&workspace, &repo);
         let path_converter = RepoPathUiConverter::Fs {
@@ -768,9 +801,9 @@ impl WorkspaceCommandHelper {
     #[instrument(skip_all)]
     pub fn base_ignores(&self) -> Result<Arc<GitIgnoreFile>, GitIgnoreError> {
         fn get_excludes_file_path(config: &gix::config::File) -> Option<PathBuf> {
-            // TODO: maybe use path_by_key() and interpolate(), which can process non-utf-8
+            // TODO: maybe use path() and interpolate(), which can process non-utf-8
             // path on Unix.
-            if let Some(value) = config.string_by_key("core.excludesFile") {
+            if let Some(value) = config.string("core.excludesFile") {
                 str::from_utf8(&value)
                     .ok()
                     .map(crate::git_util::expand_git_path)
@@ -992,9 +1025,17 @@ impl WorkspaceCommandHelper {
             path_converter: &self.path_converter,
             workspace_id: self.workspace_id(),
         };
+        let now = if let Some(timestamp) = self.settings.commit_timestamp() {
+            chrono::Local
+                .timestamp_millis_opt(timestamp.timestamp.0)
+                .unwrap()
+        } else {
+            chrono::Local::now()
+        };
         RevsetParseContext::new(
             &self.revset_aliases_map,
             self.settings.user_email(),
+            now.into(),
             &self.revset_extensions,
             Some(workspace_context),
         )
@@ -1314,7 +1355,12 @@ See https://github.com/martinvonz/jj/blob/main/docs/working-copy.md#stale-workin
 
     pub fn start_transaction(&mut self) -> WorkspaceCommandTransaction {
         let tx = start_repo_transaction(self.repo(), &self.settings, &self.string_args);
-        WorkspaceCommandTransaction { helper: self, tx }
+        let id_prefix_context = mem::take(&mut self.user_repo.id_prefix_context);
+        WorkspaceCommandTransaction {
+            helper: self,
+            tx,
+            id_prefix_context,
+        }
     }
 
     fn finish_transaction(
@@ -1605,12 +1651,18 @@ Then run `jj squash` to move the resolution into the conflicted commit."#,
 pub struct WorkspaceCommandTransaction<'a> {
     helper: &'a mut WorkspaceCommandHelper,
     tx: Transaction,
+    /// Cache of index built against the current MutableRepo state.
+    id_prefix_context: OnceCell<IdPrefixContext>,
 }
 
 impl WorkspaceCommandTransaction<'_> {
     /// Workspace helper that may use the base repo.
     pub fn base_workspace_helper(&self) -> &WorkspaceCommandHelper {
         self.helper
+    }
+
+    pub fn settings(&self) -> &UserSettings {
+        &self.helper.settings
     }
 
     pub fn base_repo(&self) -> &Arc<ReadonlyRepo> {
@@ -1622,17 +1674,20 @@ impl WorkspaceCommandTransaction<'_> {
     }
 
     pub fn mut_repo(&mut self) -> &mut MutableRepo {
+        self.id_prefix_context.take(); // invalidate
         self.tx.mut_repo()
     }
 
     pub fn check_out(&mut self, commit: &Commit) -> Result<Commit, CheckOutCommitError> {
         let workspace_id = self.helper.workspace_id().to_owned();
         let settings = &self.helper.settings;
+        self.id_prefix_context.take(); // invalidate
         self.tx.mut_repo().check_out(workspace_id, settings, commit)
     }
 
     pub fn edit(&mut self, commit: &Commit) -> Result<(), EditCommitError> {
         let workspace_id = self.helper.workspace_id().to_owned();
+        self.id_prefix_context.take(); // invalidate
         self.tx.mut_repo().edit(workspace_id, commit)
     }
 
@@ -1649,27 +1704,43 @@ impl WorkspaceCommandTransaction<'_> {
         formatter: &mut dyn Formatter,
         commit: &Commit,
     ) -> std::io::Result<()> {
+        self.commit_summary_template().format(commit, formatter)
+    }
+
+    /// Template for one-line summary of a commit within transaction.
+    pub fn commit_summary_template(&self) -> TemplateRenderer<'_, Commit> {
+        self.parse_commit_template(&self.helper.commit_summary_template_text)
+            .expect("parse error should be confined by WorkspaceCommandHelper::new()")
+    }
+
+    /// Creates commit template language environment capturing the current
+    /// transaction state.
+    pub fn commit_template_language(&self) -> CommitTemplateLanguage<'_> {
         let id_prefix_context = self
-            .helper
-            .new_id_prefix_context()
+            .id_prefix_context
+            .get_or_try_init(|| self.helper.new_id_prefix_context())
             .expect("parse error should be confined by WorkspaceCommandHelper::new()");
-        let language = CommitTemplateLanguage::new(
+        CommitTemplateLanguage::new(
             self.tx.repo(),
             &self.helper.path_converter,
             self.helper.workspace_id(),
             self.helper.revset_parse_context(),
-            &id_prefix_context,
+            id_prefix_context,
             &self.helper.commit_template_extensions,
-        );
-        let template = self
-            .helper
-            .parse_template(
-                &language,
-                &self.helper.commit_summary_template_text,
-                CommitTemplateLanguage::wrap_commit,
-            )
-            .expect("parse error should be confined by WorkspaceCommandHelper::new()");
-        template.format(commit, formatter)
+        )
+    }
+
+    /// Parses commit template with the current transaction state.
+    pub fn parse_commit_template(
+        &self,
+        template_text: &str,
+    ) -> Result<TemplateRenderer<'_, Commit>, CommandError> {
+        let language = self.commit_template_language();
+        self.helper.parse_template(
+            &language,
+            template_text,
+            CommitTemplateLanguage::wrap_commit,
+        )
     }
 
     pub fn finish(self, ui: &mut Ui, description: impl Into<String>) -> Result<(), CommandError> {
@@ -1923,7 +1994,7 @@ pub fn print_conflicted_paths(
                     }
                 };
             }
-            Ok(())
+            io::Result::Ok(())
         })?;
         writeln!(formatter)?;
     }
@@ -2091,7 +2162,7 @@ pub enum LogContentFormat {
 impl LogContentFormat {
     pub fn new(ui: &Ui, settings: &UserSettings) -> Result<Self, config::ConfigError> {
         if settings.config().get_bool("ui.log-word-wrap")? {
-            let term_width = usize::from(ui.term_width().unwrap_or(80));
+            let term_width = ui.term_width();
             Ok(LogContentFormat::Wrap { term_width })
         } else {
             Ok(LogContentFormat::NoWrap)
@@ -2372,10 +2443,14 @@ pub struct GlobalArgs {
     /// Operation to load the repo at
     ///
     /// Operation to load the repo at. By default, Jujutsu loads the repo at the
-    /// most recent operation. You can use `--at-op=<operation ID>` to see what
-    /// the repo looked like at an earlier operation. For example `jj
-    /// --at-op=<operation ID> st` will show you what `jj st` would have
-    /// shown you when the given operation had just finished.
+    /// most recent operation, or at the merge of the concurrent operations if
+    /// any.
+    ///
+    /// You can use `--at-op=<operation ID>` to see what the repo looked like at
+    /// an earlier operation. For example `jj --at-op=<operation ID> st` will
+    /// show you what `jj st` would have shown you when the given operation had
+    /// just finished. `--at-op=@` is pretty much the same as the default except
+    /// that concurrent operations will never be merged.
     ///
     /// Use `jj op log` to find the operation ID you want. Any unambiguous
     /// prefix of the operation ID is enough.
@@ -2387,8 +2462,8 @@ pub struct GlobalArgs {
     /// earlier operation. Doing that is equivalent to having run concurrent
     /// commands starting at the earlier operation. There's rarely a reason to
     /// do that, but it is possible.
-    #[arg(long, visible_alias = "at-op", global = true, default_value = "@")]
-    pub at_operation: String,
+    #[arg(long, visible_alias = "at-op", global = true)]
+    pub at_operation: Option<String>,
     /// Enable debug logging
     #[arg(long, global = true)]
     pub debug: bool,

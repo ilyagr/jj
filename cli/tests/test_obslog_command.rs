@@ -225,7 +225,7 @@ fn test_obslog_word_wrap() {
 
 #[test]
 fn test_obslog_squash() {
-    let mut test_env = TestEnvironment::default();
+    let test_env = TestEnvironment::default();
     test_env.jj_cmd_ok(test_env.env_root(), &["git", "init", "repo"]);
     let repo_path = test_env.env_root().join("repo");
 
@@ -234,39 +234,73 @@ fn test_obslog_squash() {
     test_env.jj_cmd_ok(&repo_path, &["new", "-m", "second"]);
     std::fs::write(repo_path.join("file1"), "foo\nbar\n").unwrap();
 
-    let edit_script = test_env.set_up_fake_editor();
-    std::fs::write(&edit_script, "write\nsquashed 1").unwrap();
-    test_env.jj_cmd_ok(&repo_path, &["squash"]);
+    // not partial
+    test_env.jj_cmd_ok(&repo_path, &["squash", "-m", "squashed 1"]);
 
     test_env.jj_cmd_ok(&repo_path, &["describe", "-m", "third"]);
     std::fs::write(repo_path.join("file1"), "foo\nbar\nbaz\n").unwrap();
+    std::fs::write(repo_path.join("file2"), "foo2\n").unwrap();
+    std::fs::write(repo_path.join("file3"), "foo3\n").unwrap();
 
-    std::fs::write(&edit_script, "write\nsquashed 2").unwrap();
-    test_env.jj_cmd_ok(&repo_path, &["squash"]);
+    // partial
+    test_env.jj_cmd_ok(&repo_path, &["squash", "-m", "squashed 2", "file1"]);
 
-    let stdout = test_env.jj_cmd_success(&repo_path, &["obslog", "-p", "-r", "@-"]);
+    test_env.jj_cmd_ok(&repo_path, &["new", "-m", "fourth"]);
+    std::fs::write(repo_path.join("file4"), "foo4\n").unwrap();
+
+    test_env.jj_cmd_ok(&repo_path, &["new", "-m", "fifth"]);
+    std::fs::write(repo_path.join("file5"), "foo5\n").unwrap();
+
+    // multiple sources
+    test_env.jj_cmd_ok(
+        &repo_path,
+        &[
+            "squash",
+            "-msquashed 3",
+            "--from=description('fourth')|description('fifth')",
+            "--into=description('squash')",
+        ],
+    );
+
+    let stdout =
+        test_env.jj_cmd_success(&repo_path, &["obslog", "-p", "-r", "description('squash')"]);
     insta::assert_snapshot!(stdout, @r###"
-    ○    qpvuntsm test.user@example.com 2001-02-03 08:05:12 1408a0a7
+    ○      qpvuntsm test.user@example.com 2001-02-03 08:05:15 d49749bf
+    ├─┬─╮  squashed 3
+    │ │ ○  vruxwmqv hidden test.user@example.com 2001-02-03 08:05:15 8f2ae2b5
+    │ │ │  fifth
+    │ │ │  Added regular file file5:
+    │ │ │          1: foo5
+    │ │ ○  vruxwmqv hidden test.user@example.com 2001-02-03 08:05:14 04d28ca9
+    │ │    (empty) fifth
+    │ ○  yqosqzyt hidden test.user@example.com 2001-02-03 08:05:14 c5801e10
+    │ │  fourth
+    │ │  Added regular file file4:
+    │ │          1: foo4
+    │ ○  yqosqzyt hidden test.user@example.com 2001-02-03 08:05:13 bb54a199
+    │    (empty) fourth
+    ○    qpvuntsm hidden test.user@example.com 2001-02-03 08:05:12 1408a0a7
     ├─╮  squashed 2
-    │ │  Modified regular file file1:
-    │ │     1    1: foo
-    │ │     2    2: bar
-    │ │          3: baz
-    │ ○  zsuskuln hidden test.user@example.com 2001-02-03 08:05:12 7015a42c
+    │ │  Removed regular file file2:
+    │ │     1     : foo2
+    │ │  Removed regular file file3:
+    │ │     1     : foo3
+    │ ○  zsuskuln hidden test.user@example.com 2001-02-03 08:05:12 c9460789
     │ │  third
     │ │  Modified regular file file1:
     │ │     1    1: foo
     │ │     2    2: bar
     │ │          3: baz
+    │ │  Added regular file file2:
+    │ │          1: foo2
+    │ │  Added regular file file3:
+    │ │          1: foo3
     │ ○  zsuskuln hidden test.user@example.com 2001-02-03 08:05:11 66645763
     │ │  (empty) third
     │ ○  zsuskuln hidden test.user@example.com 2001-02-03 08:05:10 1c7afcb4
     │    (empty) (no description set)
     ○    qpvuntsm hidden test.user@example.com 2001-02-03 08:05:10 e3c2a446
     ├─╮  squashed 1
-    │ │  Modified regular file file1:
-    │ │     1    1: foo
-    │ │          2: bar
     │ ○  kkmpptxz hidden test.user@example.com 2001-02-03 08:05:10 46acd22a
     │ │  second
     │ │  Modified regular file file1:
