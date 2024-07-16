@@ -433,6 +433,8 @@ fn sparse_patterns_from_proto(
 /// Note that this does not prevent TOCTOU bugs caused by concurrent checkouts.
 /// Another process may remove the directory created by this function and put a
 /// symlink there.
+///
+/// Returns false on success, true if the dir is actually a file
 fn create_parent_dirs(
     working_copy_path: &Path,
     repo_path: &RepoPath,
@@ -1425,6 +1427,10 @@ impl TreeState {
             if present_before {
                 fs::remove_file(&disk_path).ok();
             } else if disk_path.exists() {
+                eprintln!(
+                    "local_working_copy: Skipped deleting {:?} for {:?}.",
+                    &disk_path, &path
+                );
                 changed_file_states.push((path, FileState::placeholder()));
                 stats.skipped_files += 1;
                 continue;
@@ -1432,6 +1438,10 @@ impl TreeState {
             if after.is_present() {
                 let skip = create_parent_dirs(&self.working_copy_path, &path)?;
                 if skip {
+                    eprintln!(
+                        "local_working_copy: Skipped creating dir {:?} for {:?}.",
+                        &disk_path, &path
+                    );
                     changed_file_states.push((path, FileState::placeholder()));
                     stats.skipped_files += 1;
                     continue;
