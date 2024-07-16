@@ -119,6 +119,7 @@ fn test_gitignores_ignored_file_in_target_commit() {
     let (stdout, stderr) = test_env.jj_cmd_ok(&workspace_root, &["edit", "with-file"]);
     insta::assert_snapshot!(stdout, @"");
     insta::assert_snapshot!(stderr, @r###"
+    local_working_copy: Skipped deleting "$TEST_ENV/repo/ignored" for "ignored".
     Working copy now at: qpvuntsm 5ada929e with-file | (no description set)
     Parent commit      : zzzzzzzz 00000000 (empty) (no description set)
     Added 1 files, modified 0 files, removed 0 files
