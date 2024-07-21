@@ -216,34 +216,35 @@ result will look as expected when published to the website.
 
 ### Setting up the prerequisites
 
-To build the website, you must have Python and `poetry 1.8+` installed (the
-latest version is recommended). It is easiest to install `poetry` via `pipx`, as
-explained in the [Poetry installation instructions]. A few helpful points from
-the instructions: `pipx` can often be installed from your distribution, e.g.
-`sudo apt install pipx`; this will usually also install Python for you if
-necessary. Any version of `pipx` will do. If you are installing `pipx` manually,
-you may first need to follow the [Python installation instructions].
+To build the website, you must have [Rye](https://rye.astral.sh/) installed. Rye
+will ask you to put its shims directory in your path; this is optional for our
+purposes. We do assume the `rye` binary itself is in you PATH.
 
-[Python installation instructions]: https://docs.python.org/3/using/index.html
-[Poetry installation instructions]: https://python-poetry.org/docs/#installation 
-
-Once you have `poetry` installed, you should ask it to install the rest
+Once you have `rye` installed, you should ask it to install Python and the rest
 of the required tools into a virtual environment as follows:
 
 ```shell
-poetry install
+# This and all the other `rye` commands below should be run
+# from the root of the `jj` source tree.
+rye sync
 ```
 
-You may get requests to "unlock a keyring", [an error messages about failing to
-do so](https://github.com/python-poetry/poetry/issues/1917), or Poetry may
-[simply hang indefinitely](https://github.com/python-poetry/poetry/issues/8623).
-The workaround is to either to unlock the keyring or to run the following, and
-then to try `poetry install` again:
+#### Unnecessary configuration for opinionated Pythonistas
 
-```shell
-# For sh-compatible shells or recent versions of `fish`
-export PYTHON_KEYRING_BACKEND=keyring.backends.fail.Keyring
-```
+This section exists to reassure interested parties that the following steps are
+possible but not necessary.
+
+It is possible to have `rye` use a pre-existing Python installation if you have
+one and prefer to use it. This requires [some configuration using the `rye
+toolchain`
+commands](https://rye.astral.sh/guide/toolchains/#registering-toolchains) and
+doesn't seem to offer much benefit.
+
+While there is no `rye shell` command, you can activate Rye's virtual
+environemnt in [the usual
+way](https://docs.python.org/3/library/venv.html#how-venvs-work), e.g. `.
+.venv/bin/activate` in Bash. This would allow you to avoid writing `rye run --`
+in the commands suggested below.
 
 ### Building the HTML docs locally (with live reload)
 
@@ -251,9 +252,7 @@ The HTML docs are built with [MkDocs](https://github.com/mkdocs/mkdocs). After
 following the above steps, you should be able to view the docs by running
 
 ```shell
-# Note: this and all the commands below should be run from the root of
-# the `jj` source tree.
-poetry run -- mkdocs serve
+rye run -- mkdocs serve
 ```
 
 and opening <http://127.0.0.1:8000> in your browser.
@@ -274,8 +273,8 @@ URL <https://martinvonz.github.io/jj> redirects to
 the docs for the last stable version.
 
 The different versions of documentation are managed and deployed with
-[`mike`](https://github.com/jimporter/mike), which can be run with
-`poetry run -- mike`.
+[`mike`](https://github.com/jimporter/mike), which can be run with `rye run --
+mike`.
 
 On a POSIX system or WSL, one way to build the entire website is as follows (on
 Windows, you'll need to understand and adapt the shell script):
@@ -337,13 +336,13 @@ where you loaded the website, some minor website features (like the
 version switching widget) will have reduced functionality.
 
 Then, the script passes the rest of its arguments to `potery run -- mike
-deploy`, which does the rest of the job. Run `poetry run -- mike help deploy` to
+deploy`, which does the rest of the job. Run `rye run -- mike help deploy` to
 find out what the arguments do.
 
-If you need to do something more complicated, you can use `poetry run -- mike
-...` commands. You can also edit the `gh-pages` branch directly, but take care
-to avoid files that will be overwritten by future invocations of `mike`. Then,
-you can submit a PR based on the `gh-pages` branch of
+If you need to do something more complicated, you can use `rye run -- mike ...`
+commands. You can also edit the `gh-pages` branch directly, but take care to
+avoid files that will be overwritten by future invocations of `mike`. Then, you
+can submit a PR based on the `gh-pages` branch of
 <https://martinvonz.github.com/jj> (instead of the usual `main` branch).
 
 
