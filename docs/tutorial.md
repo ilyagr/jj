@@ -142,18 +142,24 @@ $ jj log
 ~
 ```
 
-The `@` indicates the working-copy commit. The first ID on a line
-(e.g. "mpqrykyp" above) is the "change ID", which is an ID that follows the
-commit as it's rewritten (similar to Gerrit's Change-Id). The second ID is the
-commit ID, which changes when you rewrite the commit. You can give either ID
-to commands that take revisions as arguments. We will generally prefer change
-IDs because they stay the same when the commit is rewritten.
+The `@` indicates the working-copy commit. 
 
-By default, `jj log` lists your local commits. The `~` indicates that the
-commit has parents that are not included in the graph. We can use the
-`--revisions`/`-r` flag to select a different set of revisions to list. The flag
-accepts a ["revset"](revsets.md), which is an expression in a simple language
-for specifying revisions. For example, `@` refers to the working-copy commit,
+The first ID on a line (e.g. "mpqrykyp" above) is the "change ID", which is an
+ID that follows the commit as it's rewritten (similar to Gerrit's Change-Id).
+The second ID is the commit ID, which changes when you rewrite the commit. You
+can give either ID to commands that take revisions as arguments. We will
+generally prefer change IDs because they stay the same when the commit is
+rewritten.
+
+The `~` in the commit graph indicates that some commits are skipped, e.g. the
+commit has parents that are not included in the graph. The `◆` indicates that
+`jj` is treating the commit on the "master" branch as one that does not "belong"
+to you and should not be modified; such commits are called "immutable".
+
+By default, `jj log` lists your local commits. We can use the `--revisions`/`-r`
+flag to select a different set of revisions to list. The flag accepts a
+["revset"](revsets.md), which is an expression in a simple language for
+specifying revisions. For example, `@` refers to the working-copy commit,
 `root()` refers to the root commit, `trunk()` refers to the repo's main branch
 (`master` in this case, as determined by `jj git clone`), and `trunk()..` refers
 to all commits that are not ancestors of the main branch. We can combine
@@ -183,12 +189,19 @@ The `00000000` commit (change ID `zzzzzzzz`) is a virtual commit that's
 called the "root commit". It's the root commit of every repo. The `root()`
 function in the revset matches it.
 
+Another useful revset is `all()`; try `jj log -r 'all()'` to see the full commit
+graph without elided revisions.
+
 There are also operators for getting the parents (`foo-`), children (`foo+`),
 ancestors (`::foo`), descendants (`foo::`), DAG range (`foo::bar`, like
 `git log --ancestry-path`), range (`foo..bar`, same as Git's). See
 [the revset documentation](revsets.md) for all revset operators and functions.
 
-<!-- TODO: Include some explanation of immutable commits -->
+1. Move this below
+2. Link above
+### Remote branches
+
+You will notice that in the above example, `jj log` did not show the remote branch `octocat-patch-1@origin` by default. This is because `jj` thinks that this is not one of "your" branches. If you'd like to actively work on the `octocat-patch-1` See the section about [tracking branches](branches.md#manually-tracking-a-branch) if you need to tell `jj` Moreover, the commit on that branch is marked with the `◆` symbol, meaning an "immutable commit".
 
 ## Conflicts
 
