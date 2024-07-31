@@ -204,6 +204,11 @@ Thanks to the people who made this release happen!
 
 ### New features
 
+* Adds a new annotate command to annotate files line by line. This is similar
+  in functionality to git's blame. Invoke the command with `jj annotate <file_path>`.
+  The output can be customized via the `templates.annotate_commit_summary`
+  configi variable.
+
 * Support background filesystem monitoring via watchman triggers enabled with
   the `core.watchman.register_snapshot_trigger = true` config.
 
