@@ -8,7 +8,7 @@ use jj_lib::backend::{FileId, MergedTreeId, TreeValue};
 use jj_lib::conflicts::{self, materialize_merge_result};
 use jj_lib::gitignore::GitIgnoreFile;
 use jj_lib::matchers::Matcher;
-use jj_lib::merge::{Merge, MergedTreeValue};
+use jj_lib::merge::{Merge, MergedTreeValue, AddsAndRemoves};
 use jj_lib::merged_tree::{MergedTree, MergedTreeBuilder};
 use jj_lib::repo_path::RepoPath;
 use pollster::FutureExt;

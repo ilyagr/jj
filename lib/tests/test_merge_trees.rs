@@ -14,6 +14,7 @@
 
 use itertools::Itertools;
 use jj_lib::backend::TreeValue;
+use jj_lib::merge::AddsAndRemoves;
 use jj_lib::repo::Repo;
 use jj_lib::repo_path::{RepoPath, RepoPathComponent};
 use jj_lib::rewrite::rebase_commit;

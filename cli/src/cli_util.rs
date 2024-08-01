@@ -43,7 +43,7 @@ use jj_lib::gitignore::{GitIgnoreError, GitIgnoreFile};
 use jj_lib::hex_util::to_reverse_hex;
 use jj_lib::id_prefix::IdPrefixContext;
 use jj_lib::matchers::Matcher;
-use jj_lib::merge::MergedTreeValue;
+use jj_lib::merge::{MergedTreeValue, AddsAndRemoves};
 use jj_lib::merged_tree::MergedTree;
 use jj_lib::object_id::ObjectId;
 use jj_lib::op_store::{OpStoreError, OperationId, RefTarget, WorkspaceId};

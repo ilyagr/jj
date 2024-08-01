@@ -26,7 +26,7 @@ use thiserror::Error;
 
 use crate::backend::{CommitId, MillisSinceEpoch, Timestamp};
 use crate::content_hash::ContentHash;
-use crate::merge::Merge;
+use crate::merge::{Merge, AddsAndRemoves};
 use crate::object_id::{id_type, HexPrefix, ObjectId, PrefixResolution};
 
 #[derive(ContentHash, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]

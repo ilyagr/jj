@@ -137,6 +137,18 @@ pub trait AddsAndRemoves<T> {
         removes: impl IntoIterator<Item = T>,
         adds: impl IntoIterator<Item = T>,
     ) -> Self;
+    fn removes<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a T>
+    where
+        T: 'a;
+    fn adds<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a T>
+    where
+        T: 'a;
+    fn get_remove<'a>(&'a self, index: usize) -> Option<&'a T>
+    where
+        T: 'a;
+    fn get_add<'a>(&'a self, index: usize) -> Option<&'a T>
+    where
+        T: 'a;
 }
 
 impl<T> AddsAndRemoves<T> for Merge<T> {
@@ -166,6 +178,41 @@ impl<T> AddsAndRemoves<T> for Merge<T> {
         }
         Merge { values }
     }
+
+    /// The removed values, also called negative terms.
+    fn removes<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a T>
+    where
+        T: 'a,
+    {
+        self.values[1..].iter().step_by(2)
+    }
+
+    /// The added values, also called positive terms.
+    fn adds<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a T>
+    where
+        T: 'a,
+    {
+        self.values.iter().step_by(2)
+    }
+
+    /// Returns the `index`-th removed value, which is considered belonging to
+    /// the `index`-th diff pair.
+    fn get_remove<'a>(&'a self, index: usize) -> Option<&'a T>
+    where
+        T: 'a,
+    {
+        self.values.get(index * 2 + 1)
+    }
+
+    /// Returns the `index`-th added value, which is considered belonging to the
+    /// `index-1`-th diff pair. The zeroth add is a diff from the non-existent
+    /// state.
+    fn get_add<'a>(&'a self, index: usize) -> Option<&'a T>
+    where
+        T: 'a,
+    {
+        self.values.get(index * 2)
+    }
 }
 
 impl<T> Merge<T> {
@@ -192,32 +239,9 @@ impl<T> Merge<T> {
         Merge { values }
     }
 
-    /// The removed values, also called negative terms.
-    pub fn removes(&self) -> impl ExactSizeIterator<Item = &T> {
-        self.values[1..].iter().step_by(2)
-    }
-
-    /// The added values, also called positive terms.
-    pub fn adds(&self) -> impl ExactSizeIterator<Item = &T> {
-        self.values.iter().step_by(2)
-    }
-
     /// Returns the zeroth added value, which is guaranteed to exist.
     pub fn first(&self) -> &T {
         &self.values[0]
-    }
-
-    /// Returns the `index`-th removed value, which is considered belonging to
-    /// the `index`-th diff pair.
-    pub fn get_remove(&self, index: usize) -> Option<&T> {
-        self.values.get(index * 2 + 1)
-    }
-
-    /// Returns the `index`-th added value, which is considered belonging to the
-    /// `index-1`-th diff pair. The zeroth add is a diff from the non-existent
-    /// state.
-    pub fn get_add(&self, index: usize) -> Option<&T> {
-        self.values.get(index * 2)
     }
 
     /// Removes the specified "removed"/"added" values. The removed slots are
