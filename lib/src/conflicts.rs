@@ -25,7 +25,7 @@ use crate::backend::{BackendError, BackendResult, CommitId, FileId, SymlinkId, T
 use crate::diff::{Diff, DiffHunk};
 use crate::files;
 use crate::files::{ContentHunk, MergeResult};
-use crate::merge::{Merge, MergeBuilder, MergedTreeValue};
+use crate::merge::{AddsAndRemoves, Merge, MergeBuilder, MergedTreeValue};
 use crate::merged_tree::TreeDiffStream;
 use crate::repo_path::{RepoPath, RepoPathBuf};
 use crate::store::Store;

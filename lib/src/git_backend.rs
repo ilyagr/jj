@@ -43,7 +43,7 @@ use crate::backend::{
 use crate::file_util::{IoResultExt as _, PathError};
 use crate::index::Index;
 use crate::lock::FileLock;
-use crate::merge::{Merge, MergeBuilder};
+use crate::merge::{AddsAndRemoves, Merge, MergeBuilder};
 use crate::object_id::ObjectId;
 use crate::repo_path::{RepoPath, RepoPathBuf, RepoPathComponentBuf};
 use crate::settings::UserSettings;

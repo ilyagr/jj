@@ -19,7 +19,7 @@ use std::fmt::{Debug, Error, Formatter};
 
 use crate::diff;
 use crate::diff::{Diff, DiffHunk};
-use crate::merge::{trivial_merge, Merge};
+use crate::merge::{trivial_merge, Merge, AddsAndRemoves};
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct DiffLine<'a> {

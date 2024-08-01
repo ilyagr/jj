@@ -18,7 +18,7 @@ use itertools::EitherOrBoth;
 
 use crate::backend::CommitId;
 use crate::index::Index;
-use crate::merge::{trivial_merge, Merge};
+use crate::merge::{trivial_merge, Merge, AddsAndRemoves};
 use crate::op_store::{RefTarget, RemoteRef};
 
 /// Compares `refs1` and `refs2` targets, yields entry if they differ.

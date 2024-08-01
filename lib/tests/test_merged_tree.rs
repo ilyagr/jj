@@ -18,7 +18,7 @@ use itertools::Itertools;
 use jj_lib::backend::{FileId, MergedTreeId, TreeValue};
 use jj_lib::files::MergeResult;
 use jj_lib::matchers::{EverythingMatcher, FilesMatcher, Matcher, PrefixMatcher};
-use jj_lib::merge::{Merge, MergeBuilder};
+use jj_lib::merge::{Merge, MergeBuilder, AddsAndRemoves};
 use jj_lib::merged_tree::{
     MergedTree, MergedTreeBuilder, MergedTreeVal, TreeDiffIterator, TreeDiffStreamImpl,
 };

@@ -30,7 +30,7 @@ use thiserror::Error;
 use crate::backend::{CommitId, MillisSinceEpoch, Timestamp};
 use crate::content_hash::blake2b_hash;
 use crate::file_util::{persist_content_addressed_temp_file, IoResultExt as _, PathError};
-use crate::merge::Merge;
+use crate::merge::{Merge, AddsAndRemoves};
 use crate::object_id::{HexPrefix, ObjectId, PrefixResolution};
 use crate::op_store::{
     OpStore, OpStoreError, OpStoreResult, Operation, OperationId, OperationMetadata, RefTarget,

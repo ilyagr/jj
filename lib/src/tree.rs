@@ -28,7 +28,7 @@ use crate::backend::{
 };
 use crate::files::MergeResult;
 use crate::matchers::{EverythingMatcher, Matcher};
-use crate::merge::{trivial_merge, Merge, MergedTreeValue};
+use crate::merge::{trivial_merge, Merge, MergedTreeValue, AddsAndRemoves};
 use crate::object_id::ObjectId;
 use crate::repo_path::{RepoPath, RepoPathBuf, RepoPathComponent};
 use crate::store::Store;

@@ -131,10 +131,18 @@ impl<T: Debug> Debug for Merge<T> {
     }
 }
 
-impl<T> Merge<T> {
+pub trait AddsAndRemoves<T> {
+    fn from_vec(values: impl Into<SmallVec<[T; 1]>>) -> Self;
+    fn from_removes_adds(
+        removes: impl IntoIterator<Item = T>,
+        adds: impl IntoIterator<Item = T>,
+    ) -> Self;
+}
+
+impl<T> AddsAndRemoves<T> for Merge<T> {
     /// Creates a `Merge` from the given values, in which positive and negative
     /// terms alternate.
-    pub fn from_vec(values: impl Into<SmallVec<[T; 1]>>) -> Self {
+    fn from_vec(values: impl Into<SmallVec<[T; 1]>>) -> Self {
         let values = values.into();
         assert!(
             values.len() & 1 != 0,
@@ -144,7 +152,7 @@ impl<T> Merge<T> {
     }
 
     /// Creates a new merge object from the given removes and adds.
-    pub fn from_removes_adds(
+    fn from_removes_adds(
         removes: impl IntoIterator<Item = T>,
         adds: impl IntoIterator<Item = T>,
     ) -> Self {
@@ -158,7 +166,9 @@ impl<T> Merge<T> {
         }
         Merge { values }
     }
+}
 
+impl<T> Merge<T> {
     /// Creates a `Merge` with a single resolved value.
     pub fn resolved(value: T) -> Self {
         Merge {

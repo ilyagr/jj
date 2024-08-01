@@ -30,7 +30,7 @@ use itertools::Itertools;
 use crate::backend;
 use crate::backend::{BackendResult, ConflictId, MergedTreeId, TreeId, TreeValue};
 use crate::matchers::{EverythingMatcher, Matcher};
-use crate::merge::{Merge, MergeBuilder, MergedTreeValue};
+use crate::merge::{Merge, MergeBuilder, MergedTreeValue, AddsAndRemoves};
 use crate::repo_path::{RepoPath, RepoPathBuf, RepoPathComponent};
 use crate::store::Store;
 use crate::tree::{try_resolve_file_conflict, Tree};

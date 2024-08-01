@@ -25,7 +25,7 @@ use jj_lib::backend::{MergedTreeId, TreeId, TreeValue};
 use jj_lib::file_util::{check_symlink_support, try_symlink};
 use jj_lib::fsmonitor::FsmonitorSettings;
 use jj_lib::local_working_copy::LocalWorkingCopy;
-use jj_lib::merge::{Merge, MergedTreeValue};
+use jj_lib::merge::{Merge, MergedTreeValue, AddsAndRemoves};
 use jj_lib::merged_tree::{MergedTree, MergedTreeBuilder};
 use jj_lib::op_store::{OperationId, WorkspaceId};
 use jj_lib::repo::{ReadonlyRepo, Repo};

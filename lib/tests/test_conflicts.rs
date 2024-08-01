@@ -17,7 +17,7 @@ use jj_lib::backend::FileId;
 use jj_lib::conflicts::{
     extract_as_single_hunk, materialize_merge_result, parse_conflict, update_from_content,
 };
-use jj_lib::merge::Merge;
+use jj_lib::merge::{Merge, AddsAndRemoves};
 use jj_lib::repo::Repo;
 use jj_lib::repo_path::RepoPath;
 use jj_lib::store::Store;
