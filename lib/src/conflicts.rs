@@ -25,7 +25,7 @@ use crate::backend::{BackendError, BackendResult, CommitId, FileId, SymlinkId, T
 use crate::diff::{Diff, DiffHunk};
 use crate::files;
 use crate::files::{ContentHunk, MergeResult};
-use crate::merge::{Merge, MergeBuilder, MergedTreeValue};
+use crate::merge::{DiffOfMerges, Merge, MergeBuilder, MergedTreeValue};
 use crate::merged_tree::TreeDiffStream;
 use crate::repo_path::{RepoPath, RepoPathBuf};
 use crate::store::Store;
@@ -552,4 +552,17 @@ pub async fn update_from_content(
         Merge::from_vec(new_file_ids)
     };
     Ok(new_file_ids)
+}
+
+pub fn optimize_by_textual_distance(
+    diff_of_merges: DiffOfMerges<ContentHunk>,
+) -> DiffOfMerges<ContentHunk> {
+    diff_of_merges
+        .simplify()
+        .rearranged_to_optimize_for_distance(|left_content, right_content| {
+            diff_size(&[DiffHunk::Different(vec![
+                left_content.0.as_slice().into(),
+                right_content.0.as_slice().into(),
+            ])])
+        })
 }
