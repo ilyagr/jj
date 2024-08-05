@@ -164,15 +164,30 @@ pub enum MergeResult {
 }
 
 pub fn merge<T: AsRef<[u8]>>(slices: &Merge<T>) -> MergeResult {
+    let merge_hunks = split_merge_into_hunks(slices);
+
+    match merge_hunks.as_slice() {
+        [] => MergeResult::Resolved(ContentHunk(vec![])),
+        [single] if single.is_resolved() => MergeResult::Resolved(
+            merge_hunks
+                .into_iter()
+                .next()
+                .unwrap()
+                .into_resolved()
+                .unwrap(),
+        ),
+        _ => MergeResult::Conflict(merge_hunks),
+    }
+}
+
+pub fn split_merge_into_hunks<T: AsRef<[u8]>>(slices: &Merge<T>) -> Vec<Merge<ContentHunk>> {
     // TODO: Using the first remove as base (first in the inputs) is how it's
     // usually done for 3-way conflicts. Are there better heuristics when there are
     // more than 3 parts?
     let num_diffs = slices.removes().len();
     let diff_inputs = slices.removes().chain(slices.adds());
-    merge_hunks(&Diff::by_line(diff_inputs), num_diffs)
-}
+    let diff = Diff::by_line(diff_inputs);
 
-fn merge_hunks(diff: &Diff, num_diffs: usize) -> MergeResult {
     let mut resolved_hunk = ContentHunk(vec![]);
     let mut merge_hunks: Vec<Merge<ContentHunk>> = vec![];
     for diff_hunk in diff.hunks() {
@@ -200,15 +215,10 @@ fn merge_hunks(diff: &Diff, num_diffs: usize) -> MergeResult {
             }
         }
     }
-
-    if merge_hunks.is_empty() {
-        MergeResult::Resolved(resolved_hunk)
-    } else {
-        if !resolved_hunk.0.is_empty() {
-            merge_hunks.push(Merge::resolved(resolved_hunk));
-        }
-        MergeResult::Conflict(merge_hunks)
+    if !resolved_hunk.0.is_empty() {
+        merge_hunks.push(Merge::resolved(resolved_hunk));
     }
+    merge_hunks
 }
 
 #[cfg(test)]
