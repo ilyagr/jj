@@ -17,9 +17,11 @@
 use std::collections::VecDeque;
 use std::fmt::{Debug, Error, Formatter};
 
+use itertools::Itertools;
+
 use crate::diff;
 use crate::diff::{Diff, DiffHunk};
-use crate::merge::{trivial_merge, Merge};
+use crate::merge::Merge;
 
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct DiffLine<'a> {
@@ -142,7 +144,7 @@ impl<'a> Iterator for DiffLineIterator<'a> {
 }
 
 // TODO: Maybe ContentHunk can be replaced with BString?
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct ContentHunk(pub Vec<u8>);
 
 impl AsRef<[u8]> for ContentHunk {
@@ -164,59 +166,81 @@ pub enum MergeResult {
 }
 
 pub fn merge<T: AsRef<[u8]>>(slices: &Merge<T>) -> MergeResult {
-    let merge_hunks = split_merge_into_hunks(slices);
+    let merge_hunks_raw = split_merge_into_hunks([slices]);
+    let mut merge_hunks: Vec<Merge<ContentHunk>> = Vec::with_capacity(merge_hunks_raw.len());
+
+    for [slices] in merge_hunks_raw {
+        let slices = slices.simplify_trivial();
+        if slices.is_resolved()
+            && !merge_hunks.is_empty()
+            && merge_hunks[merge_hunks.len() - 1].is_resolved()
+        {
+            let mut last_resolved_hunk = merge_hunks.pop().unwrap().into_resolved().unwrap();
+            last_resolved_hunk
+                .0
+                .extend(slices.into_resolved().unwrap().0);
+            merge_hunks.push(Merge::resolved(last_resolved_hunk));
+            continue;
+        }
+        merge_hunks.push(slices);
+    }
 
     match merge_hunks.as_slice() {
         [] => MergeResult::Resolved(ContentHunk(vec![])),
-        [single] if single.is_resolved() => MergeResult::Resolved(
+        [single] if single.is_resolved() => MergeResult::Resolved({
             merge_hunks
                 .into_iter()
                 .next()
                 .unwrap()
                 .into_resolved()
-                .unwrap(),
-        ),
+                .unwrap()
+        }),
         _ => MergeResult::Conflict(merge_hunks),
     }
 }
 
-pub fn split_merge_into_hunks<T: AsRef<[u8]>>(slices: &Merge<T>) -> Vec<Merge<ContentHunk>> {
+/// Given N conflicted file contents (essentially `Merge<[u8]>`s), split each
+/// one into hunks, where the i-th hunk of each corresponds to each other.
+/// Usually, N=1 (for a single conflicted file) or N=2 (for a diff of two
+/// conflicted files).
+pub fn split_merge_into_hunks<T: AsRef<[u8]>, const N: usize>(
+    merges: [&Merge<T>; N],
+) -> Vec<[Merge<ContentHunk>; N]> {
     // TODO: Using the first remove as base (first in the inputs) is how it's
     // usually done for 3-way conflicts. Are there better heuristics when there are
     // more than 3 parts?
-    let num_diffs = slices.removes().len();
-    let diff_inputs = slices.removes().chain(slices.adds());
+    let num_adds_per_merge = merges.map(|slices| slices.adds().len());
+    let diff_inputs = merges
+        .into_iter()
+        .flat_map(|slices| slices.removes().chain(slices.adds()))
+        .collect_vec();
     let diff = Diff::by_line(diff_inputs);
 
-    let mut resolved_hunk = ContentHunk(vec![]);
-    let mut merge_hunks: Vec<Merge<ContentHunk>> = vec![];
+    let mut merge_hunks: Vec<[Merge<ContentHunk>; N]> = vec![];
     for diff_hunk in diff.hunks() {
-        match diff_hunk {
+        merge_hunks.push(match diff_hunk {
             DiffHunk::Matching(content) => {
-                resolved_hunk.0.extend_from_slice(content);
+                core::array::from_fn(|_| Merge::resolved(ContentHunk(content.to_vec())))
             }
             DiffHunk::Different(parts) => {
-                if let Some(resolved) = trivial_merge(&parts[..num_diffs], &parts[num_diffs..]) {
-                    resolved_hunk.0.extend_from_slice(resolved);
-                } else {
-                    if !resolved_hunk.0.is_empty() {
-                        merge_hunks.push(Merge::resolved(resolved_hunk));
-                        resolved_hunk = ContentHunk(vec![]);
-                    }
-                    merge_hunks.push(Merge::from_removes_adds(
-                        parts[..num_diffs]
+                let mut current_pos = 0;
+                num_adds_per_merge.map(|num_adds| {
+                    let num_removes = num_adds - 1;
+                    let merge_len = num_removes + num_adds;
+                    let this_merge_parts = &parts[current_pos..current_pos + merge_len];
+                    current_pos += merge_len;
+
+                    Merge::from_removes_adds(
+                        this_merge_parts[..num_removes]
                             .iter()
                             .map(|part| ContentHunk(part.to_vec())),
-                        parts[num_diffs..]
+                        this_merge_parts[num_removes..]
                             .iter()
                             .map(|part| ContentHunk(part.to_vec())),
-                    ));
-                }
+                    )
+                })
             }
-        }
-    }
-    if !resolved_hunk.0.is_empty() {
-        merge_hunks.push(Merge::resolved(resolved_hunk));
+        })
     }
     merge_hunks
 }
