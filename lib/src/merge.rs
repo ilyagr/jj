@@ -1695,4 +1695,9 @@ mod tests {
         "#
         );
     }
+
+    #[test]
+    fn test_explain_diff_of_merges_buggy() {
+        let dist = |x: &usize, y: &usize| x.abs_diff(*y);
+    }
 }
