@@ -785,6 +785,19 @@ fn show_structured_conflict_diff_hunks(
                 text = print_context(formatter, text, false)?;
             }
             last_hunk_unmodified_text = Some(Some(text));
+        } else if explained_hunk.iter().all(|elt| {
+            matches!(
+                elt,
+                DiffExplanation::UnchangedConflictAdd(_)
+                    | DiffExplanation::UnchangedConflictRemove(_)
+            )
+        }) {
+            // The conflict wasn't modified.
+            // TODO: Is there a better way to present the unmodified conflict in the
+            // context?
+            last_hunk_unmodified_text = Some(Some(
+                b"<<<<<<< Unmodified conflict (omitted) >>>>>>>".to_vec(),
+            ));
         } else if let [DiffExplanation::ChangedConflictAdd {
             left_version,
             right_version,
