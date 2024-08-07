@@ -23,12 +23,12 @@ use regex::bytes::{Regex, RegexBuilder};
 
 use crate::backend::{BackendError, BackendResult, CommitId, FileId, SymlinkId, TreeId, TreeValue};
 use crate::diff::{Diff, DiffHunk};
-use crate::files;
 use crate::files::{ContentHunk, MergeResult};
 use crate::merge::{DiffOfMerges, Merge, MergeBuilder, MergedTreeValue};
 use crate::merged_tree::TreeDiffStream;
 use crate::repo_path::{RepoPath, RepoPathBuf};
 use crate::store::Store;
+use crate::{files, merge};
 
 const CONFLICT_START_LINE: &[u8] = b"<<<<<<<";
 const CONFLICT_END_LINE: &[u8] = b">>>>>>>";
@@ -565,4 +565,16 @@ pub fn optimize_by_textual_distance(
                 right_content.0.as_slice().into(),
             ])])
         })
+}
+
+pub fn explain_textual_diff_of_merges(
+    left: Merge<ContentHunk>,
+    right: Merge<ContentHunk>,
+) -> Vec<merge::DiffExplanation<ContentHunk>> {
+    merge::explain_diff_of_merges(left, right, |left_content, right_content| {
+        diff_size(&[DiffHunk::Different(vec![
+            left_content.0.as_slice().into(),
+            right_content.0.as_slice().into(),
+        ])])
+    })
 }
