@@ -842,24 +842,25 @@ impl<T> DiffOfMerges<T> {
 // Note that this can have implication on how `blame` works. I currently think
 // that we should try to improve the optimization algorithm first and see how
 // far that gets us.
-pub fn explain_diff_of_merges<T: PartialEq + Clone>(
+pub fn explain_diff_of_merges<T: PartialEq + Clone + Debug>(
     left: Merge<T>,
     right: Merge<T>,
     distance: impl Fn(&T, &T) -> usize,
 ) -> Vec<DiffExplanationAtom<T>> {
-    let left = left.simplify();
-    let right = right.simplify();
+    let left = dbg!(left.simplify());
+    let right = dbg!(right.simplify());
     let optimized_diff_of_merges = DiffOfMerges::diff_of(left.clone(), right.clone())
         .simplify()
         .rearranged_to_optimize_for_distance(distance);
     let mut left_seen = left.map(|_| false);
     let mut right_seen = right.map(|_| false);
 
-    let mut result = optimized_diff_of_merges
+    let mut result = dbg!(optimized_diff_of_merges)
         .pairs()
         .map(|(add, remove)| {
             // The order of `if`-s does not matter since the diff_of_merges is simplified as
             // is each conflict, so the "add" could not come from both conflicts.
+            dbg!(add, remove);
             let add_comes_from_right = if let Some((ix, _)) = right
                 .adds()
                 .enumerate()
@@ -903,7 +904,7 @@ pub fn explain_diff_of_merges<T: PartialEq + Clone>(
             };
 
             // TODO(ilyagr): Consider refactoring this to have fewer unnecessary clones.
-            match (add_comes_from_right, remove_comes_from_right) {
+            match dbg!(add_comes_from_right, remove_comes_from_right) {
                 (true, true) => DiffExplanationAtom::AddedConflictDiff {
                     conflict_add: add.clone(),
                     conflict_remove: remove.clone(),
