@@ -800,10 +800,13 @@ fn show_structured_conflict_diff_hunks(
                         conflict_add,
                         conflict_remove,
                     } => {
-                        print_header(formatter, "***** Added Diff")?;
+                        print_header(formatter, "+++++ Added Diff")?;
                         print_indented(
                             formatter,
-                            |formatter| formatter.with_label("added", |f| f.write_all(b"* ")),
+                            |formatter| {
+                                formatter.with_label("added", |f| f.write_all(b"+"))?;
+                                formatter.with_label("separator", |f| f.write_all(b"| "))
+                            },
                             |formatter| show_diff(formatter, conflict_remove, conflict_add),
                         )?;
                     }
@@ -811,10 +814,13 @@ fn show_structured_conflict_diff_hunks(
                         conflict_add,
                         conflict_remove,
                     } => {
-                        print_header(formatter, "%%%% Removed Diff")?;
+                        print_header(formatter, "---- Removed Diff")?;
                         print_indented(
                             formatter,
-                            |formatter| formatter.with_label("removed", |f| f.write_all(b"% ")),
+                            |formatter| {
+                                formatter.with_label("removed", |f| f.write_all(b"-"))?;
+                                formatter.with_label("separator", |f| f.write_all(b"| "))
+                            },
                             |formatter| show_diff(formatter, conflict_remove, conflict_add),
                         )?;
                     }
