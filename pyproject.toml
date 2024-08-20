@@ -1,22 +1,7 @@
-[project]
-name = "jj-docs"
-# version = "0.1.0"
-# description = "Add your description here"
-# authors = [
-#     { name = "Ilya Grigoriev", email = "ilyagr@users.noreply.github.com" }
-# ]
-dependencies = []
-requires-python = ">= 3.8"
+[tool.uv.workspace]
+members = []
 
-[tool.rye]
-managed = false
-virtual = true
-# This is somewhat new and experiemntal in rye,
-# but doesn't seem to mess anything up for this
-# project.
-# https://rye.astral.sh/guide/pyproject/#toolryeuniversal
-universal=true
-generate-hashes=true
+[tool.uv]
 dev-dependencies = [
     "mkdocs>=1.6, <1.7",
     "mkdocs-material>=9.5.39, <9.6",
