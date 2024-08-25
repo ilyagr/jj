@@ -50,8 +50,8 @@ pub(crate) fn cmd_annotate(
 ) -> Result<(), CommandError> {
     let workspace_command = command.workspace_helper(ui)?;
     let repo = workspace_command.repo();
-    let starting_commit =
-        workspace_command.resolve_single_rev(args.revision.as_ref().unwrap_or(&RevisionArg::AT))?;
+    let starting_commit = workspace_command
+        .resolve_single_rev(ui, args.revision.as_ref().unwrap_or(&RevisionArg::AT))?;
     let file_path = workspace_command.parse_file_path(&args.path)?;
     let file_value = starting_commit.tree()?.path_value(&file_path)?;
     let ui_path = workspace_command.format_file_path(&file_path);
@@ -68,7 +68,7 @@ pub(crate) fn cmd_annotate(
         .settings()
         .config()
         .get_string("templates.annotate_commit_summary")?;
-    let template = workspace_command.parse_commit_template(&annotate_commit_summary_text)?;
+    let template = workspace_command.parse_commit_template(ui, &annotate_commit_summary_text)?;
 
     let annotations = get_annotation_for_file(repo.as_ref(), &starting_commit, &file_path)
         .map_err(|e| CommandError::new(CommandErrorKind::Internal, e))?;

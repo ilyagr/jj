@@ -22,7 +22,7 @@ fn append_to_file(file_path: &Path, contents: &str) {
     let mut options = OpenOptions::new();
     options.append(true);
     let mut file = options.open(file_path).unwrap();
-    writeln!(file, "{}", contents).unwrap();
+    writeln!(file, "{contents}").unwrap();
 }
 
 #[test]
