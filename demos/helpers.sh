@@ -1,6 +1,23 @@
 #!/bin/bash
 set -euo pipefail
 
+# TODO: Move this to run_script.sh
+which ${JJ_COMMAND:-jj} > /dev/null || {
+    echo Error: cannot find "$JJ_COMMAND" to execute >&2
+    exit 2
+}
+# Non-realpath alternative: https://stackoverflow.com/a/21188136/563359
+JJ_COMMAND=$(realpath $(which ${JJ_COMMAND:-jj} ))
+export JJ_COMMAND
+
+jj() {
+    # $JJ_COMMAND must be executable from a temporary dir, so it should
+    # be in the PATH or it should be an absolute path. run_script.sh
+    # should set it up properly.
+    command "$JJ_COMMAND" "$@"
+}
+export jj
+
 new_tmp_dir() {
     local dirname
     dirname=$(mktemp -d)
