@@ -1252,11 +1252,12 @@ impl WorkspaceCommandHelper {
         &self,
         ui: &Ui,
         tool_name: Option<&str>,
+        redact_unconflicted_diffs: bool,
     ) -> Result<MergeEditor, MergeToolConfigError> {
         if let Some(name) = tool_name {
-            MergeEditor::with_name(name, self.settings())
+            MergeEditor::with_name(name, self.settings(), redact_unconflicted_diffs)
         } else {
-            MergeEditor::from_settings(ui, self.settings())
+            MergeEditor::from_settings(ui, self.settings(), redact_unconflicted_diffs)
         }
     }
 
