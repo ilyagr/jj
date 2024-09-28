@@ -33,6 +33,15 @@ pub(crate) struct DuplicateArgs {
     /// The revision(s) to duplicate
     #[arg(default_value = "@")]
     revisions: Vec<RevisionArg>,
+    /// Rebase duplicated revisions onto this commit instead of leaving them in
+    /// place
+    // TODO: Multiple commits
+    // TODO: For a->b->c, `jj duplicate a c -d main` should behave like `jj rebase -r a -r c -d
+    // main`, making `c`` a child of `a`.
+    // TODO: What if one of the non-root duplicated commits has a parent outside the duplication
+    // sets?
+    #[arg(long, short)]
+    destination: Option<RevisionArg>,
     /// Ignored (but lets you pass `-r` for consistency with other commands)
     #[arg(short = 'r', hide = true, action = clap::ArgAction::Count)]
     unused_revision: u8,
@@ -56,6 +65,16 @@ pub(crate) fn cmd_duplicate(
     if to_duplicate.last() == Some(workspace_command.repo().store().root_commit_id()) {
         return Err(user_error("Cannot duplicate the root commit"));
     }
+    let destination = args
+        .destination
+        .as_ref()
+        .map(|revset| workspace_command.resolve_single_rev(ui, revset))
+        .transpose()?;
+    if destination.is_some() && to_duplicate.contains(destination.as_ref().unwrap().id()) {
+        return Err(user_error(
+            "The destination cannot be one of the revisions to duplicate",
+        ));
+    }
     let mut duplicated_old_to_new: IndexMap<&CommitId, Commit> = IndexMap::new();
 
     let mut tx = workspace_command.start_transaction();
@@ -70,7 +89,18 @@ pub(crate) fn cmd_duplicate(
         let new_parents = original_commit
             .parent_ids()
             .iter()
-            .map(|id| duplicated_old_to_new.get(id).map_or(id, |c| c.id()).clone())
+            .map(|id| {
+                duplicated_old_to_new
+                    .get(id)
+                    .map_or(id, |c| {
+                        if let Some(destination) = destination.as_ref() {
+                            destination.id()
+                        } else {
+                            c.id()
+                        }
+                    })
+                    .clone()
+            })
             .collect();
         let new_commit = mut_repo
             .rewrite_commit(command.settings(), &original_commit)
