@@ -36,8 +36,11 @@ use crate::ui::Ui;
 /// edit the conflict markers in the conflicted file directly with a text
 /// editor.
 //  TODOs:
-//   - `jj resolve --editor` to resolve a conflict in the default text editor. Should work for
-//     conflicts with 3+ adds. Useful to resolve conflicts in a commit other than the current one.
+//   - `jj file edit` to resolve a conflict (or edit a file) in the default text editor. Should work
+//     for conflicts with 3+ adds. Useful to resolve conflicts in a commit other than the current
+//     one.
+//   - This command could become an alias for `jj file resolve`, while `jj resolve --list` could
+//     instead become a part of `jj file list`.
 //   - A way to help split commits with conflicts that are too complicated (more than two sides)
 //     into commits with simpler conflicts. In case of a tree with many merges, we could for example
 //     point to existing commits with simpler conflicts where resolving those conflicts would help
