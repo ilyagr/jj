@@ -105,6 +105,11 @@ pub enum MergeToolConfigError {
     Config(#[from] ConfigError),
     #[error("The tool `{tool_name}` cannot be used as a merge tool with `jj resolve`")]
     MergeArgsNotConfigured { tool_name: String },
+    #[error(
+        "The :builtin merge editor does not support `--redact-unconflicted-diffs`. It always \
+         redacts unconflicted diffs."
+    )]
+    BuiltinMergeToolAlwaysRedactsUnconflictedDiffs,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -255,19 +260,28 @@ impl DiffEditor {
 #[derive(Clone, Debug)]
 pub struct MergeEditor {
     tool: MergeTool,
+    redact_unconflicted_diffs: bool,
 }
 
 impl MergeEditor {
     /// Creates 3-way merge editor of the given name, and loads parameters from
     /// the settings.
-    pub fn with_name(name: &str, settings: &UserSettings) -> Result<Self, MergeToolConfigError> {
+    pub fn with_name(
+        name: &str,
+        settings: &UserSettings,
+        redact_unconflicted_diffs: bool,
+    ) -> Result<Self, MergeToolConfigError> {
         let tool = get_tool_config(settings, name)?
             .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_program(name)));
-        Self::new_inner(name, tool)
+        Self::new_inner(name, tool, redact_unconflicted_diffs)
     }
 
     /// Loads the default 3-way merge editor from the settings.
-    pub fn from_settings(ui: &Ui, settings: &UserSettings) -> Result<Self, MergeToolConfigError> {
+    pub fn from_settings(
+        ui: &Ui,
+        settings: &UserSettings,
+        redact_unconflicted_diffs: bool,
+    ) -> Result<Self, MergeToolConfigError> {
         let args = editor_args_from_settings(ui, settings, "ui.merge-editor")?;
         let tool = if let CommandNameAndArgs::String(name) = &args {
             get_tool_config(settings, name)?
@@ -275,16 +289,26 @@ impl MergeEditor {
             None
         }
         .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_merge_args(&args)));
-        Self::new_inner(&args, tool)
+        Self::new_inner(&args, tool, redact_unconflicted_diffs)
     }
 
-    fn new_inner(name: impl ToString, tool: MergeTool) -> Result<Self, MergeToolConfigError> {
+    fn new_inner(
+        name: impl ToString,
+        tool: MergeTool,
+        redact_unconflicted_diffs: bool,
+    ) -> Result<Self, MergeToolConfigError> {
         if matches!(&tool, MergeTool::External(mergetool) if mergetool.merge_args.is_empty()) {
             return Err(MergeToolConfigError::MergeArgsNotConfigured {
                 tool_name: name.to_string(),
             });
         }
-        Ok(MergeEditor { tool })
+        if matches!(&tool, MergeTool::Builtin if redact_unconflicted_diffs) {
+            return Err(MergeToolConfigError::BuiltinMergeToolAlwaysRedactsUnconflictedDiffs);
+        }
+        Ok(MergeEditor {
+            tool,
+            redact_unconflicted_diffs,
+        })
     }
 
     /// Starts a merge editor for the specified file.
@@ -315,11 +339,18 @@ impl MergeEditor {
 
         match &self.tool {
             MergeTool::Builtin => {
+                assert!(!self.redact_unconflicted_diffs);
                 let tree_id = edit_merge_builtin(tree, repo_path, content).map_err(Box::new)?;
                 Ok(tree_id)
             }
             MergeTool::External(editor) => external::run_mergetool_external(
-                editor, file_merge, content, repo_path, conflict, tree,
+                editor,
+                file_merge,
+                content,
+                repo_path,
+                conflict,
+                tree,
+                self.redact_unconflicted_diffs,
             ),
         }
     }
@@ -557,7 +588,7 @@ mod tests {
         let get = |name, config_text| {
             let config = config_from_string(config_text);
             let settings = UserSettings::from_config(config);
-            MergeEditor::with_name(name, &settings).map(|editor| editor.tool)
+            MergeEditor::with_name(name, &settings, false).map(|editor| editor.tool)
         };
 
         insta::assert_debug_snapshot!(get(":builtin", "").unwrap(), @"Builtin");
@@ -606,7 +637,7 @@ mod tests {
             let config = config_from_string(text);
             let ui = Ui::with_config(&config).unwrap();
             let settings = UserSettings::from_config(config);
-            MergeEditor::from_settings(&ui, &settings).map(|editor| editor.tool)
+            MergeEditor::from_settings(&ui, &settings, false).map(|editor| editor.tool)
         };
 
         // Default

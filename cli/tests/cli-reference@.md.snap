@@ -1891,6 +1891,7 @@ Note that conflicts can also be resolved without using this command. You may edi
   Default value: `@`
 * `-l`, `--list` — Instead of resolving one conflict, list all the conflicts
 * `--tool <NAME>` — Specify 3-way merge tool to be used
+* `--redact-unconflicted-diffs` — Before invoking the merge tool, change the left and right sides for auto-resolved conflicts so that there are no unconflicted diffs
 
 
 

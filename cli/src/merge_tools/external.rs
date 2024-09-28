@@ -156,6 +156,7 @@ pub fn run_mergetool_external(
     repo_path: &RepoPath,
     conflict: MergedTreeValue,
     tree: &MergedTree,
+    redact_unconflicted_diffs_: bool,
 ) -> Result<MergedTreeId, ConflictResolveError> {
     let initial_output_content = if editor.merge_tool_edits_conflict_markers {
         materialize_merge_result_to_bytes(&content)
@@ -163,6 +164,11 @@ pub fn run_mergetool_external(
         BString::default()
     };
     assert_eq!(content.num_sides(), 2);
+    let content = if redact_unconflicted_diffs_ {
+        redact_unconflicted_diffs(&content)
+    } else {
+        content
+    };
     let files: HashMap<&str, &[u8]> = maplit::hashmap! {
         "base" => content.get_remove(0).unwrap().as_slice(),
         "left" => content.get_add(0).unwrap().as_slice(),
@@ -246,6 +252,34 @@ pub fn run_mergetool_external(
     tree_builder.set_or_remove(repo_path.to_owned(), new_tree_value);
     let new_tree = tree_builder.write_tree(tree.store())?;
     Ok(new_tree)
+}
+
+fn redact_unconflicted_diffs(content: &Merge<BString>) -> Merge<BString> {
+    let (mut base, mut left, mut right);
+    match jj_lib::files::merge(content) {
+        jj_lib::files::MergeResult::Resolved(content) => {
+            base = content.clone();
+            left = content.clone();
+            right = content;
+        }
+        jj_lib::files::MergeResult::Conflict(hunks) => {
+            (base, left, right) = (BString::from(""), BString::from(""), BString::from(""));
+            for hunk in hunks {
+                if let Some(content) = hunk.as_resolved() {
+                    // The base is equal to one of the sides. Mangle them to match the other side.
+                    base.extend_from_slice(content);
+                    left.extend_from_slice(content);
+                    right.extend_from_slice(content);
+                } else {
+                    assert_eq!(hunk.num_sides(), 2);
+                    base.extend_from_slice(hunk.get_remove(0).unwrap());
+                    left.extend_from_slice(hunk.get_add(0).unwrap());
+                    right.extend_from_slice(hunk.get_add(1).unwrap());
+                }
+            }
+        }
+    };
+    Merge::from_removes_adds([base], [left, right])
 }
 
 pub fn edit_diff_external(
