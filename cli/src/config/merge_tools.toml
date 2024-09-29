@@ -11,6 +11,7 @@ merge-args = ["$left", "$base", "$right", "-o", "$output", "--auto-merge"]
 program="meld"
 # If using this as a template, note that `$output` is repeated twice below
 edit-args = ["$left", "$output", "$right", "-o", "$output"]
+merge-args = false
 
 [merge-tools.diffedit3]
 program="diffedit3"
@@ -21,6 +22,7 @@ program="diffedit3"
 # We use a random port as a fallback if all 5 of the preferred port numbers are
 # busy.
 edit-args = ["$left", "$right", "$output", "--port", "17376-17380", "--port", "0"]
+merge-args = false
 
 [merge-tools.diffedit3-ssh]
 program="diffedit3"
@@ -31,6 +33,7 @@ program="diffedit3"
 # We do NOT use a random port as a fallback since we recommend that the user
 # configure SSH to forward these 5 ports
 edit-args = ["$left", "$right", "$output", "--port", "17376-17380", "--no-browser"]
+merge-args = false
 
 [merge-tools.vimdiff]
 program = "vim"
@@ -47,6 +50,8 @@ edit-args = ["-f", "-d", "$left", "$right"]
 # if you change the settings for vscode, please do the same for vscodium
 [merge-tools.vscode]
 program = "code"
+diff-args = false
+# edit-args = false
 merge-args = ["--wait", "--merge", "$left", "$right", "$base", "$output"]
 # VS Code reads the output file and behaves better if it's prepopulated with conflict
 # markers. Unfortunately, it does not seem to be able to output conflict markers when
@@ -56,6 +61,8 @@ merge-tool-edits-conflict-markers = true
 # free/libre distribution of vscode, functionally more or less the same
 [merge-tools.vscodium]
 program = "codium"
+diff-args = false
+edit-args = false
 merge-args = ["--wait", "--merge", "$left", "$right", "$base", "$output"]
 merge-tool-edits-conflict-markers = true
 

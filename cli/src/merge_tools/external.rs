@@ -45,7 +45,7 @@ pub struct ExternalMergeTool {
     pub program: String,
     /// Arguments to pass to the program when generating diffs.
     /// `$left` and `$right` are replaced with the corresponding directories.
-    pub diff_args: Vec<String>,
+    pub diff_args: Option<Vec<String>>,
     /// Whether to execute the tool with a pair of directories or individual
     /// files.
     pub diff_invocation_mode: DiffToolMode,
@@ -86,7 +86,7 @@ impl Default for ExternalMergeTool {
             // diff editor (or a diff tool). A possible TOML syntax would be
             // `edit-args = false`, or `edit-args = []`, or `edit = { disabled =
             // true }` to go with `edit = { args = [...] }`.
-            diff_args: ["$left", "$right"].map(ToOwned::to_owned).to_vec(),
+            diff_args: Some(["$left", "$right"].map(ToOwned::to_owned).to_vec()),
             edit_args: ["$left", "$right"].map(ToOwned::to_owned).to_vec(),
             merge_args: vec![],
             merge_tool_edits_conflict_markers: false,
@@ -104,7 +104,10 @@ impl ExternalMergeTool {
     }
 
     pub fn with_diff_args(command_args: &CommandNameAndArgs) -> Self {
-        Self::with_args_inner(command_args, |tool| &mut tool.diff_args)
+        Self::with_args_inner(command_args, |tool| {
+            tool.diff_args = Some(vec![]);
+            tool.diff_args.as_mut().unwrap()
+        })
     }
 
     pub fn with_edit_args(command_args: &CommandNameAndArgs) -> Self {
@@ -313,7 +316,10 @@ pub fn invoke_external_diff(
 ) -> Result<(), DiffGenerateError> {
     // TODO: Somehow propagate --color to the external command?
     let mut cmd = Command::new(&tool.program);
-    cmd.args(interpolate_variables(&tool.diff_args, patterns));
+    cmd.args(interpolate_variables(
+        tool.diff_args.as_ref().expect("NICE ERROR MESSAGE HERE"),
+        patterns,
+    ));
     tracing::info!(?cmd, "Invoking the external diff generator:");
     let mut child = cmd
         .stdin(Stdio::null())
