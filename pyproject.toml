@@ -1,7 +1,12 @@
-[tool.uv.workspace]
-members = []
+[project]
+name = "jj-docs"
+description = "Sets up MkDocs and related Python tools"
+requires-python = ">=3.9"
+version = "0.1.0"
+dependencies = []
 
 [tool.uv]
+package = false
 dev-dependencies = [
     "mkdocs>=1.6, <1.7",
     "mkdocs-material>=9.5.39, <9.6",
