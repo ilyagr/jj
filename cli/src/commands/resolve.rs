@@ -65,6 +65,11 @@ pub(crate) struct ResolveArgs {
     /// auto-resolved conflicts so that there are no unconflicted diffs
     #[arg(long, conflicts_with = "list")]
     redact_unconflicted_diffs: bool,
+    /// Before invoking the merge tool, change the left and right sides to
+    /// remove auto-resolved conflicts and add left/right-biased conflict
+    /// markers.
+    #[arg(long, conflicts_with_all = ["list", "redact_unconflicted_diffs"])]
+    biased_conflict_markers: bool,
     /// Restrict to these paths when searching for a conflict to resolve. We
     /// will attempt to resolve the first conflict we can find. You can use
     /// the `--list` argument to find paths to use here.
@@ -106,8 +111,12 @@ pub(crate) fn cmd_resolve(
 
     let (repo_path, _) = conflicts.first().unwrap();
     workspace_command.check_rewritable([commit.id()])?;
-    let merge_editor =
-        workspace_command.merge_editor(ui, args.tool.as_deref(), args.redact_unconflicted_diffs)?;
+    let merge_editor = workspace_command.merge_editor(
+        ui,
+        args.tool.as_deref(),
+        args.redact_unconflicted_diffs,
+        args.biased_conflict_markers,
+    )?;
     writeln!(
         ui.status(),
         "Resolving conflicts in: {}",

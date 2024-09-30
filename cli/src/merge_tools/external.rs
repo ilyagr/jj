@@ -31,6 +31,7 @@ use super::diff_working_copies::DiffSide;
 use super::ConflictResolveError;
 use super::DiffEditError;
 use super::DiffGenerateError;
+use super::MergeLeftRightMaterialize;
 use crate::config::find_all_variables;
 use crate::config::interpolate_variables;
 use crate::config::CommandNameAndArgs;
@@ -156,7 +157,7 @@ pub fn run_mergetool_external(
     repo_path: &RepoPath,
     conflict: MergedTreeValue,
     tree: &MergedTree,
-    redact_unconflicted_diffs_: bool,
+    materialization_options: MergeLeftRightMaterialize,
 ) -> Result<MergedTreeId, ConflictResolveError> {
     let initial_output_content = if editor.merge_tool_edits_conflict_markers {
         materialize_merge_result_to_bytes(&content)
@@ -164,10 +165,10 @@ pub fn run_mergetool_external(
         BString::default()
     };
     assert_eq!(content.num_sides(), 2);
-    let content = if redact_unconflicted_diffs_ {
-        redact_unconflicted_diffs(&content)
-    } else {
-        content
+    let content = match materialization_options {
+        MergeLeftRightMaterialize::Verbatim => content,
+        MergeLeftRightMaterialize::RedactUnconflicted => redact_unconflicted_diffs(&content),
+        MergeLeftRightMaterialize::BiasedConflictMarkers => todo!(),
     };
     let files: HashMap<&str, &[u8]> = maplit::hashmap! {
         "base" => content.get_remove(0).unwrap().as_slice(),

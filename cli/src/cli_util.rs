@@ -161,6 +161,7 @@ use crate::git_util::print_failed_git_export;
 use crate::git_util::print_git_import_stats;
 use crate::merge_tools::DiffEditor;
 use crate::merge_tools::MergeEditor;
+use crate::merge_tools::MergeLeftRightMaterialize;
 use crate::merge_tools::MergeToolConfigError;
 use crate::operation_templater::OperationTemplateLanguage;
 use crate::operation_templater::OperationTemplateLanguageExtension;
@@ -1393,11 +1394,19 @@ to the current parents may contain changes from multiple commits.
         ui: &Ui,
         tool_name: Option<&str>,
         redact_unconflicted_diffs: bool,
+        biased_conflict_markers: bool,
     ) -> Result<MergeEditor, MergeToolConfigError> {
-        if let Some(name) = tool_name {
-            MergeEditor::with_name(name, self.settings(), redact_unconflicted_diffs)
+        let left_right_option = if redact_unconflicted_diffs {
+            MergeLeftRightMaterialize::RedactUnconflicted
+        } else if biased_conflict_markers {
+            MergeLeftRightMaterialize::BiasedConflictMarkers
         } else {
-            MergeEditor::from_settings(ui, self.settings(), redact_unconflicted_diffs)
+            MergeLeftRightMaterialize::Verbatim
+        };
+        if let Some(name) = tool_name {
+            MergeEditor::with_name(name, self.settings(), left_right_option)
+        } else {
+            MergeEditor::from_settings(ui, self.settings(), left_right_option)
         }
     }
 
