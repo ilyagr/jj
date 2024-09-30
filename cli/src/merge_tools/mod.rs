@@ -116,6 +116,14 @@ pub enum MergeTool {
     External(Box<ExternalMergeTool>),
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub enum MergeLeftRightMaterialize {
+    #[default]
+    Verbatim,
+    RedactUnconflicted,
+    BiasedConflictMarkers,
+}
+
 impl MergeTool {
     fn external(tool: ExternalMergeTool) -> Self {
         MergeTool::External(Box::new(tool))
@@ -257,7 +265,7 @@ impl DiffEditor {
 #[derive(Clone, Debug)]
 pub struct MergeEditor {
     tool: MergeTool,
-    redact_unconflicted_diffs: bool,
+    materialization_options: MergeLeftRightMaterialize,
 }
 
 impl MergeEditor {
@@ -266,18 +274,18 @@ impl MergeEditor {
     pub fn with_name(
         name: &str,
         settings: &UserSettings,
-        redact_unconflicted_diffs: bool,
+        materialization_options: MergeLeftRightMaterialize,
     ) -> Result<Self, MergeToolConfigError> {
         let tool = get_tool_config(settings, name)?
             .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_program(name)));
-        Self::new_inner(name, tool, redact_unconflicted_diffs)
+        Self::new_inner(name, tool, materialization_options)
     }
 
     /// Loads the default 3-way merge editor from the settings.
     pub fn from_settings(
         ui: &Ui,
         settings: &UserSettings,
-        redact_unconflicted_diffs: bool,
+        materialization_options: MergeLeftRightMaterialize,
     ) -> Result<Self, MergeToolConfigError> {
         let args = editor_args_from_settings(ui, settings, "ui.merge-editor")?;
         let tool = if let CommandNameAndArgs::String(name) = &args {
@@ -286,25 +294,27 @@ impl MergeEditor {
             None
         }
         .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_merge_args(&args)));
-        Self::new_inner(&args, tool, redact_unconflicted_diffs)
+        Self::new_inner(&args, tool, materialization_options)
     }
 
     fn new_inner(
         name: impl ToString,
         tool: MergeTool,
-        redact_unconflicted_diffs: bool,
+        materialization_options: MergeLeftRightMaterialize,
     ) -> Result<Self, MergeToolConfigError> {
         if matches!(&tool, MergeTool::External(mergetool) if mergetool.merge_args.is_empty()) {
             return Err(MergeToolConfigError::MergeArgsNotConfigured {
                 tool_name: name.to_string(),
             });
         }
-        if matches!(&tool, MergeTool::Builtin if redact_unconflicted_diffs) {
+        if matches!(&tool, MergeTool::Builtin)
+            && !matches!(materialization_options, MergeLeftRightMaterialize::Verbatim)
+        {
             return Err(MergeToolConfigError::BuiltinMergeToolAlwaysRedactsUnconflictedDiffs);
         }
         Ok(MergeEditor {
             tool,
-            redact_unconflicted_diffs,
+            materialization_options,
         })
     }
 
@@ -336,7 +346,10 @@ impl MergeEditor {
 
         match &self.tool {
             MergeTool::Builtin => {
-                assert!(!self.redact_unconflicted_diffs);
+                assert_eq!(
+                    self.materialization_options,
+                    MergeLeftRightMaterialize::Verbatim
+                );
                 let tree_id = edit_merge_builtin(tree, repo_path, content).map_err(Box::new)?;
                 Ok(tree_id)
             }
@@ -347,7 +360,7 @@ impl MergeEditor {
                 repo_path,
                 conflict,
                 tree,
-                self.redact_unconflicted_diffs,
+                self.materialization_options,
             ),
         }
     }
@@ -585,7 +598,8 @@ mod tests {
         let get = |name, config_text| {
             let config = config_from_string(config_text);
             let settings = UserSettings::from_config(config);
-            MergeEditor::with_name(name, &settings, false).map(|editor| editor.tool)
+            MergeEditor::with_name(name, &settings, MergeLeftRightMaterialize::default())
+                .map(|editor| editor.tool)
         };
 
         insta::assert_debug_snapshot!(get(":builtin", "").unwrap(), @"Builtin");
@@ -634,7 +648,8 @@ mod tests {
             let config = config_from_string(text);
             let ui = Ui::with_config(&config).unwrap();
             let settings = UserSettings::from_config(config);
-            MergeEditor::from_settings(&ui, &settings, false).map(|editor| editor.tool)
+            MergeEditor::from_settings(&ui, &settings, MergeLeftRightMaterialize::default())
+                .map(|editor| editor.tool)
         };
 
         // Default
