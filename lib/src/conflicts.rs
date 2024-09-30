@@ -233,6 +233,30 @@ pub fn materialize_merge_result(
     single_hunk: &Merge<BString>,
     output: &mut dyn Write,
 ) -> std::io::Result<()> {
+    materialize_merge_result_with_options(
+        single_hunk,
+        output,
+        ConflictMaterializationOptions::default(),
+    )
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub enum ConflictSideBias {
+    #[default]
+    OptimizeDiffSize,
+    Side(usize),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
+pub struct ConflictMaterializationOptions {
+    bias: ConflictSideBias,
+}
+
+pub fn materialize_merge_result_with_options(
+    single_hunk: &Merge<BString>,
+    output: &mut dyn Write,
+    options: ConflictMaterializationOptions,
+) -> std::io::Result<()> {
     let merge_result = files::merge(single_hunk);
     match merge_result {
         MergeResult::Resolved(content) => {
