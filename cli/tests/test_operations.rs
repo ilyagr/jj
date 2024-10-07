@@ -809,13 +809,13 @@ fn test_op_diff() {
         &["op", "diff", "--from", "0000000", "--to", "0000000"],
     );
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 000000000000 root()
-      To operation 000000000000 root()
+    From operation 000000000000: root()
+      To operation 000000000000: root()
     "#);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--from", "@", "--to", "@"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
-      To operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
+    From operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
+      To operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
     "#);
 
     // Diff from parent operation to latest operation.
@@ -823,8 +823,8 @@ fn test_op_diff() {
     // @- --to @` (if `@` is not a merge commit).
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--from", "@-", "--to", "@"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 85a54acdbc88 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 fetch from git remote into empty repo
-      To operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
+    From operation 85a54acdbc88, finished 2001-02-03 08:05:07: fetch from git remote into empty repo
+      To operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
 
     Changed commits:
     ○  Change sqpuoqvxutmz
@@ -848,8 +848,8 @@ fn test_op_diff() {
     // Diff from root operation to latest operation
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--from", "0000000"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 000000000000 root()
-      To operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
+    From operation 000000000000: root()
+      To operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
 
     Changed commits:
     ○  Change sqpuoqvxutmz
@@ -881,8 +881,8 @@ fn test_op_diff() {
     // Diff from latest operation to root operation
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--to", "0000000"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
-      To operation 000000000000 root()
+    From operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
+      To operation 000000000000: root()
 
     Changed commits:
     ○  Change sqpuoqvxutmz
@@ -957,8 +957,8 @@ fn test_op_diff() {
         &["op", "diff", "--from", first_parent_id, "--to", op_id],
     );
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 4d05b146ac44 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 check out git remote's default branch
-      To operation cd3fc3ddbdd9 2001-02-03 04:05:16.000 +07:00 - 2001-02-03 04:05:16.000 +07:00 reconcile divergent operations
+    From operation 4d05b146ac44, finished 2001-02-03 08:05:07: check out git remote's default branch
+      To operation cd3fc3ddbdd9, finished 2001-02-03 08:05:16: reconcile divergent operations
 
     Changed local bookmarks:
     bookmark-1:
@@ -974,8 +974,8 @@ fn test_op_diff() {
         &["op", "diff", "--from", second_parent_id, "--to", op_id],
     );
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 484785c371e5 2001-02-03 04:05:15.000 +07:00 - 2001-02-03 04:05:15.000 +07:00 point bookmark bookmark-1 to commit 3d9189bc56a1972729350456eb95ec5bf90be2a8
-      To operation cd3fc3ddbdd9 2001-02-03 04:05:16.000 +07:00 - 2001-02-03 04:05:16.000 +07:00 reconcile divergent operations
+    From operation 484785c371e5, finished 2001-02-03 08:05:15: point bookmark bookmark-1 to commit 3d9189bc56a1972729350456eb95ec5bf90be2a8
+      To operation cd3fc3ddbdd9, finished 2001-02-03 08:05:16: reconcile divergent operations
 
     Changed commits:
     ○  Change sqpuoqvxutmz
@@ -1008,8 +1008,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation cd3fc3ddbdd9 2001-02-03 04:05:16.000 +07:00 - 2001-02-03 04:05:16.000 +07:00 reconcile divergent operations
-      To operation 894f1f54aabe 2001-02-03 04:05:20.000 +07:00 - 2001-02-03 04:05:20.000 +07:00 fetch from git remote(s) origin
+    From operation cd3fc3ddbdd9, finished 2001-02-03 08:05:16: reconcile divergent operations
+      To operation 894f1f54aabe, finished 2001-02-03 08:05:20: fetch from git remote(s) origin
 
     Changed commits:
     ○  Change qzxslznxxpoz
@@ -1056,8 +1056,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 894f1f54aabe 2001-02-03 04:05:20.000 +07:00 - 2001-02-03 04:05:20.000 +07:00 fetch from git remote(s) origin
-      To operation ed134e3dc5c6 2001-02-03 04:05:22.000 +07:00 - 2001-02-03 04:05:22.000 +07:00 create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
+    From operation 894f1f54aabe, finished 2001-02-03 08:05:20: fetch from git remote(s) origin
+      To operation ed134e3dc5c6, finished 2001-02-03 08:05:22: create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
 
     Changed local bookmarks:
     bookmark-2:
@@ -1075,8 +1075,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation ed134e3dc5c6 2001-02-03 04:05:22.000 +07:00 - 2001-02-03 04:05:22.000 +07:00 create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
-      To operation 871bda1a359f 2001-02-03 04:05:24.000 +07:00 - 2001-02-03 04:05:24.000 +07:00 track remote bookmark bookmark-2@origin
+    From operation ed134e3dc5c6, finished 2001-02-03 08:05:22: create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
+      To operation 871bda1a359f, finished 2001-02-03 08:05:24: track remote bookmark bookmark-2@origin
 
     Changed remote bookmarks:
     bookmark-2@origin:
@@ -1096,8 +1096,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation ed134e3dc5c6 2001-02-03 04:05:22.000 +07:00 - 2001-02-03 04:05:22.000 +07:00 create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
-      To operation 871bda1a359f 2001-02-03 04:05:24.000 +07:00 - 2001-02-03 04:05:24.000 +07:00 track remote bookmark bookmark-2@origin
+    From operation ed134e3dc5c6, finished 2001-02-03 08:05:22: create bookmark bookmark-2 pointing to commit d487febd08e690ee775a4e0387e30d544307e409
+      To operation 871bda1a359f, finished 2001-02-03 08:05:24: track remote bookmark bookmark-2@origin
 
     Changed remote bookmarks:
     bookmark-2@origin:
@@ -1119,8 +1119,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 871bda1a359f 2001-02-03 04:05:24.000 +07:00 - 2001-02-03 04:05:24.000 +07:00 track remote bookmark bookmark-2@origin
-      To operation 2604b8b3b9e5 2001-02-03 04:05:28.000 +07:00 - 2001-02-03 04:05:28.000 +07:00 new empty commit
+    From operation 871bda1a359f, finished 2001-02-03 08:05:24: track remote bookmark bookmark-2@origin
+      To operation 2604b8b3b9e5, finished 2001-02-03 08:05:28: new empty commit
 
     Changed commits:
     ○  Change wvuyspvkupzz
@@ -1139,8 +1139,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 2604b8b3b9e5 2001-02-03 04:05:28.000 +07:00 - 2001-02-03 04:05:28.000 +07:00 new empty commit
-      To operation e64617a51cdb 2001-02-03 04:05:30.000 +07:00 - 2001-02-03 04:05:30.000 +07:00 point bookmark bookmark-1 to commit 358b82d6be53fa9b062325abb8bc820a8b34c68d
+    From operation 2604b8b3b9e5, finished 2001-02-03 08:05:28: new empty commit
+      To operation e64617a51cdb, finished 2001-02-03 08:05:30: point bookmark bookmark-1 to commit 358b82d6be53fa9b062325abb8bc820a8b34c68d
 
     Changed local bookmarks:
     bookmark-1:
@@ -1158,8 +1158,8 @@ fn test_op_diff() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation e64617a51cdb 2001-02-03 04:05:30.000 +07:00 - 2001-02-03 04:05:30.000 +07:00 point bookmark bookmark-1 to commit 358b82d6be53fa9b062325abb8bc820a8b34c68d
-      To operation e07e94fbdd09 2001-02-03 04:05:32.000 +07:00 - 2001-02-03 04:05:32.000 +07:00 delete bookmark bookmark-2
+    From operation e64617a51cdb, finished 2001-02-03 08:05:30: point bookmark bookmark-1 to commit 358b82d6be53fa9b062325abb8bc820a8b34c68d
+      To operation e07e94fbdd09, finished 2001-02-03 08:05:32: delete bookmark bookmark-2
 
     Changed local bookmarks:
     bookmark-2:
@@ -1181,8 +1181,8 @@ fn test_op_diff() {
     "#);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation e07e94fbdd09 2001-02-03 04:05:32.000 +07:00 - 2001-02-03 04:05:32.000 +07:00 delete bookmark bookmark-2
-      To operation 203fe2a7ed9e 2001-02-03 04:05:34.000 +07:00 - 2001-02-03 04:05:34.000 +07:00 push all tracked bookmarks to git remote origin
+    From operation e07e94fbdd09, finished 2001-02-03 08:05:32: delete bookmark bookmark-2
+      To operation 203fe2a7ed9e, finished 2001-02-03 08:05:34: push all tracked bookmarks to git remote origin
 
     Changed commits:
     ○  Change oupztwtkortx
@@ -1214,8 +1214,8 @@ fn test_op_diff_patch() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--op", "@-", "-p", "--git"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation eac759b9ab75 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 add workspace 'default'
-      To operation 187a5a9d8a22 2001-02-03 04:05:08.000 +07:00 - 2001-02-03 04:05:08.000 +07:00 snapshot working copy
+    From operation eac759b9ab75, finished 2001-02-03 08:05:07: add workspace 'default'
+      To operation 187a5a9d8a22, finished 2001-02-03 08:05:08: snapshot working copy
 
     Changed commits:
     ○  Change qpvuntsmwlqt
@@ -1231,8 +1231,8 @@ fn test_op_diff_patch() {
     "#);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "--op", "@", "-p", "--git"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 187a5a9d8a22 2001-02-03 04:05:08.000 +07:00 - 2001-02-03 04:05:08.000 +07:00 snapshot working copy
-      To operation a7e535e73c4b 2001-02-03 04:05:08.000 +07:00 - 2001-02-03 04:05:08.000 +07:00 new empty commit
+    From operation 187a5a9d8a22, finished 2001-02-03 08:05:08: snapshot working copy
+      To operation a7e535e73c4b, finished 2001-02-03 08:05:08: new empty commit
 
     Changed commits:
     ○  Change rlvkpnrzqnoo
@@ -1249,8 +1249,8 @@ fn test_op_diff_patch() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "-p", "--git"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 15c3c5d0baf0 2001-02-03 04:05:11.000 +07:00 - 2001-02-03 04:05:11.000 +07:00 snapshot working copy
-      To operation 894c12d90345 2001-02-03 04:05:11.000 +07:00 - 2001-02-03 04:05:11.000 +07:00 squash commits into 6b1027d2770cd0a39c468e525e52bf8c47e1464a
+    From operation 15c3c5d0baf0, finished 2001-02-03 08:05:11: snapshot working copy
+      To operation 894c12d90345, finished 2001-02-03 08:05:11: squash commits into 6b1027d2770cd0a39c468e525e52bf8c47e1464a
 
     Changed commits:
     ○  Change mzvwutvlkqwt
@@ -1286,8 +1286,8 @@ fn test_op_diff_patch() {
     "###);
     let stdout = test_env.jj_cmd_success(&repo_path, &["op", "diff", "-p", "--git"]);
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 894c12d90345 2001-02-03 04:05:11.000 +07:00 - 2001-02-03 04:05:11.000 +07:00 squash commits into 6b1027d2770cd0a39c468e525e52bf8c47e1464a
-      To operation e5505aa79d31 2001-02-03 04:05:13.000 +07:00 - 2001-02-03 04:05:13.000 +07:00 abandon commit 9f4fb57fba25a7b47ce5980a5d9a4766778331e8
+    From operation 894c12d90345, finished 2001-02-03 08:05:11: squash commits into 6b1027d2770cd0a39c468e525e52bf8c47e1464a
+      To operation e5505aa79d31, finished 2001-02-03 08:05:13: abandon commit 9f4fb57fba25a7b47ce5980a5d9a4766778331e8
 
     Changed commits:
     ○  Change yqosqzytrlsw
@@ -1377,8 +1377,8 @@ fn test_op_diff_sibling() {
         ],
     );
     insta::assert_snapshot!(&stdout, @r#"
-    From operation d700dc16fded 2001-02-03 04:05:11.000 +07:00 - 2001-02-03 04:05:11.000 +07:00 new empty commit
-      To operation 13b143e1f4f9 2001-02-03 04:05:12.000 +07:00 - 2001-02-03 04:05:12.000 +07:00 describe commit 230dd059e1b059aefc0da06a2e5a7dbf22362f22
+    From operation d700dc16fded, finished 2001-02-03 08:05:11: new empty commit
+      To operation 13b143e1f4f9, finished 2001-02-03 08:05:12: describe commit 230dd059e1b059aefc0da06a2e5a7dbf22362f22
 
     Changed commits:
     ○  Change qpvuntsmwlqt
@@ -1407,8 +1407,8 @@ fn test_op_diff_sibling() {
         ],
     );
     insta::assert_snapshot!(&stdout, @r#"
-    From operation 13b143e1f4f9 2001-02-03 04:05:12.000 +07:00 - 2001-02-03 04:05:12.000 +07:00 describe commit 230dd059e1b059aefc0da06a2e5a7dbf22362f22
-      To operation d700dc16fded 2001-02-03 04:05:11.000 +07:00 - 2001-02-03 04:05:11.000 +07:00 new empty commit
+    From operation 13b143e1f4f9, finished 2001-02-03 08:05:12: describe commit 230dd059e1b059aefc0da06a2e5a7dbf22362f22
+      To operation d700dc16fded, finished 2001-02-03 08:05:11: new empty commit
 
     Changed commits:
     ○    Change mzvwutvlkqwt
@@ -1451,8 +1451,8 @@ fn test_op_diff_word_wrap() {
 
     // ui.log-word-wrap option works, and diff stat respects content width
     insta::assert_snapshot!(render(&["op", "diff", "--from=@---", "--stat"], 40, true), @r#"
-    From operation eac759b9ab75 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 add workspace 'default'
-      To operation f3052392e08c 2001-02-03 04:05:08.000 +07:00 - 2001-02-03 04:05:08.000 +07:00 snapshot working copy
+    From operation eac759b9ab75, finished 2001-02-03 08:05:07: add workspace 'default'
+      To operation f3052392e08c, finished 2001-02-03 08:05:08: snapshot working copy
 
     Changed commits:
     ○  Change sqpuoqvxutmz
@@ -1505,8 +1505,8 @@ fn test_op_diff_word_wrap() {
     let config = r#"templates.commit_summary='"0 1 2 3 4 5 6 7 8 9"'"#;
     insta::assert_snapshot!(
         render(&["op", "diff", "--from=@---", "--config-toml", config], 10, true), @r#"
-    From operation eac759b9ab75 2001-02-03 04:05:07.000 +07:00 - 2001-02-03 04:05:07.000 +07:00 add workspace 'default'
-      To operation f3052392e08c 2001-02-03 04:05:08.000 +07:00 - 2001-02-03 04:05:08.000 +07:00 snapshot working copy
+    From operation eac759b9ab75, finished 2001-02-03 08:05:07: add workspace 'default'
+      To operation f3052392e08c, finished 2001-02-03 08:05:08: snapshot working copy
 
     Changed
     commits:
