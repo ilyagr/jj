@@ -18,6 +18,11 @@ You generally only need to submit a CLA once, so if you've already submitted one
 (even if it was for a different project), you probably don't need to do it
 again.
 
+### Community Guidelines
+
+This project follows [Google's Open Source Community
+Guidelines](https://opensource.google/conduct/).
+
 ### Code reviews
 
 All submissions, including submissions by project members, require review. We
@@ -70,17 +75,19 @@ an approval from someone else anyway. It is of course still appreciated if you
 review and comment on their PRs. Also, if the PR seems completely unrelated to
 your company's interests, do feel free to approve it.
 
-### Community Guidelines
+### Discuss large patches and new features
 
-This project follows [Google's Open Source Community
-Guidelines](https://opensource.google/conduct/).
+Before sending a PR for a larger change or a new feature, you should discuss it
+with the community. There are a few possible venues for starting this process.
+You can:
 
-## Contributing large patches
-
-Before sending a PR for a large change which designs/redesigns or reworks an
-existing component, we require an architecture review from  multiple
-stakeholders, which we do with [Design Docs](design_docs.md), see the
-[process here](design_docs.md#process).
+- Ask on Discord about whether this is a good thing to work on.
+- Search for or file a feature request in our
+  [issues](https://github.com/martinvonz/jj/issues). Mention that you are
+  interested in implementing the feature in the issue.
+- For particularly large, complicated, or significant changes, you should write
+a [Design Docs](design_docs.md) and submit it for a review, see the [process
+here](design_docs.md#process).
 
 ## Contributing to the documentation
 
