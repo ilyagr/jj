@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod chmod;
+pub mod edit;
 pub mod list;
 pub mod show;
 pub mod track;
@@ -26,6 +27,7 @@ use crate::ui::Ui;
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum FileCommand {
     Chmod(chmod::FileChmodArgs),
+    Edit(edit::FileEditArgs),
     List(list::FileListArgs),
     Show(show::FileShowArgs),
     Track(track::FileTrackArgs),
@@ -39,6 +41,7 @@ pub fn cmd_file(
 ) -> Result<(), CommandError> {
     match subcommand {
         FileCommand::Chmod(args) => chmod::cmd_file_chmod(ui, command, args),
+        FileCommand::Edit(args) => edit::cmd_file_edit(ui, command, args),
         FileCommand::List(args) => list::cmd_file_list(ui, command, args),
         FileCommand::Show(args) => show::cmd_file_show(ui, command, args),
         FileCommand::Track(args) => track::cmd_file_track(ui, command, args),
