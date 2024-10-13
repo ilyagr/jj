@@ -14,6 +14,7 @@
 
 pub mod annotate;
 pub mod chmod;
+pub mod edit;
 pub mod list;
 pub mod show;
 pub mod track;
@@ -28,6 +29,7 @@ use crate::ui::Ui;
 pub enum FileCommand {
     Annotate(annotate::FileAnnotateArgs),
     Chmod(chmod::FileChmodArgs),
+    Edit(edit::FileEditArgs),
     List(list::FileListArgs),
     Show(show::FileShowArgs),
     Track(track::FileTrackArgs),
@@ -42,6 +44,7 @@ pub fn cmd_file(
     match subcommand {
         FileCommand::Annotate(args) => annotate::cmd_file_annotate(ui, command, args),
         FileCommand::Chmod(args) => chmod::cmd_file_chmod(ui, command, args),
+        FileCommand::Edit(args) => edit::cmd_file_edit(ui, command, args),
         FileCommand::List(args) => list::cmd_file_list(ui, command, args),
         FileCommand::Show(args) => show::cmd_file_show(ui, command, args),
         FileCommand::Track(args) => track::cmd_file_track(ui, command, args),
