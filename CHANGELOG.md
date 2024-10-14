@@ -18,6 +18,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Help command doesn't work recursively anymore, i.e. `jj workspace help root`
   doesn't work anymore.
 
+* The color label `op_log` from the `[colors]` config section has been replaced
+  with `operation`. You can also use the more specific `operation log`.
+
 * Default operation log template now shows end times of operations instead of
   start times.
 

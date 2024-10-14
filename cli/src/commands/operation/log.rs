@@ -130,7 +130,8 @@ fn do_op_log(
                 &text,
                 OperationTemplateLanguage::wrap_operation,
             )?
-            .labeled("op_log");
+            .labeled("log")
+            .labeled("operation");
         op_node_template = workspace_env
             .parse_template(
                 ui,
