@@ -587,6 +587,35 @@ leaving the terminal. External tools give you the flexibility of picking out
 portions of lines from the diff or even arbitrarily editing the text of the
 files.
 
+<details>
+<summary> Meld on Apple Silicon Mac OS </summary>
+
+Currently, the Homebrew version of `meld` does not work well on Mac OS with
+Apple Silicon. There are several possible workarounds:
+
+1. [`diffedit3`](https://github.com/ilyagr/diffedit3) can be used instead and has
+  a similar interface. It defaults to the 3-pane `meld-3` interface, described
+  below, which might feel a bit overwhelming at first. You can safely close the
+  third pane and use two panes for your diff editing, which is meant to be an
+  interface similar to (though less polished than) meld.
+2. You can install Meld by following [these instructions for Apple
+   Silicon](https://gist.github.com/syneart/4a8724cd479d31f0f742f499f807dcb2).
+   Make sure to use the exact link in the first line of the script for your copy
+   of Meld.
+3. The official Meld project will hopefully release Apple Silicon binaries at
+   some point. Until then, you could use their prerelease builds. TODO:
+   instructions. The installer will suggest you run `xattr -rd
+   com.apple.quarantine /Applications/Meld.app` to trust the app.
+
+If you follow option 2 or 3, I recommend going to a dir in your PATH and running
+something like `ln -s "/Application/Meld.app/Contents/MacOS/Meld" meld`
+(assuming Meld is `/Applications/Meld.app`) to make it easy for `jj` to launch
+Meld. 
+
+</details>
+
+### Configuring diff editors
+
 If `ui.diff-editor` is a string, e.g. `"meld"`, the arguments will be read from
 the following config keys.
 
