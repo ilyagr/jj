@@ -102,6 +102,8 @@ pub enum MergeToolConfigError {
     Config(#[from] ConfigError),
     #[error("The tool `{tool_name}` cannot be used as a merge tool with `jj resolve`")]
     MergeArgsNotConfigured { tool_name: String },
+    #[error("The tool `{tool_name}` cannot be used as a diff editor")]
+    EditArgsNotConfigured { tool_name: String },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -190,7 +192,7 @@ impl DiffEditor {
     ) -> Result<Self, MergeToolConfigError> {
         let tool = get_tool_config(settings, name)?
             .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_program(name)));
-        Self::new_inner(tool, settings, base_ignores)
+        Self::new_inner(name, tool, settings, base_ignores)
     }
 
     /// Loads the default diff editor from the settings.
@@ -206,14 +208,20 @@ impl DiffEditor {
             None
         }
         .unwrap_or_else(|| MergeTool::external(ExternalMergeTool::with_edit_args(&args)));
-        Self::new_inner(tool, settings, base_ignores)
+        Self::new_inner(&args, tool, settings, base_ignores)
     }
 
     fn new_inner(
+        name: impl ToString,
         tool: MergeTool,
         settings: &UserSettings,
         base_ignores: Arc<GitIgnoreFile>,
     ) -> Result<Self, MergeToolConfigError> {
+        if matches!(&tool, MergeTool::External(mergetool) if mergetool.edit_args.is_empty()) {
+            return Err(MergeToolConfigError::EditArgsNotConfigured {
+                tool_name: name.to_string(),
+            });
+        }
         Ok(DiffEditor {
             tool,
             base_ignores,
