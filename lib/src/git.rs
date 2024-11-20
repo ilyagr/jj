@@ -1218,7 +1218,7 @@ pub enum GitFetchError {
     #[error("No git remote named '{0}'")]
     NoSuchRemote(String),
     #[error(
-        "Invalid branch pattern provided. Patterns may not contain the characters `{chars}`",
+        "Invalid branch pattern provided. When fetching, branch names and globs may not contain the characters `{chars}`",
         chars = INVALID_REFSPEC_CHARS.iter().join("`, `")
     )]
     InvalidBranchPattern,
@@ -1273,7 +1273,10 @@ pub fn fetch(
         .map(|pattern| {
             pattern
                 .to_glob()
-                .filter(|glob| !glob.contains(INVALID_REFSPEC_CHARS))
+                .filter(
+                    /* This check will fail if `to_glob()` escapes a literal `*` */
+                    |glob| !glob.contains(INVALID_REFSPEC_CHARS),
+                )
                 .map(|glob| format!("+refs/heads/{glob}:refs/remotes/{remote_name}/{glob}"))
         })
         .collect::<Option<_>>()
