@@ -6,7 +6,7 @@
 # All arguments after the first are passed to `mike deploy`, run
 # `uv run -- mike deploy --help` for options. Note that `mike deploy`
 # creates a commit directly on the `gh-pages` branch.
-set -ev
+set -ex
 
 export "SITE_URL_FOR_MKDOCS=$1"; shift
 # Affects the generation of `sitemap.xml.gz` by `mkdocs`. See

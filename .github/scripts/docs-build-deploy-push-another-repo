@@ -24,9 +24,12 @@ random_digits() {
 LOCAL_BRANCH_NAME_PREFIX=${LOCAL_BRANCH_NAME_PREFIX:-"doc-remote-"}
 LOCAL_BRANCH_NAME=${LOCAL_BRANCH_NAME:-"$LOCAL_BRANCH_NAME_PREFIX$DOC_REPO_BRANCH_NAME-$(random_digits)"}
 
+mydir=$(dirname "$0")
+set -x
+
 git remote add --track "$DOC_REPO_BRANCH_NAME" --fetch --no-tags doc-remote "$DOC_REPO_URL"
 git branch "$LOCAL_BRANCH_NAME" doc-remote/"$DOC_REPO_BRANCH_NAME"
-sh "$(dirname "$0")"/docs-build-deploy "$SITE_URL_FOR_MKDOCS" \
+sh "$mydir"/docs-build-deploy "$SITE_URL_FOR_MKDOCS" \
    -r doc-remote -b "$LOCAL_BRANCH_NAME" --deploy-prefix "$DEPLOY_PREFIX" \
    "$@"
 git push doc-remote "$LOCAL_BRANCH_NAME":"$DOC_REPO_BRANCH_NAME"
