@@ -19,6 +19,7 @@ SITE_URL_FOR_MKDOCS=${SITE_URL_FOR_MKDOCS:-"https://martinvonz.github.io/jj/"}
 # To avoid collisions with existing branches
 random_digits() {
   awk -v min=0 -v max=100000000 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'
+  # od -A n -t x4 -N 4 /dev/urandom | sed 's/[[:blank:]]//g'
 }
 
 LOCAL_BRANCH_NAME_PREFIX=${LOCAL_BRANCH_NAME_PREFIX:-"doc-remote-"}
