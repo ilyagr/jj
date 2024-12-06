@@ -1,0 +1,26 @@
+#!/bin/sh
+# Generally, `mike` is designed to work on a website stored on a branch of the
+# same repo. This calls mike in a way to have it work on the main branch of a
+# different repo.
+#
+# This can be used either to store the website on the `jj/` subdirectory
+# of a personal site or the toplevel of an org site GitHub repo like
+# "https://github.com/org_or_user/org_or_user.github.io"
+#
+# The script is a bit brittle; it is designed for the GitHub Actions environment
+# where a remote named `doc-remote` or a local branch named $LOCAL_BRANCH_NAME
+# do not initially exist.
+set -e
+
+DOC_REPO_URL=${DOC_REPO_URL:-"https://github.com/ilyagr/ilyagr.github.io"}
+DOC_REPO_BRANCH_NAME=${DOC_REPO_BRANCH_NAME:-"main"}
+LOCAL_BRANCH_NAME=${LOCAL_BRANCH_NAME:-"doc-remote-$DOC_REPO_BRANCH_NAME"}
+DEPLOY_PREFIX=${DEPLOY_PREFIX:-"jj/"}
+SITE_URL_FOR_MKDOCS=${SITE_URL_FOR_MKDOCS:-"https://martinvonz.github.io/jj/"}
+
+git remote add --track "$DOC_REPO_BRANCH_NAME" --fetch --no-tags doc-remote "$DOC_REPO_URL"
+git branch "$LOCAL_BRANCH_NAME" doc-remote/"$DOC_REPO_BRANCH_NAME"
+sh "$(dirname "$0")"/docs-build-deploy "$SITE_URL_FOR_MKDOCS" \
+   -r doc-remote -b "$LOCAL_BRANCH_NAME" --deploy-prefix "$DEPLOY_PREFIX" \
+   "$@"
+git push doc-remote "$LOCAL_BRANCH_NAME":"$DOC_REPO_BRANCH_NAME"
