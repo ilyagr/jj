@@ -8,17 +8,21 @@
 # "https://github.com/org_or_user/org_or_user.github.io"
 #
 # The script is a bit brittle; it is designed for the GitHub Actions environment
-# where a remote named `doc-remote` or a local branch named $LOCAL_BRANCH_NAME
-# do not initially exist.
+# where a remote named `doc-remote` does not initially exist.
 set -e
 
-# To avoid collisions with existing branches
-RANDOM_NUMBER=$(awk -v min=0 -v max=100000 'BEGIN{srand(); print int(min+rand()*(max-min+1))}')
 DOC_REPO_URL=${DOC_REPO_URL:-"https://github.com/ilyagr/ilyagr.github.io"}
 DOC_REPO_BRANCH_NAME=${DOC_REPO_BRANCH_NAME:-"main"}
-LOCAL_BRANCH_NAME=${LOCAL_BRANCH_NAME:-"doc-remote-$DOC_REPO_BRANCH_NAME-$RANDOM_NUMBER"}
 DEPLOY_PREFIX=${DEPLOY_PREFIX:-"jj/"}
 SITE_URL_FOR_MKDOCS=${SITE_URL_FOR_MKDOCS:-"https://martinvonz.github.io/jj/"}
+
+# To avoid collisions with existing branches
+random_digits() {
+  awk -v min=0 -v max=100000000 'BEGIN{srand(); print int(min+rand()*(max-min+1))}'
+}
+
+LOCAL_BRANCH_NAME_PREFIX=${LOCAL_BRANCH_NAME_PREFIX:-"doc-remote-"}
+LOCAL_BRANCH_NAME=${LOCAL_BRANCH_NAME:-"$LOCAL_BRANCH_NAME_PREFIX$DOC_REPO_BRANCH_NAME-$(random_digits)"}
 
 git remote add --track "$DOC_REPO_BRANCH_NAME" --fetch --no-tags doc-remote "$DOC_REPO_URL"
 git branch "$LOCAL_BRANCH_NAME" doc-remote/"$DOC_REPO_BRANCH_NAME"
