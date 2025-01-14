@@ -196,8 +196,7 @@ impl Write for UiStderr<'_> {
 
 pub struct Ui {
     quiet: bool,
-    pager_cmd: CommandNameAndArgs,
-    paginate: PaginationChoice,
+    pager: PagerConfig,
     progress_indicator: bool,
     formatter_factory: FormatterFactory,
     output: UiOutput,
@@ -253,14 +252,34 @@ pub enum PaginationChoice {
     Auto,
 }
 
+enum PagerConfig {
+    Disabled,
+    Builtin,
+    External(CommandNameAndArgs),
+}
+
+impl PagerConfig {
+    fn from_config(config: &StackedConfig) -> Result<PagerConfig, ConfigGetError> {
+        let PaginationChoice::Auto = config.get("ui.paginate")? else {
+            return Ok(PagerConfig::Disabled);
+        };
+        let pager_cmd: CommandNameAndArgs = config.get("ui.pager")?;
+        match pager_cmd {
+            CommandNameAndArgs::String(name) if name == BUILTIN_PAGER_NAME => {
+                Ok(PagerConfig::Builtin)
+            }
+            _ => Ok(PagerConfig::External(pager_cmd)),
+        }
+    }
+}
+
 impl Ui {
     pub fn with_config(config: &StackedConfig) -> Result<Ui, CommandError> {
         let formatter_factory = prepare_formatter_factory(config, &io::stdout())?;
         Ok(Ui {
             quiet: config.get("ui.quiet")?,
             formatter_factory,
-            pager_cmd: config.get("ui.pager")?,
-            paginate: config.get("ui.paginate")?,
+            pager: PagerConfig::from_config(config)?,
             progress_indicator: config.get("ui.progress-indicator")?,
             output: UiOutput::new_terminal(),
         })
@@ -268,8 +287,7 @@ impl Ui {
 
     pub fn reset(&mut self, config: &StackedConfig) -> Result<(), CommandError> {
         self.quiet = config.get("ui.quiet")?;
-        self.paginate = config.get("ui.paginate")?;
-        self.pager_cmd = config.get("ui.pager")?;
+        self.pager = PagerConfig::from_config(config)?;
         self.progress_indicator = config.get("ui.progress-indicator")?;
         self.formatter_factory = prepare_formatter_factory(config, &io::stdout())?;
         Ok(())
@@ -278,18 +296,15 @@ impl Ui {
     /// Switches the output to use the pager, if allowed.
     #[instrument(skip_all)]
     pub fn request_pager(&mut self) {
-        match self.paginate {
-            PaginationChoice::Never => return,
-            PaginationChoice::Auto => {}
-        }
         if !matches!(&self.output, UiOutput::Terminal { stdout, .. } if stdout.is_terminal()) {
             return;
         }
 
-        let use_builtin_pager = matches!(
-            &self.pager_cmd, CommandNameAndArgs::String(name) if name == BUILTIN_PAGER_NAME);
-        let new_output = if use_builtin_pager {
-            UiOutput::new_builtin_paged()
+        let new_output = match &self.pager {
+            PagerConfig::Disabled => {
+                return;
+            }
+            PagerConfig::Builtin => UiOutput::new_builtin_paged()
                 .inspect_err(|err| {
                     writeln!(
                         self.warning_default(),
@@ -298,21 +313,22 @@ impl Ui {
                     )
                     .ok();
                 })
-                .ok()
-        } else {
-            UiOutput::new_paged(&self.pager_cmd)
-                .inspect_err(|err| {
-                    // The pager executable couldn't be found or couldn't be run
-                    writeln!(
-                        self.warning_default(),
-                        "Failed to spawn pager '{name}': {err}",
-                        name = self.pager_cmd.split_name(),
-                        err = format_error_with_sources(err),
-                    )
-                    .ok();
-                    writeln!(self.hint_default(), "Consider using the `:builtin` pager.").ok();
-                })
-                .ok()
+                .ok(),
+            PagerConfig::External(command_name_and_args) => {
+                UiOutput::new_paged(command_name_and_args)
+                    .inspect_err(|err| {
+                        // The pager executable couldn't be found or couldn't be run
+                        writeln!(
+                            self.warning_default(),
+                            "Failed to spawn pager '{name}': {err}",
+                            name = command_name_and_args.split_name(),
+                            err = format_error_with_sources(err),
+                        )
+                        .ok();
+                        writeln!(self.hint_default(), "Consider using the `:builtin` pager.").ok();
+                    })
+                    .ok()
+            }
         };
         if let Some(output) = new_output {
             self.output = output;
