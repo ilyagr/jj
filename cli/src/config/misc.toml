@@ -41,6 +41,11 @@ show-cryptographic-signatures = false
 [ui.movement]
 edit = false
 
+[ui.streampager]
+clear-screen = "never"
+long-or-slow-delay-millis = 2000
+wrapping = "anywhere"
+
 [snapshot]
 max-new-file-size = "1MiB"
 auto-track = "all()"
