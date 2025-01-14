@@ -41,6 +41,11 @@ show-cryptographic-signatures = false
 [ui.movement]
 edit = false
 
+[ui.builtin-pager]
+interface = "hybrid"
+wrapping = "line"
+scroll-past-eof = false
+
 [snapshot]
 max-new-file-size = "1MiB"
 auto-track = "all()"
