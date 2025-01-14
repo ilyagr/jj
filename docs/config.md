@@ -575,8 +575,8 @@ a `$`):
 `less -FRX` is the default pager in the absence of any other setting, except
 on Windows where it is `:builtin`.
 
-The special value `:builtin` enables usage of the [integrated pager called
-`streampager`](https://github.com/markbt/streampager/).
+The special value `:builtin` enables usage of the [integrated
+pager](#builtin-pager).
 
 If you are using a standard Linux distro, your system likely already has
 `$PAGER` set and that will be preferred over the built-in. To use the built-in:
@@ -597,6 +597,52 @@ paginate = "auto"
 # Disable all pagination, equivalent to using --no-pager
 paginate = "never"
 ```
+
+### Builtin pager
+
+Our builtin pager is based on
+[`streampager`](https://github.com/markbt/streampager/) but is configured within
+`jj`'s config. It is configured via the `ui.streampager` table.
+
+#### Wrapping
+
+Wrapping performed by the pager happens *in addition to* any
+wrapping that `jj` itself does.
+
+```toml
+[ui.streampager]
+wrapping = "anywhere"  # wrap at screen edge (default)
+wrapping = "word"      # wrap on word boundaries
+wrapping = "none"      # strip long lines, allow scrolling
+                       # left and right like `less -S`
+```
+
+#### Clearing the screen on startup or exit
+
+You can configure whether the pager clears the screen on startup or exit.
+
+When the pager is configured to leave the screen uncleared, and the entire input
+is known to fit on one screen, the pager will exit after printing the input,
+similarly to `less -F`. Features like word-wrapping are disabled in this case.
+
+```toml
+[ui.streampager]
+# Do not clear screen on exit. Use a full-screen interface for
+# long output only. Like `less -FX`.
+alternate-screen = "never"  # (default).
+# Request an alternate screen from the terminal: always use a
+# full-screen interface, ask the terminal to clear the screen on
+# exit. Like `less +F +X`.
+alternate-screen = "always"
+# Use the alternate screen if the input is either long or takes
+# more than `long-or-slow-delay-millis` to finish. Similar but not
+# identical to `less -F +X`
+alternate-screen = "if-long-or-slow"
+
+# Only relevant in the `if-long-or-slow` mode
+long-or-slow-delay-millis = 2000 # (defaults to 2 seconds)
+```
+
 
 ### Processing contents to be paged
 
