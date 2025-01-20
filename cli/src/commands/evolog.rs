@@ -19,11 +19,14 @@ use itertools::Itertools as _;
 use jj_lib::backend::BackendError;
 use jj_lib::backend::CommitId;
 use jj_lib::commit::Commit;
+use jj_lib::copies::CopyRecords;
 use jj_lib::dag_walk::topo_order_reverse_ok;
 use jj_lib::graph::reverse_graph;
 use jj_lib::graph::GraphEdge;
 use jj_lib::graph::GraphNode;
 use jj_lib::matchers::EverythingMatcher;
+use jj_lib::repo::Repo as _;
+use jj_lib::rewrite::merge_commit_trees;
 use tracing::instrument;
 
 use super::log::get_node_template;
@@ -34,6 +37,7 @@ use crate::cli_util::RevisionArg;
 use crate::command_error::CommandError;
 use crate::commit_templater::CommitTemplateLanguage;
 use crate::complete;
+use crate::diff_util::get_copy_records;
 use crate::diff_util::DiffFormatArgs;
 use crate::graphlog::get_graphlog;
 use crate::graphlog::GraphStyle;
@@ -86,6 +90,24 @@ pub(crate) struct EvologArgs {
     /// contaminated by unrelated changes.
     #[arg(long, short = 'p')]
     patch: bool,
+    /// Changes the behavior of `--patch` to show diffs from rebases
+    ///
+    /// Normally, `jj evolog -p` shows a so-called "interdiff", temporarily
+    /// rebasing the versions of a revision to the same parents, in order to
+    /// omit differences in the file contents that are caused by rebases.
+    ///
+    /// This option disables this behavior, and shows diffs between the contents
+    /// of the different versions without modification (as snapshots).
+    ///
+    /// Sometimes, `--diff-snapshots` can show fewer differences to be shown.
+    /// For example, let's say the current revision is not empty and we perform
+    /// `jj squash --keep-empty -r @` to make it empty. Then, `jj evolog -p
+    /// --diff-snapshots` will not show any changes since the contents of the
+    /// files in the current revision did not change. However, `jj evolog -p`
+    /// will show a change, representing the fact that a non-empty revision
+    /// became empty.
+    #[arg(long, requires = "patch")]
+    diff_snapshots: bool,
     #[command(flatten)]
     diff_format: DiffFormatArgs,
 }
@@ -192,14 +214,38 @@ pub(crate) fn cmd_evolog(
             if let Some(renderer) = &diff_renderer {
                 let predecessors: Vec<_> = commit.predecessors().try_collect()?;
                 let mut formatter = ui.new_formatter(&mut buffer);
-                renderer.show_inter_diff(
-                    ui,
-                    formatter.as_mut(),
-                    &predecessors,
-                    &commit,
-                    &EverythingMatcher,
-                    within_graph.width(),
-                )?;
+                if args.diff_snapshots {
+                    let mut copy_records = CopyRecords::default();
+                    for p in &predecessors {
+                        let records = get_copy_records(
+                            workspace_command.repo().store(),
+                            p.id(),
+                            commit.id(),
+                            &EverythingMatcher,
+                        )?;
+                        copy_records.add_records(records)?;
+                    }
+                    let from_tree =
+                        merge_commit_trees(workspace_command.repo().as_ref(), &predecessors)?;
+                    renderer.show_diff(
+                        ui,
+                        formatter.as_mut(),
+                        &from_tree,
+                        &commit.tree()?,
+                        &EverythingMatcher,
+                        &copy_records,
+                        within_graph.width(),
+                    )?;
+                } else {
+                    renderer.show_inter_diff(
+                        ui,
+                        formatter.as_mut(),
+                        &predecessors,
+                        &commit,
+                        &EverythingMatcher,
+                        within_graph.width(),
+                    )?;
+                }
             }
             let node_symbol = format_template(ui, &Some(commit.clone()), &node_template);
             graph.add_node(

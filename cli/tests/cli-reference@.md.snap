@@ -853,6 +853,13 @@ Lists the previous commits which a change has pointed to. The current commit of 
 * `-p`, `--patch` — Show patch compared to the previous version of this change
 
    If the previous version has different parents, it will be temporarily rebased to the parents of the new version, so the diff is not contaminated by unrelated changes.
+* `--diff-snapshots` — Changes the behavior of `--patch` to show diffs from rebases
+
+   Normally, `jj evolog -p` shows a so-called "interdiff", temporarily rebasing the versions of a revision to the same parents, in order to omit differences in the file contents that are caused by rebases.
+
+   This option disables this behavior, and shows diffs between the contents of the different versions without modification (as snapshots).
+
+   Sometimes, `--diff-snapshots` can show fewer differences to be shown. For example, let's say the current revision is not empty and we perform `jj squash --keep-empty -r @` to make it empty. Then, `jj evolog -p --diff-snapshots` will not show any changes since the contents of the files in the current revision did not change. However, `jj evolog -p` will show a change, representing the fact that a non-empty revision became empty.
 * `-s`, `--summary` — For each path, show only whether it was modified, added, or deleted
 * `--stat` — Show a histogram of the changes
 * `--types` — For each path, show only its type before and after
@@ -1257,6 +1264,9 @@ Before the command actually moves, creates, or deletes a remote bookmark, it mak
 * `-c`, `--change <REVSETS>` — Push this commit by creating a bookmark based on its change ID (can be repeated)
 
    The created bookmark will be tracked automatically. Use the `git.push-bookmark-prefix` setting to change the prefix for generated names.
+* `--named <NAME=REVISION>` — Specify a new bookmark name and a revision to push under that name, e.g. '--named myfeature=@'.
+
+   Does not require --allow-new
 * `--dry-run` — Only display what will change on the remote
 
 
