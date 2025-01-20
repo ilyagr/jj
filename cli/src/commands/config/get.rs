@@ -36,8 +36,13 @@ use crate::ui::Ui;
 #[derive(clap::Args, Clone, Debug)]
 #[command(verbatim_doc_comment)]
 pub struct ConfigGetArgs {
-    #[arg(required = true, add = ArgValueCandidates::new(complete::leaf_config_keys))]
+    #[arg(required = true)]
+    #[arg(add = ArgValueCandidates::new(complete::leaf_config_keys))]
     name: ConfigNamePathBuf,
+    /// Suppress error and return nothing if the requested key is not found in
+    /// the config
+    #[arg(long)]
+    allow_missing: bool,
 }
 
 #[instrument(skip_all)]
@@ -46,7 +51,17 @@ pub fn cmd_config_get(
     command: &CommandHelper,
     args: &ConfigGetArgs,
 ) -> Result<(), CommandError> {
-    let value = command.settings().get_value(&args.name)?;
+    let maybe_value = command.settings().get_value(&args.name);
+    if args.allow_missing
+        && matches!(
+            maybe_value,
+            Err(jj_lib::config::ConfigGetError::NotFound { .. })
+        )
+    {
+        return Ok(());
+    };
+
+    let value = maybe_value?;
     let stringified = match value {
         // Remove extra formatting from a string value
         ConfigValue::String(v) => v.into_value(),

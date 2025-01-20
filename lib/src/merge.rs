@@ -21,6 +21,7 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt::Write as _;
 use std::hash::Hash;
+use std::iter;
 use std::iter::zip;
 use std::ops::Deref;
 use std::slice;
@@ -36,6 +37,7 @@ use crate::backend::BackendResult;
 use crate::backend::CopyId;
 use crate::backend::FileId;
 use crate::backend::TreeValue;
+use crate::conflict_labels::ConflictLabels;
 use crate::content_hash::ContentHash;
 use crate::content_hash::DigestUpdate;
 use crate::repo_path::RepoPath;
@@ -74,6 +76,14 @@ impl<T> Diff<T> {
         Diff {
             before: (self.before, other.before),
             after: (self.after, other.after),
+        }
+    }
+
+    /// Inverts a diff, swapping the before and after terms.
+    pub fn invert(self) -> Self {
+        Self {
+            before: self.after,
+            after: self.before,
         }
     }
 
@@ -224,6 +234,15 @@ impl<T> Merge<T> {
             let (remove, add) = diff.both().expect("must have one more adds than removes");
             values.extend([remove, add]);
         }
+        Self { values }
+    }
+
+    /// Creates a `Merge` from a first side and a series of diffs to apply to
+    /// that side.
+    pub fn from_diffs(first_side: T, diffs: impl IntoIterator<Item = Diff<T>>) -> Self {
+        let values = iter::once(first_side)
+            .chain(diffs.into_iter().flat_map(Diff::into_array))
+            .collect();
         Self { values }
     }
 
@@ -813,6 +832,14 @@ where
                         copy_id: copy_id.clone(),
                     }),
                     (None, None) => None,
+                    // New files are populated to preserve the materialized conflict. The file won't
+                    // be checked out to the disk. So the metadata is not important, and we will
+                    // just use the default values.
+                    (None, Some(id)) => Some(TreeValue::File {
+                        id,
+                        executable: false,
+                        copy_id: CopyId::placeholder(),
+                    }),
                     (old, new) => panic!("incompatible update: {old:?} to {new:?}"),
                 },
             )
@@ -821,14 +848,30 @@ where
     }
 
     /// Give a summary description of the conflict's "removes" and "adds"
-    pub fn describe(&self) -> String {
+    pub fn describe(&self, labels: &ConflictLabels) -> String {
         let mut buf = String::new();
         writeln!(buf, "Conflict:").unwrap();
-        for term in self.removes().flatten() {
-            writeln!(buf, "  Removing {}", describe_conflict_term(term.borrow())).unwrap();
+        for (term, label) in self
+            .removes()
+            .enumerate()
+            .filter_map(|(i, term)| term.as_ref().map(|term| (term, labels.get_remove(i))))
+        {
+            write!(buf, "  Removing {}", describe_conflict_term(term.borrow())).unwrap();
+            if let Some(label) = label {
+                write!(buf, " ({label})").unwrap();
+            }
+            buf.push('\n');
         }
-        for term in self.adds().flatten() {
-            writeln!(buf, "  Adding {}", describe_conflict_term(term.borrow())).unwrap();
+        for (term, label) in self
+            .adds()
+            .enumerate()
+            .filter_map(|(i, term)| term.as_ref().map(|term| (term, labels.get_add(i))))
+        {
+            write!(buf, "  Adding {}", describe_conflict_term(term.borrow())).unwrap();
+            if let Some(label) = label {
+                write!(buf, " ({label})").unwrap();
+            }
+            buf.push('\n');
         }
         buf
     }
@@ -963,6 +1006,12 @@ mod tests {
     }
 
     #[test]
+    fn test_diff_invert() {
+        let diff = Diff::new(1, 2);
+        assert_eq!(diff.invert(), Diff::new(2, 1));
+    }
+
+    #[test]
     fn test_diff_as_ref() {
         let diff = Diff::new(1, 2);
         assert_eq!(diff.as_ref(), Diff::new(&1, &2));
@@ -972,6 +1021,19 @@ mod tests {
     fn test_diff_into_array() {
         let diff = Diff::new(1, 2);
         assert_eq!(diff.into_array(), [1, 2]);
+    }
+
+    #[test]
+    fn test_merge_from_diffs() {
+        assert_eq!(Merge::from_diffs(1, []), Merge::resolved(1));
+        assert_eq!(
+            Merge::from_diffs(1, [Diff::new(2, 3)]),
+            Merge::from_vec(vec![1, 2, 3])
+        );
+        assert_eq!(
+            Merge::from_diffs(1, [Diff::new(2, 3), Diff::new(4, 5)]),
+            Merge::from_vec(vec![1, 2, 3, 4, 5])
+        );
     }
 
     fn c<T: Clone>(terms: &[T]) -> Merge<T> {

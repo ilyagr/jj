@@ -20,6 +20,9 @@ use clap_complete::ArgValueCompleter;
 use indexmap::IndexSet;
 use itertools::Itertools as _;
 use jj_lib::backend::CommitId;
+use jj_lib::commit::conflict_label_for_commits;
+use jj_lib::merge::Merge;
+use jj_lib::merged_tree::MergedTree;
 use jj_lib::object_id::ObjectId as _;
 use jj_lib::repo::Repo as _;
 use jj_lib::rewrite::merge_commit_trees;
@@ -45,22 +48,21 @@ use crate::ui::Ui;
 #[command(group(ArgGroup::new("location").args(&["onto", "insert_after", "insert_before"]).required(true).multiple(true)))]
 pub(crate) struct RevertArgs {
     /// The revision(s) to apply the reverse of
-    #[arg(
-        long, short,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions: Vec<RevisionArg>,
+
     /// The revision(s) to apply the reverse changes on top of
     #[arg(
         long,
-        alias = "destination",
+        visible_alias = "destination",
         short,
-        short_alias = 'd',
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        visible_short_alias = 'd',
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     onto: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert the reverse changes after (can be repeated to
     /// create a merge commit)
     #[arg(
@@ -68,10 +70,11 @@ pub(crate) struct RevertArgs {
         short = 'A',
         visible_alias = "after",
         conflicts_with = "onto",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     insert_after: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert the reverse changes before (can be repeated to
     /// create a merge commit)
     #[arg(
@@ -79,9 +82,9 @@ pub(crate) struct RevertArgs {
         short = 'B',
         visible_alias = "before",
         conflicts_with = "onto",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     insert_before: Option<Vec<RevisionArg>>,
 }
 
@@ -139,23 +142,40 @@ pub(crate) fn cmd_revert(
         .try_collect()?;
     let mut new_base_tree = merge_commit_trees(tx.repo(), &new_parents).block_on()?;
     let mut parent_ids = new_parent_ids;
+    let mut parent_labels = conflict_label_for_commits(&new_parents);
 
     let mut reverted_commits = vec![];
     for (commit_to_revert, new_commit_description) in
         &commits_to_revert_with_new_commit_descriptions
     {
+        let old_parents: Vec<_> = commit_to_revert.parents().try_collect()?;
         let old_base_tree = commit_to_revert.parent_tree(tx.repo())?;
         let old_tree = commit_to_revert.tree();
-        let new_tree = new_base_tree
-            .merge_unlabeled(old_tree, old_base_tree)
-            .block_on()?;
-        let new_parent_ids = parent_ids.clone();
+        let new_tree = MergedTree::merge(Merge::from_vec(vec![
+            (
+                new_base_tree,
+                format!("{parent_labels} (revert destination)"),
+            ),
+            (
+                old_tree,
+                format!("{} (reverted revision)", commit_to_revert.conflict_label()),
+            ),
+            (
+                old_base_tree,
+                format!(
+                    "{} (parents of reverted revision)",
+                    conflict_label_for_commits(&old_parents)
+                ),
+            ),
+        ]))
+        .block_on()?;
         let new_commit = tx
             .repo_mut()
-            .new_commit(new_parent_ids, new_tree.clone())
+            .new_commit(parent_ids, new_tree.clone())
             .set_description(new_commit_description)
             .write()?;
         parent_ids = vec![new_commit.id().clone()];
+        parent_labels = new_commit.conflict_label();
         reverted_commits.push(new_commit);
         new_base_tree = new_tree;
     }

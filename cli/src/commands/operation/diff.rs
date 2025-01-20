@@ -55,29 +55,24 @@ use crate::ui::Ui;
 #[derive(clap::Args, Clone, Debug)]
 pub struct OperationDiffArgs {
     /// Show repository changes in this operation, compared to its parent
-    #[arg(
-        long,
-        visible_alias = "op",
-        add = ArgValueCandidates::new(complete::operations),
-    )]
+    #[arg(long, visible_alias = "op")]
+    #[arg(add = ArgValueCandidates::new(complete::operations))]
     operation: Option<String>,
+
     /// Show repository changes from this operation
-    #[arg(
-        long, short,
-        conflicts_with = "operation",
-        add = ArgValueCandidates::new(complete::operations),
-    )]
+    #[arg(long, short, conflicts_with = "operation")]
+    #[arg(add = ArgValueCandidates::new(complete::operations))]
     from: Option<String>,
+
     /// Show repository changes to this operation
-    #[arg(
-        long, short,
-        conflicts_with = "operation",
-        add = ArgValueCandidates::new(complete::operations),
-    )]
+    #[arg(long, short, conflicts_with = "operation")]
+    #[arg(add = ArgValueCandidates::new(complete::operations))]
     to: Option<String>,
+
     /// Don't show the graph, show a flat list of modified changes
     #[arg(long, short = 'G')]
     no_graph: bool,
+
     /// Show patch of modifications to changes
     ///
     /// If the previous version has different parents, it will be temporarily
@@ -85,6 +80,7 @@ pub struct OperationDiffArgs {
     /// contaminated by unrelated changes.
     #[arg(long, short = 'p')]
     patch: bool,
+
     #[command(flatten)]
     diff_format: DiffFormatArgs,
 }

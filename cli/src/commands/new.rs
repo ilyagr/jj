@@ -49,30 +49,33 @@ use crate::ui::Ui;
 #[command(group(clap::ArgGroup::new("revisions").multiple(true)))]
 pub(crate) struct NewArgs {
     /// Parent(s) of the new change [default: @] [aliases: -o, -r]
-    #[arg(
-        group = "revisions",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(group = "revisions", value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions_pos: Option<Vec<RevisionArg>>,
+
     #[arg(
         short = 'o',
         group = "revisions",
         hide = true,
         short_aliases = ['d', 'r'],
         value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions_opt: Option<Vec<RevisionArg>>,
+
     /// The change description to use
     #[arg(long = "message", short, value_name = "MESSAGE")]
     message_paragraphs: Vec<String>,
+
     /// Do not edit the newly created change
     #[arg(long, conflicts_with = "_edit")]
     no_edit: bool,
+
     /// No-op flag to pair with --no-edit
     #[arg(long, hide = true)]
     _edit: bool,
+
     /// Insert the new change after the given commit(s)
     ///
     /// Example: `jj new --insert-after A` creates a new change between `A` and
@@ -106,10 +109,11 @@ pub(crate) struct NewArgs {
         visible_alias = "after",
         conflicts_with = "revisions",
         value_name = "REVSETS",
-        verbatim_doc_comment,
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        verbatim_doc_comment
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     insert_after: Option<Vec<RevisionArg>>,
+
     /// Insert the new change before the given commit(s)
     ///
     /// Example: `jj new --insert-before C` creates a new change between `C` and
@@ -146,9 +150,9 @@ pub(crate) struct NewArgs {
         visible_alias = "before",
         conflicts_with = "revisions",
         value_name = "REVSETS",
-        verbatim_doc_comment,
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
+        verbatim_doc_comment
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     insert_before: Option<Vec<RevisionArg>>,
 }
 

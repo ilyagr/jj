@@ -112,21 +112,17 @@ pub(crate) struct SplitArgs {
     /// This is the default if no filesets are provided.
     #[arg(long, short)]
     interactive: bool,
+
     /// Specify diff editor to be used (implies --interactive)
-    #[arg(
-        long,
-        value_name = "NAME",
-        add = ArgValueCandidates::new(complete::diff_editors),
-    )]
+    #[arg(long, value_name = "NAME")]
+    #[arg(add = ArgValueCandidates::new(complete::diff_editors))]
     tool: Option<String>,
+
     /// The revision to split
-    #[arg(
-        long, short,
-        default_value = "@",
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, default_value = "@", value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     revision: RevisionArg,
+
     /// The revision(s) to rebase the selected changes onto (can be repeated to
     /// create a merge commit)
     ///
@@ -135,14 +131,15 @@ pub(crate) struct SplitArgs {
     /// location.
     #[arg(
         long,
-        alias = "destination",
+        visible_alias = "destination",
         short,
-        short_alias = 'd',
+        visible_short_alias = 'd',
         conflicts_with = "parallel",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     onto: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert after (can be repeated to create a merge
     /// commit)
     ///
@@ -155,10 +152,11 @@ pub(crate) struct SplitArgs {
         visible_alias = "after",
         conflicts_with = "onto",
         conflicts_with = "parallel",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     insert_after: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert before (can be repeated to create a merge
     /// commit)
     ///
@@ -171,32 +169,33 @@ pub(crate) struct SplitArgs {
         visible_alias = "before",
         conflicts_with = "onto",
         conflicts_with = "parallel",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     insert_before: Option<Vec<RevisionArg>>,
+
     /// The change description to use (don't open editor)
     ///
     /// Sets the description for the first commit (the one containing the
     /// selected changes). The second commit keeps the original description.
     #[arg(long = "message", short, value_name = "MESSAGE")]
     message_paragraphs: Vec<String>,
+
     /// Open an editor to edit the change description
     ///
     /// Forces an editor to open when using `--message` to allow the
     /// message to be edited afterwards.
     #[arg(long)]
     editor: bool,
+
     /// Split the revision into two parallel revisions instead of a parent and
     /// child
     #[arg(long, short)]
     parallel: bool,
+
     /// Files matching any of these filesets are put in the selected changes
-    #[arg(
-        value_name = "FILESETS",
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::modified_revision_files),
-    )]
+    #[arg(value_name = "FILESETS", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::modified_revision_files))]
     paths: Vec<String>,
 }
 

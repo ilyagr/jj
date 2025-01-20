@@ -45,6 +45,7 @@ pub struct BookmarkForgetArgs {
     /// forgotten.
     #[arg(long)]
     include_remotes: bool,
+
     /// The bookmarks to forget
     ///
     /// By default, the specified pattern matches bookmark names with glob
@@ -52,10 +53,8 @@ pub struct BookmarkForgetArgs {
     ///
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        required = true,
-        add = ArgValueCandidates::new(complete::bookmarks),
-    )]
+    #[arg(required = true)]
+    #[arg(add = ArgValueCandidates::new(complete::bookmarks))]
     names: Vec<String>,
 }
 

@@ -48,36 +48,28 @@ use crate::ui::Ui;
 //     simplify the present one.
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct ResolveArgs {
-    #[arg(
-        long, short,
-        default_value = "@",
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable_conflicts),
-    )]
+    #[arg(long, short, default_value = "@", value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable_conflicts))]
     revision: RevisionArg,
+
     /// Instead of resolving conflicts, list all the conflicts
     // TODO: Also have a `--summary` option. `--list` currently acts like
     // `diff --summary`, but should be more verbose.
     #[arg(long, short)]
     list: bool,
+
     /// Specify 3-way merge tool to be used
     ///
     /// The built-in merge tools `:ours` and `:theirs` can be used to choose
     /// side #1 and side #2 of the conflict respectively.
-    #[arg(
-        long,
-        conflicts_with = "list",
-        value_name = "NAME",
-        add = ArgValueCandidates::new(complete::merge_editors),
-    )]
+    #[arg(long, conflicts_with = "list", value_name = "NAME")]
+    #[arg(add = ArgValueCandidates::new(complete::merge_editors))]
     tool: Option<String>,
+
     /// Only resolve conflicts in these paths. You can use the `--list` argument
     /// to find paths to use here.
-    #[arg(
-        value_name = "FILESETS",
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::revision_conflicted_files),
-    )]
+    #[arg(value_name = "FILESETS", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::revision_conflicted_files))]
     paths: Vec<String>,
 }
 
@@ -92,10 +84,7 @@ pub(crate) fn cmd_resolve(
     let matcher = fileset_expression.to_matcher();
     let commit = workspace_command.resolve_single_rev(ui, &args.revision)?;
     let tree = commit.tree();
-    let conflicts = tree
-        .conflicts()
-        .filter(|path| matcher.matches(&path.0))
-        .collect_vec();
+    let conflicts = tree.conflicts_matching(&matcher).collect_vec();
 
     print_unmatched_explicit_paths(ui, &workspace_command, &fileset_expression, [&tree])?;
 

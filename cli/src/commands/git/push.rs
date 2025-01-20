@@ -111,8 +111,10 @@ pub struct GitPushArgs {
     ///
     /// This defaults to the `git.push` setting. If that is not configured, and
     /// if there are multiple remotes, the remote named "origin" will be used.
-    #[arg(long, add = ArgValueCandidates::new(complete::git_remotes))]
+    #[arg(long)]
+    #[arg(add = ArgValueCandidates::new(complete::git_remotes))]
     remote: Option<RemoteNameBuf>,
+
     /// Push only this bookmark, or bookmarks matching a pattern (can be
     /// repeated)
     ///
@@ -121,15 +123,14 @@ pub struct GitPushArgs {
     ///
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        long, short,
-        alias = "branch",
-        add = ArgValueCandidates::new(complete::local_bookmarks),
-    )]
+    #[arg(long, short, alias = "branch")]
+    #[arg(add = ArgValueCandidates::new(complete::local_bookmarks))]
     bookmark: Vec<String>,
+
     /// Push all bookmarks (including new bookmarks)
     #[arg(long)]
     all: bool,
+
     /// Push all tracked bookmarks
     ///
     /// This usually means that the bookmark was already pushed to or fetched
@@ -139,6 +140,7 @@ pub struct GitPushArgs {
     ///     https://docs.jj-vcs.dev/latest/bookmarks#remotes-and-tracked-bookmarks
     #[arg(long)]
     tracked: bool,
+
     /// Push all deleted bookmarks
     ///
     /// Only tracked bookmarks can be successfully deleted on the remote. A
@@ -146,15 +148,18 @@ pub struct GitPushArgs {
     /// correspond to missing local bookmarks.
     #[arg(long, conflicts_with = "specific")]
     deleted: bool,
+
     // TODO: Delete in jj 0.42.0+
     /// Allow pushing new bookmarks
     ///
     /// Newly-created remote bookmarks will be tracked automatically.
     #[arg(long, short = 'N', hide = true, conflicts_with = "what")]
     allow_new: bool,
+
     /// Allow pushing commits with empty descriptions
     #[arg(long)]
     allow_empty_description: bool,
+
     /// Allow pushing commits that are private
     ///
     /// The set of private commits can be configured by the
@@ -162,43 +167,35 @@ pub struct GitPushArgs {
     /// commits are eligible to be pushed.
     #[arg(long)]
     allow_private: bool,
+
     /// Push bookmarks pointing to these commits (can be repeated)
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        // While `-r` will often be used with mutable revisions, immutable
-        // revisions can be useful as parts of revsets or to push
-        // special-purpose branches.
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    // While `-r` will often be used with mutable revisions, immutable revisions
+    // can be useful as parts of revsets or to push special-purpose branches.
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions: Vec<RevisionArg>,
+
     /// Push this commit by creating a bookmark (can be repeated)
     ///
     /// The created bookmark will be tracked automatically. Use the
     /// `templates.git_push_bookmark` setting to customize the generated
     /// bookmark name. The default is `"push-" ++ change_id.short()`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        // I'm guessing that `git push -c` is almost exclusively used with
-        // recently created mutable revisions, even though it can in theory
-        // be used with immutable ones as well. We can change it if the guess
-        // turns out to be wrong.
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    // I'm guessing that `git push -c` is almost exclusively used with recently
+    // created mutable revisions, even though it can in theory be used with
+    // immutable ones as well. We can change it if the guess turns out to be
+    // wrong.
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     change: Vec<RevisionArg>,
+
     /// Specify a new bookmark name and a revision to push under that name, e.g.
     /// '--named myfeature=@'
     ///
     /// Automatically tracks the bookmark if it is new.
-    #[arg(
-        long,
-        value_name = "NAME=REVISION",
-        add = ArgValueCompleter::new(complete::branch_name_equals_any_revision)
-    )]
+    #[arg(long, value_name = "NAME=REVISION")]
+    #[arg(add = ArgValueCompleter::new(complete::branch_name_equals_any_revision))]
     named: Vec<String>,
+
     /// Only display what will change on the remote
     #[arg(long)]
     dry_run: bool,
@@ -908,7 +905,7 @@ fn create_change_bookmarks(
 
     let all_commits: Vec<_> = tx
         .base_workspace_helper()
-        .resolve_some_revsets_default_single(ui, changes)?
+        .resolve_some_revsets(ui, changes)?
         .iter()
         .map(|id| tx.repo().store().get_commit(id))
         .try_collect()?;

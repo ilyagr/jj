@@ -624,9 +624,9 @@ When using `--interactive` or path arguments, the selected changes stay in the c
 
 * `jj commit` doesn't have a `-r` option. It always acts on the working-copy commit (@).
 
-* `jj split` (without `-d/-A/-B`) will move bookmarks forward from the old change to the child change. `jj commit` doesn't move bookmarks forward.
+* `jj split` (without `-d`/`-A`/`-B`) will move bookmarks forward from the old change to the child change. `jj commit` doesn't move bookmarks forward.
 
-* `jj split` allows you to move the selected changes to a different destination with `-d/-A/-B`.
+* `jj split` allows you to move the selected changes to a different destination with `-d`/`-A`/`-B`.
 
 **Usage:** `jj commit [OPTIONS] [FILESETS]...`
 
@@ -698,13 +698,17 @@ user.name="Martin von Zweigbergk"
 $ jj config get user.name
 Martin von Zweigbergk
 
-**Usage:** `jj config get <NAME>`
+**Usage:** `jj config get [OPTIONS] <NAME>`
 
 **Command Alias:** `g`
 
 ###### **Arguments:**
 
 * `<NAME>`
+
+###### **Options:**
+
+* `--allow-missing` — Suppress error and return nothing if the requested key is not found in the config
 
 
 
@@ -731,7 +735,7 @@ List variables set in config files, along with their values
 
    The following keywords are available in the template expression:
 
-   * `name: String`: Config name.
+   * `name: String`: Config name, in [TOML's "dotted key" format].
    * `value: ConfigValue`: Value to be formatted in TOML syntax.
    * `overridden: Boolean`: True if the value is shadowed by other.
    * `source: String`: Source of the value.
@@ -742,6 +746,8 @@ List variables set in config files, along with their values
    template.
 
    See [`jj help -k templates`] for more information.
+
+   [TOML's "dotted key" format]: https://toml.io/en/v1.0.0#keys
 
    [`jj help -k templates`]:
        https://docs.jj-vcs.dev/latest/templates/
@@ -952,7 +958,7 @@ By default, the duplicated commits retain the descriptions of the originals. Thi
 
 ###### **Options:**
 
-* `-o`, `--onto <REVSETS>` — The revision(s) to duplicate onto (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to duplicate onto (can be repeated to create a merge commit)
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — The revision(s) to insert before (can be repeated to create a merge commit)
 
@@ -2732,7 +2738,7 @@ The description of the new revisions can be customized with the `templates.rever
 ###### **Options:**
 
 * `-r`, `--revisions <REVSETS>` — The revision(s) to apply the reverse of
-* `-o`, `--onto <REVSETS>` — The revision(s) to apply the reverse changes on top of
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to apply the reverse changes on top of
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert the reverse changes after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — The revision(s) to insert the reverse changes before (can be repeated to create a merge commit)
 
@@ -2960,7 +2966,7 @@ achieved with `jj new`.
 * `-r`, `--revision <REVSET>` — The revision to split
 
   Default value: `@`
-* `-o`, `--onto <REVSETS>` — The revision(s) to rebase the selected changes onto (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to rebase the selected changes onto (can be repeated to create a merge commit)
 
    Extracts the selected changes into a new commit based on the given revision(s). The remaining changes stay in the original commit's location.
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert after (can be repeated to create a merge commit)
@@ -3012,7 +3018,7 @@ An alternative squashing UI is available via the `-o`, `-A`, and `-B` options. U
 * `-r`, `--revision <REVSET>` — Revision to squash into its parent (default: @). Incompatible with the experimental `-o`/`-A`/`-B` options
 * `-f`, `--from <REVSETS>` — Revision(s) to squash from (default: @)
 * `-t`, `--into <REVSET>` [alias: `to`] — Revision to squash into (default: @)
-* `-o`, `--onto <REVSETS>` — (Experimental) The revision(s) to use as parent for the new commit (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — (Experimental) The revision(s) to use as parent for the new commit (can be repeated to create a merge commit)
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — (Experimental) The revision(s) to insert the new commit after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — (Experimental) The revision(s) to insert the new commit before (can be repeated to create a merge commit)
 * `-m`, `--message <MESSAGE>` — The description to use for squashed revision (don't open editor)

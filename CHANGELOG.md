@@ -80,6 +80,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   conflict came from (currently this is only supported for conflicts created by
   certain commands).
 
+* `jj config get` gained a `--allow-missing` option that suppresses the error
+  when the desired key is not in the config. Instead, the command returns
+  nothing, successfully. This is intended for scripting and external tools.
+
+
+* `--insert-before` now accepts a revset that resolves to an empty set when
+  used with `--insert-after`. The behavior is similar to `--onto`.
 ### Fixed bugs
 
 * Broken symlink on Windows. [#6934](https://github.com/jj-vcs/jj/issues/6934).
@@ -89,6 +96,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 * `jj gerrit upload` now correctly handles mixed explicit and implicit
   Change-Ids in chains of commits ([#8219](https://github.com/jj-vcs/jj/pull/8219))
+
+* Fixed problem of loading large Git packfiles.
+  https://github.com/GitoxideLabs/gitoxide/issues/2265
 
 ## [0.36.0] - 2025-12-03
 

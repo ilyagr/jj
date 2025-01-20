@@ -107,9 +107,11 @@ pub struct DiffFormatArgs {
     /// For each path, show only whether it was modified, added, or deleted
     #[arg(long, short)]
     pub summary: bool,
+
     /// Show a histogram of the changes
     #[arg(long)]
     pub stat: bool,
+
     /// For each path, show only its type before and after
     ///
     /// The diff is shown as two letters. The first letter indicates the type
@@ -119,27 +121,30 @@ pub struct DiffFormatArgs {
     /// Git submodule.
     #[arg(long)]
     pub types: bool,
+
     /// For each path, show only its path
     ///
     /// Typically useful for shell commands like:
     ///    `jj diff -r @- --name-only | xargs perl -pi -e's/OLD/NEW/g`
     #[arg(long)]
     pub name_only: bool,
+
     /// Show a Git-format diff
     #[arg(long)]
     pub git: bool,
+
     /// Show a word-level diff with changes indicated only by color
     #[arg(long)]
     pub color_words: bool,
+
     /// Generate diff by external command
     ///
     /// A builtin format can also be specified as `:<name>`. For example,
     /// `--tool=:git` is equivalent to `--git`.
-    #[arg(
-        long,
-        add = ArgValueCandidates::new(crate::complete::diff_formatters),
-    )]
+    #[arg(long)]
+    #[arg(add = ArgValueCandidates::new(crate::complete::diff_formatters))]
     pub tool: Option<String>,
+
     /// Number of lines of context to show
     #[arg(long)]
     context: Option<usize>,
@@ -148,6 +153,7 @@ pub struct DiffFormatArgs {
     /// Ignore whitespace when comparing lines.
     #[arg(long)] // short = 'w'
     ignore_all_space: bool,
+
     /// Ignore changes in amount of whitespace when comparing lines.
     #[arg(long, conflicts_with = "ignore_all_space")] // short = 'b'
     ignore_space_change: bool,
@@ -920,7 +926,7 @@ fn show_color_words_unresolved_hunk(
         let contents = Diff::new(left_content, right_content);
         let labels = match positive {
             true => labels,
-            false => Diff::new(labels.after, labels.before),
+            false => labels.invert(),
         };
         // Individual hunk pair may be largely the same, so diff it again.
         let new_line_number =
@@ -1321,9 +1327,9 @@ fn diff_content_with<T>(
             is_binary: false,
             contents: map_conflict(file.contents, file.labels),
         }),
-        MaterializedTreeValue::OtherConflict { id } => Ok(FileContent {
+        MaterializedTreeValue::OtherConflict { id, labels } => Ok(FileContent {
             is_binary: false,
-            contents: map_resolved(id.describe().into()),
+            contents: map_resolved(id.describe(&labels).into()),
         }),
         MaterializedTreeValue::Tree(id) => {
             panic!("Unexpected tree with id {id:?} in diff at path {path:?}");
