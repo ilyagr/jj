@@ -39,6 +39,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `.jj/workspace-config.toml`. `jj config` subcommands which took layer options like
   `--repo` now also support `--workspace`.
 
+* `jj squash` now has a `--restore-descendants` option to preserve the snapshots
+  of the children of the modified commits.
+
 * `jj bisect run` accepts the command and arguments to pass to the command
   directly as positional arguments, such as
   `jj bisect --range=..main -- cargo check --all-targets`.
