@@ -114,7 +114,7 @@ impl Default for ExternalMergeTool {
             merge_conflict_exit_codes: vec![],
             merge_tool_edits_conflict_markers: false,
             conflict_marker_style: None,
-            diff_do_chdir: true,
+            diff_do_chdir: false,
             diff_invocation_mode: DiffToolMode::Dir,
         }
     }
