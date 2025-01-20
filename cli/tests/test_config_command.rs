@@ -971,11 +971,6 @@ fn test_config_edit_user_deprecated_file() {
     insta::assert_snapshot!(output, @r"
     Make sure I can pick this up
     [EOF]
-    ------- stderr -------
-    Warning: Deprecated configuration file `$TEST_ENV/home/Library/Application Support/jj/config.toml`.
-    Configuration files in `~/Library/Application Support/jj` are deprecated, and support will be removed in a future release.
-    Instead, move your configuration files to `~/.config/jj`.
-    [EOF]
     ");
 
     // if you set JJ_CONFIG, you shouldn't get a warning
