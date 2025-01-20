@@ -896,6 +896,15 @@ Lists the previous commits which a change has pointed to. The current commit of 
 * `-p`, `--patch` — Show patch compared to the previous version of this change
 
    If the previous version has different parents, it will be temporarily rebased to the parents of the new version, so the diff is not contaminated by unrelated changes.
+* `--diff-snapshots` — Changes the behavior of `--patch`, `--git`, etc to show diffs from rebases
+
+   Implies `--patch` if no other diff format is requested.
+
+   Normally, `jj evolog -p` shows a so-called "interdiff", temporarily rebasing the versions of a revision to the same parents, in order to omit differences in the file contents that are caused by rebases.
+
+   This option disables this behavior, and shows diffs between the contents of the different versions without modification (as snapshots).
+
+   Sometimes, `--diff-snapshots` can show fewer differences to be shown. For example, let's say the current revision is not empty and we perform `jj squash --keep-empty -r @` to make it empty. Then, `jj evolog -p --diff-snapshots` will not show any changes since the contents of the files in the current revision did not change. However, `jj evolog -p` will show a change, representing the fact that a non-empty revision became empty.
 * `-s`, `--summary` — For each path, show only whether it was modified, added, or deleted
 * `--stat` — Show a histogram of the changes
 * `--types` — For each path, show only its type before and after
@@ -2494,6 +2503,11 @@ If a working-copy commit gets abandoned, it will be given a new, empty commit. T
 * `-i`, `--interactive` — Interactively choose which parts to squash
 * `--tool <NAME>` — Specify diff editor to be used (implies --interactive)
 * `-k`, `--keep-emptied` — The source revision will not be abandoned
+* `--restore-descendants` — Preserve the content (not the diff) when rebasing descendants of the source and target commits
+
+   Only the snapshots of the `--from` and the `--into` commits will be modified.
+
+   If you'd like to preserve the content of *only* the target's descendants (or *only* the source's), consider using `jj rebase -r` or `jj duplicate` before squashing.
 
 
 

@@ -61,10 +61,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   [`templates.draft_commit_description`](docs/config.md#default-description),
   and/or [`templates.commit_trailers`](docs/config.md#commit-trailers).
 
-* On macOS, config.toml files in `~/Library/Application Support/jj` are
-  deprecated; one should instead use `$XDG_CONFIG_HOME/jj`
-  (defaults to `~/.config/jj`)
-
 ### New features
 
 * Color-words diff has gained [an option to compare conflict pairs without
@@ -261,6 +257,9 @@ Thanks to the people who made this release happen!
 
 * The 'how to resolve conflicts' hint that is shown when conflicts appear can
   be hidden by setting `hints.resolving-conflicts = false`.
+
+* `jj squash` now has a `--restore-descendants` option to preserve the snapshots
+  of the children of the modified commits.
 
 * `jj op diff` and `jj op log --op-diff` now show changes to which commits
   correspond to working copies.
