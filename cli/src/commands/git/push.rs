@@ -174,8 +174,10 @@ pub struct GitPushArgs {
     /// '--named myfeature=@'.
     ///
     /// Does not require --allow-new
-    // TODO: Add arg completer
-    #[arg(long, value_name = "NAME=REVISION")]
+    #[arg(long, value_name = "NAME=REVISION",
+        // TODO
+        // add = ArgValueCompleter::new(complete::leaf_config_key_value))
+    )]
     named: Vec<String>,
     /// Only display what will change on the remote
     #[arg(long)]
