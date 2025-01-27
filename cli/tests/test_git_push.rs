@@ -956,6 +956,198 @@ fn test_git_push_changes(subprocess: bool) {
 
 #[test_case(false; "use git2 for remote calls")]
 #[test_case(true; "spawn a git subprocess for remote calls")]
+fn test_git_push_changes_with_name(subprocess: bool) {
+    let (test_env, workspace_root) = set_up();
+    if subprocess {
+        test_env.add_config("git.subprocess = true");
+    }
+    test_env.jj_cmd_ok(&workspace_root, &["describe", "-m", "foo"]);
+    std::fs::write(workspace_root.join("file"), "contents").unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["new", "-m", "bar"]);
+    std::fs::write(workspace_root.join("file"), "modified").unwrap();
+
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &["git", "push", "--change", "@", "--name", "b1"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Creating bookmark b1 for revision yostqsxwqrlt
+    Changes to push to origin:
+      Add bookmark b1 to cf1a53a8800a
+    ");
+    }
+    // test pushing the same change with the same name again
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &["git", "push", "--change", "@", "--name", "b1"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Bookmark b1@origin already matches b1
+    Nothing changed.
+    ");
+    }
+    // test pushing another change with the same name (should error)
+    // TODO: push child
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &["git", "push", "--change", "@-", "--name", "b1"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Changes to push to origin:
+      Move backward bookmark b1 from cf1a53a8800a to a050abf4ff07
+    ");
+    }
+
+    // test pushing two changes at once
+    std::fs::write(workspace_root.join("file"), "modified2").unwrap();
+    let stderr =
+        test_env.jj_cmd_failure(&workspace_root, &["git", "push", "-c=(@|@-)", "--name=b2"]);
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Error: Revset `(@|@-)` resolved to more than one revision
+    Hint: The revset `(@|@-)` resolved to these revisions:
+      yostqsxw b9a55824 bar
+      yqosqzyt a050abf4 b1 | foo
+    Hint: When --name is used, only a single --change revision is accepted
+    ");
+    }
+    // test pushing two changes at once, part 2
+    let stderr = test_env.jj_cmd_failure(
+        &workspace_root,
+        &["git", "push", "-c=all:(@|@-)", "--name=b2"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Error: Revset `all:(@|@-)` resolved to more than one revision
+    Hint: The revset `all:(@|@-)` resolved to these revisions:
+      yostqsxw b9a55824 bar
+      yqosqzyt a050abf4 b1 | foo
+    Hint: When --name is used, only a single --change revision is accepted
+    ");
+    }
+
+    // specifying the same bookmark with --change/--bookmark doesn't break things
+    std::fs::write(workspace_root.join("file"), "modified4").unwrap();
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &["git", "push", "-c=@", "--name=b2", "-b=b2"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Creating bookmark b2 for revision yostqsxwqrlt
+    Changes to push to origin:
+      Add bookmark b2 to ff3b7c0e64b6
+    ");
+    }
+
+    /*
+
+    // try again with --change that moves the bookmark forward
+    std::fs::write(workspace_root.join("file"), "modified5").unwrap();
+    test_env.jj_cmd_ok(
+        &workspace_root,
+        &[
+            "bookmark",
+            "set",
+            "-r=@-",
+            "--allow-backwards",
+            "push-yostqsxwqrlt",
+        ],
+    );
+    let stdout = test_env.jj_cmd_success(&workspace_root, &["status"]);
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @r###"
+    Working copy changes:
+    M file
+    Working copy : yostqsxw 38cb417c bar
+    Parent commit: yqosqzyt a050abf4 push-yostqsxwqrlt* push-yqosqzytrlsw | foo
+    "###);
+    }
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &["git", "push", "-c=@", "-b=push-yostqsxwqrlt"],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r#"
+    Changes to push to origin:
+      Move sideways bookmark push-yostqsxwqrlt from c1e65d3a64ce to 38cb417ce3a6
+    "#);
+    }
+    let stdout = test_env.jj_cmd_success(&workspace_root, &["status"]);
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @r###"
+    Working copy changes:
+    M file
+    Working copy : yostqsxw 38cb417c push-yostqsxwqrlt | bar
+    Parent commit: yqosqzyt a050abf4 push-yqosqzytrlsw | foo
+    "###);
+    }
+
+    // Test changing `git.push-bookmark-prefix`. It causes us to push again.
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &[
+            "git",
+            "push",
+            "--config=git.push-bookmark-prefix=test-",
+            "--change=@",
+        ],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r#"
+    Creating bookmark test-yostqsxwqrlt for revision yostqsxwqrlt
+    Changes to push to origin:
+      Add bookmark test-yostqsxwqrlt to 38cb417ce3a6
+    "#);
+    }
+
+    // Test deprecation warning for `git.push-branch-prefix`
+    let (stdout, stderr) = test_env.jj_cmd_ok(
+        &workspace_root,
+        &[
+            "git",
+            "push",
+            "--config=git.push-branch-prefix=branch-",
+            "--change=@",
+        ],
+    );
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r"
+    Warning: Deprecated config: git.push-branch-prefix is renamed to git.push-bookmark-prefix
+    Creating bookmark branch-yostqsxwqrlt for revision yostqsxwqrlt
+    Changes to push to origin:
+      Add bookmark branch-yostqsxwqrlt to 38cb417ce3a6
+    ");
+    }
+    */
+}
+
+#[test_case(false; "use git2 for remote calls")]
+#[test_case(true; "spawn a git subprocess for remote calls")]
 fn test_git_push_revisions(subprocess: bool) {
     let (test_env, workspace_root) = set_up();
     if !subprocess {

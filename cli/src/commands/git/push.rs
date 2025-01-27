@@ -167,6 +167,14 @@ pub struct GitPushArgs {
         add = ArgValueCandidates::new(complete::mutable_revisions)
     )]
     change: Vec<RevisionArg>,
+    /// Specify bookmark name for a change pushed with --change instead of an
+    /// auto-generated name
+    ///
+    /// Requires the revset from `--change` to expand to exactly one revision.
+    // TODO(ilyagr): we can allow this to be repeated, as long as there is one `name` per `change`
+    // and each `change` expands to one revision.
+    #[arg(long, requires = "change")]
+    name: Option<String>,
     /// Only display what will change on the remote
     #[arg(long)]
     dry_run: bool,
@@ -246,8 +254,13 @@ pub fn cmd_git_push(
 
         // Process --change bookmarks first because matching bookmarks can be moved.
         let bookmark_prefix = tx.settings().get_string("git.push-bookmark-prefix")?;
-        let change_bookmark_names =
-            update_change_bookmarks(ui, &mut tx, &args.change, &bookmark_prefix)?;
+        let change_bookmark_names = update_change_bookmarks(
+            ui,
+            &mut tx,
+            &args.change,
+            args.name.as_ref(),
+            &bookmark_prefix,
+        )?;
         let change_bookmarks = change_bookmark_names.iter().map(|bookmark_name| {
             let targets = LocalAndRemoteRef {
                 local_target: tx.repo().view().get_local_bookmark(bookmark_name),
@@ -677,9 +690,10 @@ fn update_change_bookmarks(
     ui: &Ui,
     tx: &mut WorkspaceCommandTransaction,
     changes: &[RevisionArg],
+    name: Option<&String>,
     bookmark_prefix: &str,
 ) -> Result<Vec<String>, CommandError> {
-    if changes.is_empty() {
+    if changes.is_empty() && name.is_none() {
         // NOTE: we don't want resolve_some_revsets_default_single to fail if the
         // changes argument wasn't provided, so handle that
         return Ok(vec![]);
@@ -687,24 +701,38 @@ fn update_change_bookmarks(
 
     let mut bookmark_names = Vec::new();
     let workspace_command = tx.base_workspace_helper();
-    let all_commits = workspace_command.resolve_some_revsets_default_single(ui, changes)?;
+    let all_commits = if name.is_some() {
+        let err_text = "When --name is used, only a single --change revision is accepted";
+        if changes.len() != 1 {
+            return Err(user_error(err_text));
+        }
+        [workspace_command
+            .resolve_single_rev(ui, &changes[0])
+            .map_err(|err| err.hinted(err_text))?]
+        .into()
+    } else {
+        workspace_command.resolve_some_revsets_default_single(ui, changes)?
+    };
 
     for commit in all_commits {
         let workspace_command = tx.base_workspace_helper();
         let short_change_id = short_change_hash(commit.change_id());
-        let mut bookmark_name = format!("{bookmark_prefix}{}", commit.change_id().hex());
         let view = tx.base_repo().view();
-        if view.get_local_bookmark(&bookmark_name).is_absent() {
-            // A local bookmark with the full change ID doesn't exist already, so use the
-            // short ID if it's not ambiguous (which it shouldn't be most of the time).
-            if workspace_command
-                .resolve_single_rev(ui, &RevisionArg::from(short_change_id.clone()))
-                .is_ok()
-            {
-                // Short change ID is not ambiguous, so update the bookmark name to use it.
-                bookmark_name = format!("{bookmark_prefix}{short_change_id}");
+        let bookmark_name = name.cloned().unwrap_or_else(|| {
+            let mut name = format!("{bookmark_prefix}{}", commit.change_id().hex());
+            if view.get_local_bookmark(&name).is_absent() {
+                // A local bookmark with the full change ID doesn't exist already, so use the
+                // short ID if it's not ambiguous (which it shouldn't be most of the time).
+                if workspace_command
+                    .resolve_single_rev(ui, &RevisionArg::from(short_change_id.clone()))
+                    .is_ok()
+                {
+                    // Short change ID is not ambiguous, so update the bookmark name to use it.
+                    name = format!("{bookmark_prefix}{short_change_id}");
+                };
             };
-        }
+            name
+        });
         if view.get_local_bookmark(&bookmark_name).is_absent() {
             writeln!(
                 ui.status(),
