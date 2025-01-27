@@ -1065,6 +1065,103 @@ fn test_git_push_changes_with_name_untracked_or_forgotten(subprocess: bool) {
     test_env.jj_cmd_ok(&workspace_root, &["bookmark", "untrack", "b1@origin"]);
     test_env.jj_cmd_ok(&workspace_root, &["bookmark", "delete", "b1"]);
 
+    let (stdout, stderr) = test_env.jj_cmd_ok(&workspace_root, &["op", "log", "-p"]);
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stdout, @r"
+    @  cf062f4ec463 test-username@host.example.com 2001-02-03 04:05:20.000 +07:00 - 2001-02-03 04:05:20.000 +07:00
+    │  delete bookmark b1
+    │  args: jj bookmark delete b1
+    │
+    │  Changed local bookmarks:
+    │  b1:
+    │  + (absent)
+    │  - yostqsxw 5f432a85 b1@origin | bar
+    ○  5ae9e672d8ef test-username@host.example.com 2001-02-03 04:05:19.000 +07:00 - 2001-02-03 04:05:19.000 +07:00
+    │  untrack remote bookmark b1@origin
+    │  args: jj bookmark untrack b1@origin
+    │
+    │  Changed remote bookmarks:
+    │  b1@origin:
+    │  + untracked yostqsxw 5f432a85 b1 b1@origin | bar
+    │  - tracked yostqsxw 5f432a85 b1 b1@origin | bar
+    ○  e37304b9578a test-username@host.example.com 2001-02-03 04:05:18.000 +07:00 - 2001-02-03 04:05:18.000 +07:00
+    │  push bookmark b1 to git remote origin
+    │  args: jj git push --named 'b1=@'
+    │
+    │  Changed local bookmarks:
+    │  b1:
+    │  + yostqsxw 5f432a85 b1 | bar
+    │  - (absent)
+    │
+    │  Changed remote bookmarks:
+    │  b1@origin:
+    │  + tracked yostqsxw 5f432a85 b1 | bar
+    │  - untracked (absent)
+    ○  2086834cdfd0 test-username@host.example.com 2001-02-03 04:05:17.000 +07:00 - 2001-02-03 04:05:17.000 +07:00
+    │  snapshot working copy
+    │  args: jj log '-r=::'
+    │
+    │  Changed commits:
+    │  ○  + yostqsxw 5f432a85 bar
+    │     - yostqsxw hidden 22079949 (empty) bar
+    │     Modified regular file file:
+    │        1    1: contentsmodified
+    ○  730082242b4e test-username@host.example.com 2001-02-03 04:05:15.000 +07:00 - 2001-02-03 04:05:15.000 +07:00
+    │  new empty commit
+    │  args: jj new -m bar
+    │
+    │  Changed commits:
+    │  ○  + yostqsxw 22079949 (empty) bar
+    ○  9c505211b791 test-username@host.example.com 2001-02-03 04:05:15.000 +07:00 - 2001-02-03 04:05:15.000 +07:00
+    │  snapshot working copy
+    │  args: jj new -m bar
+    │
+    │  Changed commits:
+    │  ○  + yqosqzyt a050abf4 foo
+    │     - yqosqzyt hidden 7283b790 (empty) foo
+    │     Added regular file file:
+    │             1: contents
+    ○  77ae00595ce8 test-username@host.example.com 2001-02-03 04:05:14.000 +07:00 - 2001-02-03 04:05:14.000 +07:00
+    │  describe commit 5b36783cd11c4607a329c5e8c2fd9097c9ce2add
+    │  args: jj describe -m foo
+    │
+    │  Changed commits:
+    │  ○  + yqosqzyt 7283b790 (empty) foo
+    │     - yqosqzyt hidden 5b36783c (empty) (no description set)
+    ○  fe4c5d5aac11 test-username@host.example.com 2001-02-03 04:05:13.000 +07:00 - 2001-02-03 04:05:13.000 +07:00
+    │  fetch from git remote into empty repo
+    │  args: jj git clone '--config=git.auto-local-bookmark=true' $TEST_ENV/origin/.jj/repo/store/git local
+    │
+    │  Changed commits:
+    │  ○  + rlzusymt 8476341e bookmark2 | (empty) description 2
+    │  ○  + xtvrqkyv d13ecdbd bookmark1 | (empty) description 1
+    │
+    │  Changed local bookmarks:
+    │  bookmark1:
+    │  + xtvrqkyv d13ecdbd bookmark1 | (empty) description 1
+    │  - (absent)
+    │  bookmark2:
+    │  + rlzusymt 8476341e bookmark2 | (empty) description 2
+    │  - (absent)
+    │
+    │  Changed remote bookmarks:
+    │  bookmark1@origin:
+    │  + tracked xtvrqkyv d13ecdbd bookmark1 | (empty) description 1
+    │  - untracked (absent)
+    │  bookmark2@origin:
+    │  + tracked rlzusymt 8476341e bookmark2 | (empty) description 2
+    │  - untracked (absent)
+    ○  6f5937a7bd96 test-username@host.example.com 2001-02-03 04:05:13.000 +07:00 - 2001-02-03 04:05:13.000 +07:00
+    │  add workspace 'default'
+    │
+    │  Changed commits:
+    │  ○  + yqosqzyt 5b36783c (empty) (no description set)
+    ○  000000000000 root()
+    ");    }
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @"");
+    }
+
     let (stdout, stderr) =
         test_env.jj_cmd_ok(&workspace_root, &["bookmark", "list", "--all", "b1"]);
     insta::allow_duplicates! {
