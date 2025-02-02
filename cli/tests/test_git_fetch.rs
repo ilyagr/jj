@@ -412,7 +412,15 @@ fn test_git_fetch_from_remote_named_git(subprocess: bool) {
     // (This could be warning if we add mechanism to report ignored refs.)
     }
     insta::allow_duplicates! {
-    insta::assert_snapshot!(test_env.jj_cmd_failure(&repo_path, &["git", "import"]), @"");
+    insta::assert_snapshot!(test_env.jj_cmd_failure(&repo_path, &["git", "import"]), @r"
+    Error: Failed to import refs from underlying Git repo
+    Caused by: Git remote named 'git' is reserved for local Git repository
+    Hint: Run `jj git remote rename` to give different name.
+    ");r"
+    Error: Failed to import refs from underlying Git repo
+    Caused by: Git remote named 'git' is reserved for local Git repository
+    Hint: Run `jj git remote rename` to give different name.
+    "
     }
 
     // The remote can be renamed, and the ref can be imported.
@@ -891,7 +899,27 @@ fn test_git_fetch_some_of_many_bookmarks(subprocess: bool) {
     "###);
     }
     insta::allow_duplicates! {
-    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @"Nothing changed.");
+    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
+    @  230dd059e1b0
+    │ ○  decaa3966c83 descr_for_a2 a2
+    │ │ ○  359a9a02457d descr_for_a1 a1
+    │ ├─╯
+    │ │ ○  c7d4bdcbc215 descr_for_b b
+    │ ├─╯
+    │ ○  ff36dc55760e descr_for_trunk1
+    ├─╯
+    ◆  000000000000
+    ");r"
+    @  230dd059e1b0
+    │ ○  decaa3966c83 descr_for_a2 a2
+    │ │ ○  359a9a02457d descr_for_a1 a1
+    │ ├─╯
+    │ │ ○  c7d4bdcbc215 descr_for_b b
+    │ ├─╯
+    │ ○  ff36dc55760e descr_for_trunk1
+    ├─╯
+    ◆  000000000000
+    "
     }
 
     // ==== Change both repos ====
@@ -1195,8 +1223,13 @@ fn test_git_fetch_undo(subprocess: bool) {
     }
     insta::allow_duplicates! {
     insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
-    bookmark: a1@origin [new] tracked
-    bookmark: b@origin  [new] tracked
+    @  230dd059e1b0
+    │ ○  c7d4bdcbc215 descr_for_b b
+    │ │ ○  359a9a02457d descr_for_a1 a1
+    │ ├─╯
+    │ ○  ff36dc55760e descr_for_trunk1
+    ├─╯
+    ◆  000000000000
     ");
     }
     let (stdout, stderr) = test_env.jj_cmd_ok(&target_jj_repo_path, &["undo"]);
@@ -1210,7 +1243,13 @@ fn test_git_fetch_undo(subprocess: bool) {
     }
     insta::allow_duplicates! {
     // The undo works as expected
-    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @"Undid operation: eb2029853b02 (2001-02-03 08:05:18) fetch from git remote(s) origin");
+    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
+    @  230dd059e1b0
+    ◆  000000000000
+    ");r"
+    @  230dd059e1b0
+    ◆  000000000000
+    "
     }
     // Now try to fetch just one bookmark
     let (stdout, stderr) =
@@ -1224,7 +1263,19 @@ fn test_git_fetch_undo(subprocess: bool) {
     "###);
     }
     insta::allow_duplicates! {
-    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @"bookmark: b@origin [new] tracked");
+    insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
+    @  230dd059e1b0
+    │ ○  c7d4bdcbc215 descr_for_b b
+    │ ○  ff36dc55760e descr_for_trunk1
+    ├─╯
+    ◆  000000000000
+    ");r"
+    @  230dd059e1b0
+    │ ○  c7d4bdcbc215 descr_for_b b
+    │ ○  ff36dc55760e descr_for_trunk1
+    ├─╯
+    ◆  000000000000
+    "
     }
 }
 
@@ -1585,8 +1636,13 @@ fn test_git_fetch_removed_bookmark(subprocess: bool) {
     }
     insta::allow_duplicates! {
     insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
-    bookmark: a2@origin [deleted] untracked
-    Abandoned 1 commits that are no longer reachable.
+    @  230dd059e1b0
+    │ ○  c7d4bdcbc215 descr_for_b b
+    │ │ ○  359a9a02457d descr_for_a1 a1
+    │ ├─╯
+    │ ○  ff36dc55760e descr_for_trunk1 trunk1
+    ├─╯
+    ◆  000000000000
     ");
     }
 }
