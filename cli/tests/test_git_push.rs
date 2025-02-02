@@ -131,6 +131,8 @@ fn test_git_push_current_bookmark(subprocess: bool) {
       Move forward bookmark bookmark2 from 8476341eb395 to bc7610b65a91
       Add bookmark my-bookmark to bc7610b65a91
     "#);
+    }
+    insta::allow_duplicates! {
     insta::assert_snapshot!(get_bookmark_output(&test_env, &workspace_root), @r###"
     bookmark1: xtvrqkyv 0f8dc656 (empty) modified bookmark1 commit
       @origin (ahead by 1 commits, behind by 1 commits): xtvrqkyv hidden d13ecdbd (empty) description 1
@@ -762,6 +764,8 @@ fn test_git_push_multiple(subprocess: bool) {
       Move sideways bookmark bookmark2 from 8476341eb395 to c4a3c3105d92
       Add bookmark my-bookmark to c4a3c3105d92
     "#);
+    }
+    insta::allow_duplicates! {
     insta::assert_snapshot!(get_bookmark_output(&test_env, &workspace_root), @r###"
     bookmark2: yqosqzyt c4a3c310 (empty) foo
       @origin: yqosqzyt c4a3c310 (empty) foo

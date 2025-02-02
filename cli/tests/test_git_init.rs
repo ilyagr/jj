@@ -151,6 +151,8 @@ fn test_git_init_external(bare: bool) {
     );
     insta::allow_duplicates! {
         insta::assert_snapshot!(stdout, @"");
+    }
+    insta::allow_duplicates! {
         insta::assert_snapshot!(stderr, @r###"
         Done importing changes from the underlying Git repo.
         Working copy now at: sqpuoqvx f6950fc1 (empty) (no description set)
