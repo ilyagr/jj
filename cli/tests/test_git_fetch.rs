@@ -416,11 +416,7 @@ fn test_git_fetch_from_remote_named_git(subprocess: bool) {
     Error: Failed to import refs from underlying Git repo
     Caused by: Git remote named 'git' is reserved for local Git repository
     Hint: Run `jj git remote rename` to give different name.
-    ");r"
-    Error: Failed to import refs from underlying Git repo
-    Caused by: Git remote named 'git' is reserved for local Git repository
-    Hint: Run `jj git remote rename` to give different name.
-    "
+    ");
     }
 
     // The remote can be renamed, and the ref can be imported.
@@ -897,7 +893,7 @@ fn test_git_fetch_some_of_many_bookmarks(subprocess: bool) {
     insta::assert_snapshot!(stderr, @r###"
     Nothing changed.
     "###);
-    }
+    };
     insta::allow_duplicates! {
     insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
     @  230dd059e1b0
@@ -909,17 +905,7 @@ fn test_git_fetch_some_of_many_bookmarks(subprocess: bool) {
     │ ○  ff36dc55760e descr_for_trunk1
     ├─╯
     ◆  000000000000
-    ");r"
-    @  230dd059e1b0
-    │ ○  decaa3966c83 descr_for_a2 a2
-    │ │ ○  359a9a02457d descr_for_a1 a1
-    │ ├─╯
-    │ │ ○  c7d4bdcbc215 descr_for_b b
-    │ ├─╯
-    │ ○  ff36dc55760e descr_for_trunk1
-    ├─╯
-    ◆  000000000000
-    "
+    ")
     }
 
     // ==== Change both repos ====
@@ -1246,10 +1232,7 @@ fn test_git_fetch_undo(subprocess: bool) {
     insta::assert_snapshot!(get_log_output(&test_env, &target_jj_repo_path), @r"
     @  230dd059e1b0
     ◆  000000000000
-    ");r"
-    @  230dd059e1b0
-    ◆  000000000000
-    "
+    ");
     }
     // Now try to fetch just one bookmark
     let (stdout, stderr) =
@@ -1269,13 +1252,7 @@ fn test_git_fetch_undo(subprocess: bool) {
     │ ○  ff36dc55760e descr_for_trunk1
     ├─╯
     ◆  000000000000
-    ");r"
-    @  230dd059e1b0
-    │ ○  c7d4bdcbc215 descr_for_b b
-    │ ○  ff36dc55760e descr_for_trunk1
-    ├─╯
-    ◆  000000000000
-    "
+    ");
     }
 }
 
