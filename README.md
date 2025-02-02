@@ -9,6 +9,10 @@
 [![Discord](https://img.shields.io/discord/968932220549103686.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/dkmfj3aGQN)
 [![IRC](https://img.shields.io/badge/irc-%23jujutsu-blue.svg)](https://web.libera.chat/?channel=#jujutsu)
 
+<figure>
+<img title="jj logo" src="docs/images/jj-logo.png" width=40%>
+</figure>
+
 **[Homepage] &nbsp;&nbsp;&bull;&nbsp;&nbsp;**
 **[Installation] &nbsp;&nbsp;&bull;&nbsp;&nbsp;**
 **[Getting Started] &nbsp;&nbsp;&bull;&nbsp;&nbsp;**
@@ -352,4 +356,7 @@ That said, **this is not a Google product**.
 ## License
 
 Jujutsu is available as Open Source Software, under the Apache 2.0 license. See
-[LICENSE](./LICENSE) for details about copyright and redistribution.
+[`LICENSE`](./LICENSE) for details about copyright and redistribution.
+
+The `jj` logo was contributed by J. Jennings and is licensed under a Creative
+Commons License, see [`docs/images/LICENSE`](docs/images/LICENSE).
