@@ -638,7 +638,7 @@ interface = "full-screen-clear-output"
 interface = "quit-quickly-or-clear-output"
 
 # Only relevant in the `quit-quickly-or-clear-output` mode
-quit-quickly-delay-millis = 2000 # (defaults to 2 seconds)
+long-or-slow-delay-seconds = 2.0 # (defaults to 2 seconds)
 ```
 
 

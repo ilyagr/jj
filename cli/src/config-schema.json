@@ -129,7 +129,7 @@
                             ],
                             "default": "anywhere"
                         },
-                        "long-or-slow-delay-millis": {
+                        "long-or-slow-delay-seconds": {
                             "type": "integer",
                             "description": "Maximum time to wait before rendering full-screen interface if `interfacequit-quickly-or-clear-output\"`",
                             "default": 2000

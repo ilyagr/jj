@@ -293,11 +293,11 @@ impl From<StreampagerWrappingMode> for streampager::config::WrappingMode {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Deserialize)]
 #[serde(rename_all(deserialize = "kebab-case"))]
 struct StreampagerConfig {
     interface: StreampagerAlternateScreenMode,
-    long_or_slow_delay_millis: u64,
+    long_or_slow_delay_seconds: f64,
     wrapping: StreampagerWrappingMode,
 }
 
@@ -310,7 +310,7 @@ impl StreampagerConfig {
             FullScreenClearOutput => InterfaceMode::FullScreen,
             QuitIfOnePage => InterfaceMode::Hybrid,
             QuitQuicklyOrClearOutput => InterfaceMode::Delayed(std::time::Duration::from_millis(
-                self.long_or_slow_delay_millis,
+                (self.long_or_slow_delay_seconds * 1000.0).round() as u64,
             )),
         }
     }

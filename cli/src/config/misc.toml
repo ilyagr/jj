@@ -43,7 +43,7 @@ edit = false
 
 [ui.streampager]
 interface = "quit-if-one-page"
-long-or-slow-delay-millis = 2000
+long-or-slow-delay-seconds = 2.0
 wrapping = "anywhere"
 
 [snapshot]
