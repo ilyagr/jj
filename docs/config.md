@@ -617,30 +617,28 @@ wrapping = "none"      # strip long lines, allow scrolling
                        # left and right like `less -S`
 ```
 
-#### Clearing the screen on startup or exit
+#### Auto-exit, clearing the screen on startup or exit
 
-You can configure whether the pager clears the screen on startup or exit.
+You can configure whether the pager clears the screen on startup or exit, and
+whether it quits automatically on short inputs. When the pager auto-quits,
+features like word-wrapping are disabled.
 
-When the pager is configured to leave the screen uncleared, and the entire input
-is known to fit on one screen, the pager will exit after printing the input,
-similarly to `less -F`. Features like word-wrapping are disabled in this case.
 
 ```toml
 [ui.streampager]
 # Do not clear screen on exit. Use a full-screen interface for
 # long output only. Like `less -FX`.
-alternate-screen = "never"  # (default).
-# Request an alternate screen from the terminal: always use a
-# full-screen interface, ask the terminal to clear the screen on
-# exit. Like `less +F +X`.
-alternate-screen = "always"
+interface = "quit-if-one-page"  # (default).
+# Always use a full-screen interface, ask the terminal to
+# clear the screen on exit. Like `less +F +X`.
+interface = "full-screen-clear-output"
 # Use the alternate screen if the input is either long or takes
-# more than `long-or-slow-delay-millis` to finish. Similar but not
+# more than `quit-quickly-delay-millis` to finish. Similar but not
 # identical to `less -F +X`
-alternate-screen = "if-long-or-slow"
+interface = "quit-quickly-or-clear-output"
 
-# Only relevant in the `if-long-or-slow` mode
-long-or-slow-delay-millis = 2000 # (defaults to 2 seconds)
+# Only relevant in the `quit-quickly-or-clear-output` mode
+quit-quickly-delay-millis = 2000 # (defaults to 2 seconds)
 ```
 
 

@@ -42,7 +42,7 @@ show-cryptographic-signatures = false
 edit = false
 
 [ui.streampager]
-clear-screen = "never"
+interface = "quit-if-one-page"
 long-or-slow-delay-millis = 2000
 wrapping = "anywhere"
 

@@ -111,12 +111,12 @@
                     "type": "object",
                     "description": "':builtin' (streampager-based) pager configuration",
                     "properties": {
-                        "clear-screen": {
-                            "description": "Whether to clear screen on startup/exit",
+                        "interface": {
+                            "description": "Whether to quit automatically, whether to clear screen on startup/exit",
                             "enum": [
-                                "never",
-                                "always",
-                                "if-long-or-slow"
+                                "quit-if-one-page",
+                                "full-screen-clear-output",
+                                "quit-quickly-or-clear-output"
                             ],
                             "default": "never"
                         },
@@ -131,7 +131,7 @@
                         },
                         "long-or-slow-delay-millis": {
                             "type": "integer",
-                            "description": "Maximum time to wait before rendering full-screen interface if `clear-screen=\"if-long-or-slow\"`",
+                            "description": "Maximum time to wait before rendering full-screen interface if `interfacequit-quickly-or-clear-output\"`",
                             "default": 2000
                         }
                     }

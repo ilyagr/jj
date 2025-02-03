@@ -89,8 +89,8 @@ impl UiOutput {
         pager.set_interface_mode(config.streampager_interface_mode());
         // We could make scroll-past-eof configurable, but I'm guessing people
         // will not miss it. If we do make it configurable, we should mention
-        // that it's a bad idea to turn this on if `clear-screen=never`, as
-        // it can leave a lot of empty lines on the screen after exiting.
+        // that it's a bad idea to turn this on if `interface=quit-if-one-page`,
+        // as it can leave a lot of empty lines on the screen after exiting.
         pager.set_scroll_past_eof(false);
 
         // Use native pipe, which can be attached to child process. The stdout
@@ -269,9 +269,9 @@ pub enum PaginationChoice {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
 #[serde(rename_all(deserialize = "kebab-case"))]
 pub enum StreampagerAlternateScreenMode {
-    Always,
-    Never,
-    IfLongOrSlow,
+    QuitIfOnePage,
+    FullScreenClearOutput,
+    QuitQuicklyOrClearOutput,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
@@ -296,7 +296,7 @@ impl From<StreampagerWrappingMode> for streampager::config::WrappingMode {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Deserialize)]
 #[serde(rename_all(deserialize = "kebab-case"))]
 struct StreampagerConfig {
-    clear_screen: StreampagerAlternateScreenMode,
+    interface: StreampagerAlternateScreenMode,
     long_or_slow_delay_millis: u64,
     wrapping: StreampagerWrappingMode,
 }
@@ -305,11 +305,11 @@ impl StreampagerConfig {
     fn streampager_interface_mode(&self) -> streampager::config::InterfaceMode {
         use streampager::config::InterfaceMode;
         use StreampagerAlternateScreenMode::*;
-        match self.clear_screen {
+        match self.interface {
             // InterfaceMode::Direct not implemented
-            Always => InterfaceMode::FullScreen,
-            Never => InterfaceMode::Hybrid,
-            IfLongOrSlow => InterfaceMode::Delayed(std::time::Duration::from_millis(
+            FullScreenClearOutput => InterfaceMode::FullScreen,
+            QuitIfOnePage => InterfaceMode::Hybrid,
+            QuitQuicklyOrClearOutput => InterfaceMode::Delayed(std::time::Duration::from_millis(
                 self.long_or_slow_delay_millis,
             )),
         }
