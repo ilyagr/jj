@@ -567,6 +567,7 @@ jj currently does not support partial clones. To use jj with this repository, tr
                     "Try fetching from the remote, then make the bookmark point to where you want \
                      it to be, and push again.",
                 ),
+                GitPushError::BranchesWithInvalidCharacters(_) => user_error(err),
                 GitPushError::RefUpdateRejected(_) => user_error(err),
                 GitPushError::InternalGitError(err) => map_git2_error(err),
                 GitPushError::Subprocess(_) => user_error(err),

@@ -1072,6 +1072,25 @@ fn test_git_push_revisions(subprocess: bool) {
 
 #[test_case(false; "use git2 for remote calls")]
 #[test_case(true; "spawn a git subprocess for remote calls")]
+fn test_git_push_bookmark_with_spaces(subprocess: bool) {
+    let (test_env, workspace_root) = set_up();
+    if !subprocess {
+        test_env.add_config("git.subprocess = false");
+    }
+    test_env.jj_cmd_ok(&workspace_root, &["describe", "-m", "foo"]);
+    std::fs::write(workspace_root.join("file"), "contents").unwrap();
+    test_env.jj_cmd_ok(&workspace_root, &["new", "-m", "bar"]);
+    test_env.jj_cmd_ok(&workspace_root, &["bookmark", "create", "b 1"]);
+
+    let stderr =
+        test_env.jj_cmd_failure(&workspace_root, &["git", "push", "--allow-new", "-b=b 1"]);
+    insta::allow_duplicates! {
+    insta::assert_snapshot!(stderr, @r#"Error: Branch name contains invalid characters: ["b 1"]"#);
+    }
+}
+
+#[test_case(false; "use git2 for remote calls")]
+#[test_case(true; "spawn a git subprocess for remote calls")]
 fn test_git_push_mixed(subprocess: bool) {
     let (test_env, workspace_root) = set_up();
     if !subprocess {
