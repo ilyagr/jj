@@ -1854,6 +1854,8 @@ pub enum GitPushError {
     RefInUnexpectedLocation(Vec<String>),
     #[error("Remote rejected the update of some refs (do you have permission to push to {0:?}?)")]
     RefUpdateRejected(Vec<String>),
+    #[error("Branch name contains invalid characters: {0:?}")]
+    BranchesWithInvalidCharacters(Vec<String>),
     // TODO: I'm sure there are other errors possible, such as transport-level errors,
     // and errors caused by the remote rejecting the push.
     #[error("Unexpected git error when pushing")]
@@ -1877,6 +1879,28 @@ pub struct GitRefUpdate {
     /// This is sourced from the local remote-tracking branch.
     pub expected_current_target: Option<CommitId>,
     pub new_target: Option<CommitId>,
+}
+
+pub fn validate_branches(
+    branch_updates: &[(String, BookmarkPushUpdate)],
+) -> Result<(), GitPushError> {
+    let mut invalid_branches = vec![];
+
+    for (branch_name, _update) in branch_updates {
+        let qualified_name = format!("refs/heads/{branch_name}");
+        let maybe_ref: Result<gix::refs::FullName, _> = qualified_name.try_into();
+        if let Err(_err) = maybe_ref {
+            invalid_branches.push(branch_name.to_string());
+        }
+    }
+
+    if invalid_branches.is_empty() {
+        Ok(())
+    } else {
+        Err(GitPushError::BranchesWithInvalidCharacters(
+            invalid_branches,
+        ))
+    }
 }
 
 /// Pushes the specified branches and updates the repo view accordingly.

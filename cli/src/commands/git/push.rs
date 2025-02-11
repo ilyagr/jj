@@ -322,6 +322,7 @@ pub fn cmd_git_push(
         writeln!(ui.status(), "Nothing changed.")?;
         return Ok(());
     }
+    git::validate_branches(&bookmark_updates)?;
 
     let sign_behavior = if tx.settings().get_bool("git.sign-on-push")? {
         Some(SignBehavior::Own)
