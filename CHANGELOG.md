@@ -28,7 +28,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `jj bookmark forget` now untracks any corresponding remote bookmarks instead
   of forgetting them, since forgetting a remote bookmark can be unintuitive.
   The old behavior is still available with the new `--include-remotes` flag.
- 
+
 * `jj split` no longer moves bookmarks to the second revision created by the
   split. Instead, local bookmarks associated with the target revision will move
   to the first revision created by the split (which inherits the target
@@ -78,6 +78,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 * Templates now have `format_short_operation_id(id)` function for users to
   customize the default operation id representation.
+
+* A minimal version of `jj run` was implemented.
+  Follow [#1869](https://github.com/jj-vcs/issues/1869) for further
+  improvements.
 
 * Help text is now colored (when stdout is a terminal).
 
