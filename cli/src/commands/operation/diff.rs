@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -277,6 +278,39 @@ pub fn show_op_diff(
         }
     }
 
+    let changed_working_copies = get_changed_working_copies(from_repo, to_repo);
+    if !changed_working_copies.is_empty() {
+        let as_ref_target = |maybe_commit: Option<CommitId>| {
+            maybe_commit.map_or(RefTarget::absent(), RefTarget::normal)
+        };
+        writeln!(formatter)?;
+        for (name, (from_commit, to_commit)) in changed_working_copies {
+            with_content_format.write(formatter, |formatter| {
+                // Usually, there is at most one working copy changed per commit, so we put the
+                // working copy name in the heading.
+                write!(formatter, "Changed working copy ")?;
+                write!(formatter.labeled("working_copies"), "{name}@")?;
+                writeln!(formatter, ":")?;
+                write_ref_target_summary(
+                    formatter,
+                    current_repo,
+                    commit_summary_template,
+                    &as_ref_target(to_commit),
+                    true,
+                    None,
+                )?;
+                write_ref_target_summary(
+                    formatter,
+                    current_repo,
+                    commit_summary_template,
+                    &as_ref_target(from_commit),
+                    false,
+                    None,
+                )
+            })?;
+        }
+    }
+
     let changed_local_bookmarks = diff_named_ref_targets(
         from_repo.view().local_bookmarks(),
         to_repo.view().local_bookmarks(),
@@ -484,6 +518,40 @@ fn get_parent_changes(
             .unique()
             .collect_vec()
     }
+}
+
+fn get_changed_working_copies(
+    from_repo: &Arc<ReadonlyRepo>,
+    to_repo: &Arc<ReadonlyRepo>,
+) -> BTreeMap<String, (Option<CommitId>, Option<CommitId>)> {
+    let old_working_copies = from_repo.view().wc_commit_ids();
+    let new_working_copies = to_repo.view().wc_commit_ids();
+    itertools::merge_join_by(
+        old_working_copies
+            .iter()
+            .map(|(wid, val)| (wid.as_str(), val)),
+        new_working_copies
+            .iter()
+            .map(|(wid, val)| (wid.as_str(), val)),
+        |(name1, _), (name2, _)| name1.cmp(name2),
+    )
+    .filter_map(move |entry| match entry {
+        itertools::EitherOrBoth::Both((name, old_target), (_, new_target)) => {
+            (old_target != new_target).then(|| {
+                (
+                    name.to_string(),
+                    (Some(old_target.clone()), Some(new_target.clone())),
+                )
+            })
+        }
+        itertools::EitherOrBoth::Left((name, deleted_target)) => {
+            Some((name.to_string(), (Some(deleted_target.clone()), None)))
+        }
+        itertools::EitherOrBoth::Right((name, added_target)) => {
+            Some((name.to_string(), (None, Some(added_target.clone()))))
+        }
+    })
+    .collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
