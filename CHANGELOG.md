@@ -91,6 +91,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `jj git fetch` now supports [string pattern syntax](docs/revsets.md#string-patterns)
   on `--remote` option and `git.fetch` configuration.
 
+* The `jj init` stub that prints an error is now an alias that can be overridden.
+
 ### Fixed bugs
 
 * `jj status` now shows untracked files under untracked directories.

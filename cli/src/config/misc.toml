@@ -5,6 +5,14 @@ amend = ["squash"]
 b = ["bookmark"]
 ci = ["commit"]
 unamend = ["unsquash"]
+init = [
+    "util",
+    "error",
+    "`jj init` is not defined by default. Perhaps you meant `jj git init`?",
+    "--hint",
+    """You can configure `aliases.init=["git", "init"]` if you always use the Git backend.""",
+    "--"
+]
 
 [diff.color-words]
 max-inline-alternation = 3

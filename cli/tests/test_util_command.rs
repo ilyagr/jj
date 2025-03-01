@@ -180,3 +180,33 @@ fn test_util_exec_fail() {
     [exit status: 1]
     ");
 }
+
+#[test]
+fn test_erroring_aliases() {
+    let test_env = TestEnvironment::default();
+    let output = test_env.run_jj_in(".", ["init", "repo"]);
+    insta::assert_snapshot!(output, @r#"
+    ------- stderr -------
+    Error: `jj init` is not defined by default. Perhaps you meant `jj git init`?
+    Hint: You can configure `aliases.init=["git", "init"]` if you always use the Git backend.
+    [EOF]
+    [exit status: 1]
+    "#);
+    let output = test_env.run_jj_in(".", ["init", "--help"]);
+    insta::assert_snapshot!(output, @r#"
+    ------- stderr -------
+    Error: `jj init` is not defined by default. Perhaps you meant `jj git init`?
+    Hint: You can configure `aliases.init=["git", "init"]` if you always use the Git backend.
+    [EOF]
+    [exit status: 1]
+    "#);
+
+    // Test that `init` can be overridden as an alias. (We use `jj config get`
+    // as a command with a predictable output)
+    test_env.add_config(r#"aliases.init=["config", "get", "user.name"]"#);
+    let output = test_env.run_jj_in(".", ["init"]);
+    insta::assert_snapshot!(output, @r"
+    Test User
+    [EOF]
+    ");
+}
