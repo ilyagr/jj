@@ -14,6 +14,7 @@
 
 mod completion;
 mod config_schema;
+mod error;
 mod exec;
 mod gc;
 mod install_man_pages;
@@ -26,6 +27,8 @@ use self::completion::cmd_util_completion;
 use self::completion::UtilCompletionArgs;
 use self::config_schema::cmd_util_config_schema;
 use self::config_schema::UtilConfigSchemaArgs;
+use self::error::cmd_util_error;
+use self::error::UtilError;
 use self::exec::cmd_util_exec;
 use self::exec::UtilExecArgs;
 use self::gc::cmd_util_gc;
@@ -47,6 +50,7 @@ pub(crate) enum UtilCommand {
     Gc(UtilGcArgs),
     InstallManPages(UtilInstallManPagesArgs),
     MarkdownHelp(UtilMarkdownHelp),
+    Error(UtilError),
 }
 
 #[instrument(skip_all)]
@@ -62,5 +66,6 @@ pub(crate) fn cmd_util(
         UtilCommand::Gc(args) => cmd_util_gc(ui, command, args),
         UtilCommand::InstallManPages(args) => cmd_util_install_man_pages(ui, command, args),
         UtilCommand::MarkdownHelp(args) => cmd_util_markdown_help(ui, command, args),
+        UtilCommand::Error(args) => cmd_util_error(ui, command, args),
     }
 }

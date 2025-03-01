@@ -97,6 +97,7 @@ This document contains the help content for the `jj` command-line program.
 * [`jj util gc`↴](#jj-util-gc)
 * [`jj util install-man-pages`↴](#jj-util-install-man-pages)
 * [`jj util markdown-help`↴](#jj-util-markdown-help)
+* [`jj util error`↴](#jj-util-error)
 * [`jj undo`↴](#jj-undo)
 * [`jj unsign`↴](#jj-unsign)
 * [`jj version`↴](#jj-version)
@@ -2444,6 +2445,7 @@ Infrequently used commands such as for generating shell completions
 * `gc` — Run backend-dependent garbage collection
 * `install-man-pages` — Install Jujutsu's manpages to the provided path
 * `markdown-help` — Print the CLI help for all subcommands in Markdown
+* `error` — Show a custom error to the user and quit
 
 
 
@@ -2576,6 +2578,40 @@ Install Jujutsu's manpages to the provided path
 Print the CLI help for all subcommands in Markdown
 
 **Usage:** `jj util markdown-help`
+
+
+
+## `jj util error`
+
+Show a custom error to the user and quit
+
+Ignores any extraneous arguments.
+
+This is useful for handling deprecated commands:
+
+```toml
+aliases.deprecated_command = [
+  "util",
+  "error",
+  "--hint=Use cool_command!",
+  "`deprecated_command` is deprecated",
+  "--"
+]
+```
+
+Then, `jj deprecated-command`, `jj deprecated-command blah`, and even `jj
+deprecated-command --help` will print the same error.
+
+**Usage:** `jj util error [OPTIONS] <ERROR>`
+
+###### **Arguments:**
+
+* `<ERROR>` — The text of the error, to be shown to the user
+* `<UNUSED_ARGS>`
+
+###### **Options:**
+
+* `--hint <HINT>` — A hint to print after the error
 
 
 
