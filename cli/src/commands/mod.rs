@@ -32,7 +32,6 @@ mod fix;
 #[cfg(feature = "git")]
 mod git;
 mod help;
-mod init;
 mod interdiff;
 mod log;
 mod new;
@@ -53,6 +52,7 @@ mod split;
 mod squash;
 mod status;
 mod tag;
+mod toy_backend_init;
 mod unsign;
 mod unsquash;
 mod util;
@@ -118,7 +118,6 @@ enum Command {
     #[command(subcommand)]
     Git(git::GitCommand),
     Help(help::HelpArgs),
-    Init(init::InitArgs),
     Interdiff(interdiff::InterdiffArgs),
     Log(log::LogArgs),
     New(new::NewArgs),
@@ -150,6 +149,8 @@ enum Command {
     Status(status::StatusArgs),
     #[command(subcommand)]
     Tag(tag::TagCommand),
+    #[command(subcommand, hide = true)]
+    ToyBackend(toy_backend_init::ToyBackendCommand),
     #[command(subcommand)]
     Util(util::UtilCommand),
     /// Undo an operation (shortcut for `jj op undo`)
@@ -204,7 +205,6 @@ pub fn run_command(ui: &mut Ui, command_helper: &CommandHelper) -> Result<(), Co
         #[cfg(feature = "git")]
         Command::Git(args) => git::cmd_git(ui, command_helper, args),
         Command::Help(args) => help::cmd_help(ui, command_helper, args),
-        Command::Init(args) => init::cmd_init(ui, command_helper, args),
         Command::Interdiff(args) => interdiff::cmd_interdiff(ui, command_helper, args),
         Command::Log(args) => log::cmd_log(ui, command_helper, args),
         Command::New(args) => new::cmd_new(ui, command_helper, args),
@@ -229,6 +229,7 @@ pub fn run_command(ui: &mut Ui, command_helper: &CommandHelper) -> Result<(), Co
         Command::Squash(args) => squash::cmd_squash(ui, command_helper, args),
         Command::Status(args) => status::cmd_status(ui, command_helper, args),
         Command::Tag(args) => tag::cmd_tag(ui, command_helper, args),
+        Command::ToyBackend(args) => toy_backend_init::cmd_toy_backend(ui, command_helper, args),
         Command::Undo(args) => operation::undo::cmd_op_undo(ui, command_helper, args),
         Command::Unsign(args) => unsign::cmd_unsign(ui, command_helper, args),
         Command::Unsquash(args) => unsquash::cmd_unsquash(ui, command_helper, args),
