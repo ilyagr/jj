@@ -192,6 +192,14 @@ fn test_erroring_aliases() {
     [EOF]
     [exit status: 1]
     "#);
+    let output = test_env.run_jj_in(".", ["clone", "https://example.org/repo"]);
+    insta::assert_snapshot!(output, @r#"
+    ------- stderr -------
+    Error: `jj clone` is not defined by default. Perhaps you meant `jj git clone`?
+    Hint: You can configure `aliases.clone=["git", "clone"]` if you always use the Git backend.
+    [EOF]
+    [exit status: 1]
+    "#);
     let output = test_env.run_jj_in(".", ["init", "--help"]);
     insta::assert_snapshot!(output, @r#"
     ------- stderr -------

@@ -5,12 +5,22 @@ amend = ["squash"]
 b = ["bookmark"]
 ci = ["commit"]
 unamend = ["unsquash"]
+
+# Disabled but overridable commands
 init = [
     "util",
     "error",
     "`jj init` is not defined by default. Perhaps you meant `jj git init`?",
     "--hint",
     """You can configure `aliases.init=["git", "init"]` if you always use the Git backend.""",
+    "--"
+]
+clone = [
+    "util",
+    "error",
+    "`jj clone` is not defined by default. Perhaps you meant `jj git clone`?",
+    "--hint",
+    """You can configure `aliases.clone=["git", "clone"]` if you always use the Git backend.""",
     "--"
 ]
 
