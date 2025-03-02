@@ -322,11 +322,11 @@ fn test_git_clone_colocate(subprocess: bool) {
         .map(|entry| format!("{:?} {}\n", entry.status(), entry.path().unwrap()))
         .collect();
     insta::allow_duplicates! {
-    insta::assert_snapshot!(git_statuses, @r###"
+    insta::assert_snapshot!(git_statuses, @r"
     Status(IGNORED) .jj/.gitignore
     Status(IGNORED) .jj/repo/
     Status(IGNORED) .jj/working_copy/
-    "###);
+    ");
     }
 
     // The old default bookmark "master" shouldn't exist.
