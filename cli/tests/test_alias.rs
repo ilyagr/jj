@@ -421,12 +421,11 @@ fn test_aliases_overriding_friendly_errors() {
     ------- stderr -------
     error: unrecognized subcommand 'init'
 
-      tip: a similar subcommand exists: 'git'
+      tip: a similar subcommand exists: 'git init'
 
     Usage: jj [OPTIONS] <COMMAND>
 
     For more information, try '--help'.
-    Hint: You probably want `jj git init`. See also `jj help git`.
     Hint: You can configure `aliases.init = ["git", "init"]` if you want `jj init` to work and always use the Git backend.
     [EOF]
     [exit status: 2]
@@ -436,12 +435,11 @@ fn test_aliases_overriding_friendly_errors() {
     ------- stderr -------
     error: unrecognized subcommand 'clone'
 
-      tip: a similar subcommand exists: 'config'
+      tip: a similar subcommand exists: 'git clone'
 
     Usage: jj [OPTIONS] <COMMAND>
 
     For more information, try '--help'.
-    Hint: You probably want `jj git clone`. See also `jj help git`.
     Hint: You can configure `aliases.clone = ["git", "clone"]` if you want `jj clone` to work and always use the Git backend.
     [EOF]
     [exit status: 2]
@@ -451,12 +449,11 @@ fn test_aliases_overriding_friendly_errors() {
     ------- stderr -------
     error: unrecognized subcommand 'init'
 
-      tip: a similar subcommand exists: 'git'
+      tip: a similar subcommand exists: 'git init'
 
     Usage: jj [OPTIONS] <COMMAND>
 
     For more information, try '--help'.
-    Hint: You probably want `jj git init`. See also `jj help git`.
     Hint: You can configure `aliases.init = ["git", "init"]` if you want `jj init` to work and always use the Git backend.
     [EOF]
     [exit status: 2]

@@ -3953,14 +3953,15 @@ fn map_clap_cli_error(mut cmd_err: CommandError, ui: &Ui, config: &StackedConfig
         if matches!(cmd.as_str(), "clone" | "init") {
             // git commands that a brand-new user might type on their first experiment with
             // `jj`
-            let cmd = cmd.clone();
-            cmd_err.add_hint(format!(
-                "You probably want `jj git {cmd}`. See also `jj help git`."
-            ));
-            cmd_err.add_hint(format!(
+            let mut new_err = err.clone();
+            // Replace a misleading suggested subcommand
+            new_err.insert(
+                ContextKind::SuggestedSubcommand,
+                ContextValue::String(format!("git {cmd}")),
+            );
+            return CommandError::from(new_err).hinted(format!(
                 r#"You can configure `aliases.{cmd} = ["git", "{cmd}"]` if you want `jj {cmd}` to work and always use the Git backend."#
             ));
-            return cmd_err;
         }
     }
     if let (Some(ContextValue::String(arg)), Some(ContextValue::String(value))) = (
