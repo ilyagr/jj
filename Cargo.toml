@@ -16,6 +16,9 @@ documentation = "https://jj-vcs.github.io/jj/"
 categories = ["version-control", "development-tools"]
 keywords = ["VCS", "DVCS", "SCM", "Git", "Mercurial"]
 
+[patch.crates-io]
+clap = { path = "../clap/" }
+
 [workspace.dependencies]
 anyhow = "1.0.97"
 assert_cmd = "2.0.8"
@@ -23,16 +26,16 @@ assert_matches = "1.5.0"
 async-trait = "0.1.87"
 blake2 = "0.10.6"
 bstr = "1.11.3"
-clap = { version = "4.5.31", features = [
+clap = { path = "../clap/", features = [
     "derive",
     "deprecated",
     "wrap_help",
     "string",
 ] }
-clap_complete = { version = "4.5.46", features = ["unstable-dynamic"] }
-clap_complete_nushell = "4.5.5"
+clap_complete = { path = "../clap/clap_complete/", features = ["unstable-dynamic"] }
+clap_complete_nushell = { path = "../clap/clap_complete_nushell" }
 clap-markdown = "0.1.4"
-clap_mangen = "0.2.25"
+clap_mangen = { path = "../clap/clap_mangen" }
 chrono = { version = "0.4.40", default-features = false, features = [
     "std",
     "clock",
