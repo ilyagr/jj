@@ -298,15 +298,15 @@ jj config set --user git.private-commits "'''description(glob:'private:*')'''"
 
 ### I accidentally changed files in the wrong commit, how do I move the recent changes into another commit?
 
-Let's say we are editing a commit for "featureA", and we forgot to run `jj
-new` or `jj commit` before doing some work that belongs in a new commit:
+Let's say we are editing a revision for "featureA", but we accidentally started
+working on "featureB" without changing revisions:
 
 ```console
 $ jj log
 @  lnvvtrzo jjfan@example.org 2025-02-28 21:01:10 31a347e0
 │  featureA
 ◆  zzzzzzzz root() 00000000
-$ cat file  # Oh no, the work on "feature B" should be in a separate commit!
+$ cat file  # Oh no, "feature B" does not belong in this revision...
 Done with feature A
 Working on feature B
 ```
@@ -319,11 +319,9 @@ Working on feature B
 You can find [all the past versions of the working copy revision that `jj` has
 saved](#jj-is-said-to-record-the-working-copy-after-jj-log-and-every-other-command-where-can-i-see-these-automatic-saves)
 by running `jj evolog`. The obsolete versions will be marked as "hidden" and
-will have the same change id, but will have different commit ids. This
-represents different [commits] that are all parts of the same [change].
-
-For example, this is what the evolog might look like after you made two edits to
-the same change:
+will have the same change id, but will have different commit ids. For example,
+this is what the evolog might look like after you made two edits to the same
+commit:
 
 ```console
 $ # Note the word "hidden", the commit ids on the right,
@@ -339,11 +337,10 @@ $ jj evolog
 
 Since commit `b800` is hidden, it is considered obsolete and `jj log` (without
 arguments) will not show it, nor can it be accessed by its change id. However,
-most `jj` operations work normally on such commits if you refer to them by their
-commit id.
+most `jj` operations will work on it if you refer to it by its commit id.
 
 To find out which of these versions is the last time before we started working
-on feature B (the point where we should have created a new change, but failed
+on feature B (the point where we should have created a new revision, but failed
 to do so), we can look at the actual changes between the `evolog` commits by
 running `jj evolog -p`:
 
@@ -378,14 +375,13 @@ $ jj evolog -p --git  # We use `--git` to make diffs clear without colors
    +Working on feature A
 ```
 
-In this example, the version of the change when we were actually done with
-feature A is when we edited the file to say "Done with feature A". This state
-was saved in the commit with id `b80` (the second one in the list). The
-following edit (commit `31a`) belongs in a new change.
+The version of the revision when we were actually done with "featureA" is thus
+saved in the commit with id `b800`. The change after that belongs in a new
+revision.
 
-#### Step 2: Create a new change for the current state and restore the existing change to the older state
+#### Step 2: Create a new revision for the current state and restore the existing revision to the older state
 
-The "featureA" change is currently at commit `31a`:
+The "featureA" revision is currently at commit `31a`:
 
 ```console
 $ jj log
@@ -394,8 +390,8 @@ $ jj log
 ◆  zzzzzzzz root() 00000000
 ```
 
-We'd like to create a new "featureB" change with the contents of the current
-commit `31a`, and we'd like the "featureA" change to be reverted to its former
+We'd like to create a new "featureB" revision with the contents of the current
+commit `31a`, and we'd the "featureA" revision to be reverted to its former
 state at commit `b80` (see step 1 above for how we found that commit id).
 
 First, we create a new empty child commit. Since it is empty, it has the same
@@ -410,9 +406,8 @@ Done with feature A
 Working on feature B
 ```
 
-Now, we `jj restore` the change `lnvvtr` to its state at commit `b80`. We use
-the `--restore-descendants` flag so that the *file contents* (AKA snapshot) of
-the "featureB" change is preserved.
+Now, we `jj restore` the revision `lnvvtr` to its state at commit `b80`. We use
+the `--restore-descendants` flag so that the *contents* of the "featureB" revision is preserved.
 
 ```console
 $ # We refer to `lnvvtr` as `@-` for brevity
@@ -424,7 +419,7 @@ Parent commit      : lnvvtr 599994e featureA
 ```
 
 Even though `@-` was modified, `--restore-descendants` preserved the contents of
-the current change:
+the current revision:
 
 ```console
 $ jj file show -r @ file  # Same as `cat file`
@@ -436,7 +431,7 @@ Done with feature A
 
 ??? info "More details on what `--restore-descendants` does"
 
-    When we ran the `jj restore` command, the working copy change `@` was
+    When we ran the `jj restore` command, the current revision `@` was
     at commit `471` and `@` was the only child of `@-`. In this situation,
 
     ```shell
@@ -563,11 +558,9 @@ detect custom backends and more).
 
 [bookmarks_conflicts]: bookmarks.md#conflicts
 
-[change]: glossary.md#change
 [change ID]: glossary.md#change-id
 [co-located]: glossary.md#co-located-repos
 [commit ID]: glossary.md#commit-id
-[commits]: glossary.md#commit
 [config]: config.md
 
 [gerrit-integration]: https://gist.github.com/thoughtpolice/8f2fd36ae17cd11b8e7bd93a70e31ad6
