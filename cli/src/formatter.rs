@@ -913,7 +913,7 @@ mod tests {
         formatter.pop_label().unwrap();
         writeln!(formatter).unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @r###"
+        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @r"
         [38;5;1m fg only [39m
         [48;5;4m bg only [49m
         [1m bold only [0m
@@ -921,7 +921,7 @@ mod tests {
         [4m underlined only [24m
         [1m[3m[4m[38;5;2m[48;5;3m single rule [0m
         [38;5;1m[48;5;4m two rules [39m[49m
-        "###);
+        ");
     }
 
     #[test]
@@ -1115,10 +1115,10 @@ mod tests {
         write!(formatter, " and back.").unwrap();
         drop(formatter);
         insta::assert_snapshot!(String::from_utf8(output).unwrap(),
-        @r###"
+        @r"
         [38;5;4m[48;5;3mBlue on yellow, [39m default fg, [38;5;4m and back.[39m[49m
         [38;5;4m[48;5;3mBlue on yellow, [49m default bg, [48;5;3m and back.[39m[49m
-        "###);
+        ");
     }
 
     #[test]
