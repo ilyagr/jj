@@ -732,6 +732,11 @@ mod tests {
         config
     }
 
+    /// `insta` ignores whitespace in the beginning or end of a snapshot
+    fn surround<S: AsRef<str>>(text: S) -> String {
+        format!("|{}|", text.as_ref())
+    }
+
     #[test]
     fn test_plaintext_formatter() {
         // Test that PlainTextFormatter ignores labels.
@@ -857,7 +862,8 @@ mod tests {
         formatter.pop_label().unwrap();
         write!(formatter, " after ").unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @" before [38;5;2m inside [39m after ");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"| before [38;5;2m inside [39m after |");
     }
 
     #[test]
@@ -937,7 +943,8 @@ mod tests {
         write!(formatter, " not bold again ").unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @"[3m[4m[38;5;1m[48;5;4m not bold [1m bold [0m[3m[4m[38;5;1m[48;5;4m not bold again [23m[24m[39m[49m");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"|[3m[4m[38;5;1m[48;5;4m not bold [1m bold [0m[3m[4m[38;5;1m[48;5;4m not bold again [23m[24m[39m[49m|");
     }
 
     #[test]
@@ -960,7 +967,8 @@ mod tests {
         formatter.pop_label().unwrap();
         write!(formatter, "after").unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @"before[38;5;1mfirst[39m[38;5;2msecond[39mafter");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"|before[38;5;1mfirst[39m[38;5;2msecond[39mafter|");
     }
 
     #[test]
@@ -977,7 +985,8 @@ mod tests {
         write!(formatter, "\x1b[1mnot actually bold\x1b[0m").unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @"[38;5;1m␛[1mnot actually bold␛[0m[39m");
+        insta::assert_snapshot!(String::from_utf8(output).unwrap(),
+        @"[38;5;1m␛[1mnot actually bold␛[0m[39m");
     }
 
     #[test]
@@ -1004,8 +1013,8 @@ mod tests {
         formatter.pop_label().unwrap();
         write!(formatter, " after outer ").unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(),
-        @" before outer [38;5;4m before inner [38;5;2m inside inner [38;5;4m after inner [39m after outer ");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"| before outer [38;5;4m before inner [38;5;2m inside inner [38;5;4m after inner [39m after outer |");
     }
 
     #[test]
@@ -1026,8 +1035,8 @@ mod tests {
         write!(formatter, " not colored ").unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(),
-        @" not colored [38;5;2m colored [39m not colored ");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"| not colored [38;5;2m colored [39m not colored |");
     }
 
     #[test]
@@ -1129,8 +1138,8 @@ mod tests {
         formatter.pop_label().unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(),
-        @"[38;5;2m hello [39m");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"|[38;5;2m hello [39m|");
     }
 
     #[test]
@@ -1149,7 +1158,7 @@ mod tests {
         formatter.pop_label().unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @" hello ");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()), @"| hello |");
     }
 
     #[test]
@@ -1177,8 +1186,8 @@ mod tests {
         write!(formatter, " a2 ").unwrap();
         formatter.pop_label().unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(),
-        @"[38;5;1m a1 [38;5;2m b1 [38;5;3m c [38;5;2m b2 [38;5;1m a2 [39m");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()),
+        @"|[38;5;1m a1 [38;5;2m b1 [38;5;3m c [38;5;2m b2 [38;5;1m a2 [39m|");
     }
 
     #[test]
@@ -1241,9 +1250,10 @@ mod tests {
         write!(writer, "Message").unwrap();
         writeln!(writer, " continues").unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @r###"
-        [38;5;1mHeading: [38;5;2mMessage[39m[38;5;2m continues[39m
-        "###);
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()), @r"
+        |[38;5;1mHeading: [38;5;2mMessage[39m[38;5;2m continues[39m
+        |
+        ");
     }
 
     #[test]
@@ -1259,7 +1269,7 @@ mod tests {
         write!(writer, "").unwrap();
         write!(writer, "").unwrap();
         drop(formatter);
-        insta::assert_snapshot!(String::from_utf8(output).unwrap(), @"Heading: ");
+        insta::assert_snapshot!(surround(String::from_utf8(output).unwrap()), @"|Heading: |");
     }
 
     #[test]
@@ -1273,8 +1283,8 @@ mod tests {
         write!(recorder, " outer2 ").unwrap();
 
         insta::assert_snapshot!(
-            str::from_utf8(recorder.data()).unwrap(),
-            @" outer1  inner1  inner2  outer2 ");
+            surround(str::from_utf8(recorder.data()).unwrap()),
+            @"| outer1  inner1  inner2  outer2 |");
 
         // Replayed output should be labeled.
         let config = config_from_string(r#" colors.inner = "red" "#);
@@ -1283,8 +1293,8 @@ mod tests {
         recorder.replay(&mut formatter).unwrap();
         drop(formatter);
         insta::assert_snapshot!(
-            String::from_utf8(output).unwrap(),
-            @" outer1 [38;5;1m inner1  inner2 [39m outer2 ");
+            surround(String::from_utf8(output).unwrap()),
+            @"| outer1 [38;5;1m inner1  inner2 [39m outer2 |");
 
         // Replayed output should be split at push/pop_label() call.
         let mut output: Vec<u8> = vec![];
@@ -1297,8 +1307,8 @@ mod tests {
             .unwrap();
         drop(formatter);
         insta::assert_snapshot!(
-            String::from_utf8(output).unwrap(),
-            @"<< outer1 >>[38;5;1m<< inner1  inner2 >>[39m<< outer2 >>");
+            surround(String::from_utf8(output).unwrap()),
+            @"|<< outer1 >>[38;5;1m<< inner1  inner2 >>[39m<< outer2 >>|");
     }
 
     #[test]
@@ -1319,7 +1329,8 @@ mod tests {
         recorder.replay(&mut formatter).unwrap();
         drop(formatter);
         insta::assert_snapshot!(
-            String::from_utf8(output).unwrap(), @" outer1 [38;5;1m inner1  inner2 [39m outer2 ");
+            surround(String::from_utf8(output).unwrap()),
+            @"| outer1 [38;5;1m inner1  inner2 [39m outer2 |");
 
         let mut output: Vec<u8> = vec![];
         let mut formatter = ColorFormatter::for_config(&mut output, &config, false).unwrap();
@@ -1333,6 +1344,7 @@ mod tests {
             .unwrap();
         drop(formatter);
         insta::assert_snapshot!(
-            String::from_utf8(output).unwrap(), @" outer1 [38;5;1m inner1  inner2 [39m outer2 ");
+            surround(String::from_utf8(output).unwrap()),
+            @"| outer1 [38;5;1m inner1  inner2 [39m outer2 |");
     }
 }
