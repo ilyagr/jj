@@ -76,10 +76,13 @@ jobs:
       uses: dtolnay/rust-toolchain@a54c7afa936fefeb4456b2dd8068152669aa8203
       with:
         toolchain: 1.84
+        components: clippy
         target: ${{ matrix.target }}
     - uses: taiki-e/install-action@955a6ff1416eae278c9f833008a9beb4b7f9afe3
       with:
         tool: nextest,taplo-cli
+    - name: Clippy
+      run: cargo clippy --target ${{ matrix.target }} --workspace --all-targets --verbose ${{ matrix.cargo_flags }}
     - name: Build
       run: cargo build --target ${{ matrix.target }} --workspace --all-targets --verbose ${{ matrix.cargo_flags }}
     - name: Test
