@@ -175,7 +175,7 @@ fn find_remote_bookmarks<'a>(
 
 /// Whether or not the `bookmark` has any tracked remotes (i.e. is a tracking
 /// local bookmark.)
-fn has_tracked_remote_bookmarks(view: &View, bookmark: &str) -> bool {
+pub fn has_tracked_remote_bookmarks(view: &View, bookmark: &str) -> bool {
     view.remote_bookmarks_matching(
         &StringPattern::exact(bookmark),
         &StringPattern::everything(),
