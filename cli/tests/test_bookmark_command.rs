@@ -331,6 +331,7 @@ fn test_bookmark_move() {
     [EOF]
     ");
 
+    // !!!!
     // Deleted tracking bookmark name should still be allocated
     let output = work_dir.run_jj(["bookmark", "create", "-r@", "foo"]);
     insta::assert_snapshot!(output, @r"
