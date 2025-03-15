@@ -1241,8 +1241,8 @@ fn test_git_push_changes_with_name_untracked_or_forgotten(subprocess: bool) {
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Error: Remote bookmark already exists: 'b1@origin'
-    Hint: Use 'jj bookmark track' to track it.
+    Error: Non-tracking remote bookmark b1@origin exists
+    Hint: Run `jj bookmark track b1@origin` to import the remote bookmark.
     [EOF]
     [exit status: 1]
     ");

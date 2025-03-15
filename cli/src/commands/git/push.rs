@@ -30,7 +30,6 @@ use jj_lib::git;
 use jj_lib::git::GitBranchPushTargets;
 use jj_lib::object_id::ObjectId as _;
 use jj_lib::op_store::RefTarget;
-use jj_lib::op_store::RemoteRef;
 use jj_lib::refs::classify_bookmark_push_action;
 use jj_lib::refs::BookmarkPushAction;
 use jj_lib::refs::BookmarkPushUpdate;
@@ -285,24 +284,20 @@ pub fn cmd_git_push(
         }
 
         for name_revision in &args.named {
-            let (name, target) =
-                create_explicitly_named_bookmarks(ui, &remote, &mut tx, name_revision)?;
-
+            let (name, target) = create_explicitly_named_bookmarks(ui, &mut tx, name_revision)?;
             let allow_new = true;
-            assert_eq!(
-                tx.repo().view().get_remote_bookmark(RemoteRefSymbol {
-                    name: &name,
-                    remote: &remote,
-                }),
-                RemoteRef::absent_ref(),
-                "`create_explicitly_named_bookmarks` ensures {name}@{remote} is absent"
-            );
             match classify_bookmark_update(
                 &name,
                 &remote,
                 LocalAndRemoteRef {
                     local_target: &target,
-                    remote_ref: &RemoteRef::absent(),
+                    // In normal cases, the remote bookmark does not exist. If
+                    // it does, `classify_bookmark_update` will return an error.
+                    // TODO: Can it get pushed forward?
+                    remote_ref: tx.repo().view().get_remote_bookmark(RemoteRefSymbol {
+                        name: &name,
+                        remote: &remote,
+                    }),
                 },
                 allow_new,
             ) {
@@ -725,7 +720,6 @@ fn classify_bookmark_update(
 // make sure the new bookmark is safe to push.
 fn create_explicitly_named_bookmarks(
     ui: &mut Ui,
-    remote: &String,
     tx: &mut WorkspaceCommandTransaction<'_>,
     name_revision: &String,
 ) -> Result<(String, RefTarget), CommandError> {
@@ -752,24 +746,6 @@ fn create_explicitly_named_bookmarks(
                 "Use 'jj bookmark move' to move it, and 'jj git push -b {name} [--allow-new]' to \
                  push it."
             ),
-        ));
-    }
-    if tx
-        .repo()
-        .view()
-        .get_remote_bookmark(RemoteRefSymbol { name, remote })
-        .is_present()
-    {
-        // This is slightly different from classify_bookmark_update since we
-        // error even in the case where the remote branch is not tracked. This can
-        // happen if the local branch is deleted by the (untracked) remote-tracking
-        // bookmark still exists.
-        //
-        // This may not be strictly necessary, but ensuring that the bookmark is always
-        // created on the remote from nothing simplifies both the UI and the logic.
-        return Err(user_error_with_hint(
-            format!("Remote bookmark already exists: '{name}@{remote}'"),
-            "Use 'jj bookmark track' to track it.",
         ));
     }
     let revision = tx
