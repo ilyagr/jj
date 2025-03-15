@@ -52,6 +52,7 @@ use crate::command_error::cli_error;
 use crate::command_error::user_error;
 use crate::command_error::user_error_with_hint;
 use crate::command_error::CommandError;
+use crate::commands::bookmark::has_tracked_remote_bookmarks;
 use crate::commands::git::get_single_remote;
 use crate::complete;
 use crate::formatter::Formatter;
@@ -745,6 +746,15 @@ fn create_explicitly_named_bookmarks(
             format!(
                 "Use 'jj bookmark move' to move it, and 'jj git push -b {name} [--allow-new]' to \
                  push it."
+            ),
+        ));
+    }
+    if has_tracked_remote_bookmarks(tx.repo().view(), name) {
+        return Err(user_error_with_hint(
+            format!("Tracked remote bookmarks exist for deleted bookmark: {name}"),
+            format!(
+                "Use `jj bookmark set` to recreate the local bookmark. Run `jj bookmark untrack \
+                 'glob:{name}@*'` to disassociate them."
             ),
         ));
     }
