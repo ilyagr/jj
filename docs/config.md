@@ -1504,6 +1504,34 @@ platform-specific path separator (`:` on Unix-like systems, `;` on Windows).
 JJ_CONFIG= jj log       # Ignores any settings specified in the config file.
 ```
 
+### Specifying config on the command-line
+
+You can use one or more `--config`/`--config-file` options on the command line
+to specify additional configuration settings. This overrides settings defined in
+config files or environment variables. For example,
+
+```shell
+# Must not have spaces around the `=`
+jj --config ui.color=always --config ui.diff-editor=meld split
+```
+
+Config value should be specified as a TOML expression. If string value doesn't
+contain any TOML constructs (such as array notation), quotes can be omitted.
+Here is an example with more advanced TOML constructs:
+
+```shell
+# Single quotes and the '\' are interpreted by the shell and assume a Unix shell
+# Double quotes are passed to jj and are parsed as TOML syntax
+jj log --config \
+  'template-aliases."format_timestamp(timestamp)"="""timestamp.format("%Y-%m-%d %H:%M %:::z")"""'
+```
+
+To load an entire TOML document, use `--config-file`:
+
+```shell
+jj --config-file=extra-config.toml log
+```
+
 ### JSON Schema Support
 
 Many popular editors support TOML file syntax highlighting and validation. To
@@ -1535,34 +1563,6 @@ Here are some popular editors with TOML schema validation support:
 - Emacs
   - Install [lsp-mode](https://github.com/emacs-lsp/lsp-mode) and [toml-mode](https://github.com/dryman/toml-mode.el)
   - Configure [taplo](https://github.com/tamasfe/taplo) as the LSP server
-
-### Specifying config on the command-line
-
-You can use one or more `--config`/`--config-file` options on the command line
-to specify additional configuration settings. This overrides settings defined in
-config files or environment variables. For example,
-
-```shell
-# Must not have spaces around the `=`
-jj --config ui.color=always --config ui.diff-editor=meld split
-```
-
-Config value should be specified as a TOML expression. If string value doesn't
-contain any TOML constructs (such as array notation), quotes can be omitted.
-Here is an example with more advanced TOML constructs:
-
-```shell
-# Single quotes and the '\' are interpreted by the shell and assume a Unix shell
-# Double quotes are passed to jj and are parsed as TOML syntax
-jj log --config \
-  'template-aliases."format_timestamp(timestamp)"="""timestamp.format("%Y-%m-%d %H:%M %:::z")"""'
-```
-
-To load an entire TOML document, use `--config-file`:
-
-```shell
-jj --config-file=extra-config.toml log
-```
 
 ### Conditional variables
 
