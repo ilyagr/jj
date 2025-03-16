@@ -1464,6 +1464,8 @@ An easy way to find the user config file/directory is:
 jj config path --user
 ```
 
+#### Default locations
+
 On all platforms, the user's global `jj` configurations are by default loaded in
 the following precedence order (with later configs overriding earlier ones):
 
@@ -1486,15 +1488,17 @@ with [Conditional Variables](#conditional-variables).
 | macOS    | `$HOME/Library/Application Support`   | `/Users/Alice/Library/Application Support/jj/config.toml` |
 | Windows  | `{FOLDERID_RoamingAppData}`           | `C:\Users\Alice\AppData\Roaming\jj\config.toml`           |
 
-The location of the `jj` user config files/directories can also be overridden with the
-`JJ_CONFIG` environment variable. If it is not empty, it will be used instead
-of any configuration files in the default locations. If it is a path to a TOML
-file, then that file will be loaded instead. If it is a path to a directory,
-then all the TOML files in that directory will be loaded in lexicographic order
-and merged. Multiple paths can be specified by separating them with a
+#### Overriding the config location with `JJ_CONFIG`
+
+The location of the `jj` user config files/directories can be overridden with
+the `JJ_CONFIG` environment variable. It will be used instead of any
+configuration files in the default locations. If it is a path to a TOML file,
+then that file will be loaded instead. If it is a path to a directory, then all
+the TOML files in that directory will be loaded in lexicographic order and
+merged. Multiple paths can be specified by separating them with a
 platform-specific path separator (`:` on Unix-like systems, `;` on Windows).
 
-For example, the following could be used to run `jj` without loading any user configs:
+`JJ_CONFIG` can also be used to run `jj` without loading any user configs:
 
 ```bash
 JJ_CONFIG= jj log       # Ignores any settings specified in the config file.
