@@ -1529,7 +1529,8 @@ jj log --config \
 To load an entire TOML document, use `--config-file`:
 
 ```shell
-jj --config-file=extra-config.toml log
+# Load the config from `extra-config.toml` instead of any user config
+JJ_CONFIG= jj --config-file=extra-config.toml log
 ```
 
 ### JSON Schema Support
