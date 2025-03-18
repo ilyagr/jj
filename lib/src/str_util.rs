@@ -31,10 +31,10 @@ pub enum StringPatternParseError {
     InvalidKind(String),
     /// Failed to parse glob pattern.
     #[error(transparent)]
-    GlobPattern(glob::PatternError),
+    GlobPattern(#[from] glob::PatternError),
     /// Failed to parse regular expression.
     #[error(transparent)]
-    Regex(regex::Error),
+    Regex(#[from] regex::Error),
 }
 
 /// A wrapper for [`glob::Pattern`] with a more concise Debug impl
@@ -42,7 +42,13 @@ pub enum StringPatternParseError {
 pub struct GlobPattern(pub glob::Pattern);
 
 impl GlobPattern {
-    fn as_str(&self) -> &str {
+    #[expect(missing_docs)]
+    pub fn new(pat: &str) -> Result<Self, glob::PatternError> {
+        glob::Pattern::new(pat).map(Self)
+    }
+
+    #[expect(missing_docs)]
+    pub fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }
@@ -51,12 +57,6 @@ impl Debug for GlobPattern {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("GlobPattern").field(&self.as_str()).finish()
     }
-}
-
-fn parse_glob(src: &str) -> Result<GlobPattern, StringPatternParseError> {
-    glob::Pattern::new(src)
-        .map(GlobPattern)
-        .map_err(StringPatternParseError::GlobPattern)
 }
 
 /// Pattern to be tested against string property like commit description or
@@ -125,17 +125,17 @@ impl StringPattern {
         // TODO: might be better to do parsing and compilation separately since
         // not all backends would use the compiled pattern object.
         // TODO: if no meta character found, it can be mapped to Exact.
-        Ok(StringPattern::Glob(parse_glob(src)?))
+        Ok(StringPattern::Glob(GlobPattern::new(src)?))
     }
 
     /// Parses the given string as a case‐insensitive glob pattern.
     pub fn glob_i(src: &str) -> Result<Self, StringPatternParseError> {
-        Ok(StringPattern::GlobI(parse_glob(src)?))
+        Ok(StringPattern::GlobI(GlobPattern::new(src)?))
     }
 
     /// Parses the given string as a regular expression.
     pub fn regex(src: &str) -> Result<Self, StringPatternParseError> {
-        let pattern = regex::Regex::new(src).map_err(StringPatternParseError::Regex)?;
+        let pattern = regex::Regex::new(src)?;
         Ok(StringPattern::Regex(pattern))
     }
 
