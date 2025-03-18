@@ -121,6 +121,7 @@ pub(crate) fn cmd_diff(
         let records = get_copy_records(repo.store(), from.id(), to.id(), &matcher)?;
         copy_records.add_records(records)?;
     } else {
+        // !!!
         let revision_args = args
             .revisions
             .as_deref()

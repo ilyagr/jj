@@ -335,6 +335,7 @@ pub fn rebase_to_dest_parent(
     sources: &[Commit],
     destination: &Commit,
 ) -> BackendResult<MergedTree> {
+    // Make this preserve topology? What would the dest_parent be?
     if let [source] = sources {
         if source.parent_ids() == destination.parent_ids() {
             return source.tree();
