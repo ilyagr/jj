@@ -236,6 +236,28 @@ fn prefix_tree_to_visit_sets(tree: &RepoPathTree<PrefixNodeKind>) -> Visit {
     Visit::sets(dirs, files)
 }
 
+/// A wrapper for [`glob::Pattern`] with a more concise Debug impl
+#[derive(Clone)]
+pub struct GlobPattern(pub glob::Pattern);
+
+impl GlobPattern {
+    #[expect(missing_docs)]
+    pub fn new(pat: &str) -> Result<Self, glob::PatternError> {
+        glob::Pattern::new(pat).map(Self)
+    }
+
+    #[expect(missing_docs)]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl Debug for GlobPattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("GlobPattern").field(&self.as_str()).finish()
+    }
+}
+
 /// Matches file paths with glob patterns.
 ///
 /// Patterns are provided as `(dir, pattern)` pairs, where `dir` should be the
@@ -243,14 +265,14 @@ fn prefix_tree_to_visit_sets(tree: &RepoPathTree<PrefixNodeKind>) -> Visit {
 /// will be evaluated relative to `dir`.
 #[derive(Clone, Debug)]
 pub struct FileGlobsMatcher {
-    tree: RepoPathTree<Vec<glob::Pattern>>,
+    tree: RepoPathTree<Vec<GlobPattern>>,
 }
 
 impl FileGlobsMatcher {
     pub fn new<D: AsRef<RepoPath>>(
-        dir_patterns: impl IntoIterator<Item = (D, glob::Pattern)>,
+        dir_patterns: impl IntoIterator<Item = (D, GlobPattern)>,
     ) -> Self {
-        let mut tree: RepoPathTree<Vec<glob::Pattern>> = Default::default();
+        let mut tree: RepoPathTree<Vec<GlobPattern>> = Default::default();
         for (dir, pattern) in dir_patterns {
             tree.add(dir.as_ref()).value.push(pattern);
         }
@@ -274,7 +296,9 @@ impl Matcher for FileGlobsMatcher {
             .take_while(|(_, tail_path)| !tail_path.is_root()) // only dirs
             .any(|(sub, tail_path)| {
                 let name = tail_path.as_internal_file_string();
-                sub.value.iter().any(|pat| pat.matches_with(name, OPTIONS))
+                sub.value
+                    .iter()
+                    .any(|pat| pat.0.matches_with(name, OPTIONS))
             })
     }
 
@@ -519,6 +543,10 @@ mod tests {
         RepoPath::from_internal_string(value)
     }
 
+    fn to_pattern(s: &str) -> GlobPattern {
+        GlobPattern::new(s).unwrap()
+    }
+
     #[test]
     fn test_nothingmatcher() {
         let m = NothingMatcher;
@@ -668,8 +696,6 @@ mod tests {
 
     #[test]
     fn test_fileglobsmatcher_rooted() {
-        let to_pattern = |s| glob::Pattern::new(s).unwrap();
-
         let m = FileGlobsMatcher::new([(RepoPath::root(), to_pattern("*.rs"))]);
         assert!(!m.matches(repo_path("foo")));
         assert!(m.matches(repo_path("foo.rs")));
@@ -721,8 +747,6 @@ mod tests {
 
     #[test]
     fn test_fileglobsmatcher_nested() {
-        let to_pattern = |s| glob::Pattern::new(s).unwrap();
-
         let m = FileGlobsMatcher::new([
             (repo_path("foo"), to_pattern("**/*.a")),
             (repo_path("foo/bar"), to_pattern("*.b")),
@@ -780,8 +804,6 @@ mod tests {
 
     #[test]
     fn test_fileglobsmatcher_wildcard_any() {
-        let to_pattern = |s| glob::Pattern::new(s).unwrap();
-
         // "*" could match the root path, but it doesn't matter since the root
         // isn't a valid file path.
         let m = FileGlobsMatcher::new([(RepoPath::root(), to_pattern("*"))]);

@@ -23,6 +23,8 @@ use std::fmt::Debug;
 use either::Either;
 use thiserror::Error;
 
+use crate::matchers::GlobPattern;
+
 /// Error occurred during pattern string parsing.
 #[derive(Debug, Error)]
 pub enum StringPatternParseError {
@@ -35,28 +37,6 @@ pub enum StringPatternParseError {
     /// Failed to parse regular expression.
     #[error(transparent)]
     Regex(#[from] regex::Error),
-}
-
-/// A wrapper for [`glob::Pattern`] with a more concise Debug impl
-#[derive(Clone)]
-pub struct GlobPattern(pub glob::Pattern);
-
-impl GlobPattern {
-    #[expect(missing_docs)]
-    pub fn new(pat: &str) -> Result<Self, glob::PatternError> {
-        glob::Pattern::new(pat).map(Self)
-    }
-
-    #[expect(missing_docs)]
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl Debug for GlobPattern {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("GlobPattern").field(&self.as_str()).finish()
-    }
 }
 
 /// Pattern to be tested against string property like commit description or

@@ -15,8 +15,6 @@
 //! Functional language for selecting a set of paths.
 
 use std::collections::HashMap;
-use std::fmt;
-use std::fmt::Debug;
 use std::iter;
 use std::path;
 use std::slice;
@@ -40,6 +38,7 @@ use crate::matchers::DifferenceMatcher;
 use crate::matchers::EverythingMatcher;
 use crate::matchers::FileGlobsMatcher;
 use crate::matchers::FilesMatcher;
+use crate::matchers::GlobPattern;
 use crate::matchers::IntersectionMatcher;
 use crate::matchers::Matcher;
 use crate::matchers::NothingMatcher;
@@ -66,28 +65,6 @@ pub enum FilePatternParseError {
     /// Failed to parse glob pattern.
     #[error(transparent)]
     GlobPattern(#[from] glob::PatternError),
-}
-
-/// A wrapper for [`glob::Pattern`] with a more concise Debug impl
-#[derive(Clone)]
-pub struct GlobPattern(pub glob::Pattern);
-
-impl GlobPattern {
-    #[expect(missing_docs)]
-    pub fn new(pat: &str) -> Result<Self, glob::PatternError> {
-        glob::Pattern::new(pat).map(Self)
-    }
-
-    #[expect(missing_docs)]
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-}
-
-impl Debug for GlobPattern {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("GlobPattern").field(&self.as_str()).finish()
-    }
 }
 
 /// Basic pattern to match `RepoPath`.
@@ -351,11 +328,8 @@ fn build_union_matcher(expressions: &[FilesetExpression]) -> Box<dyn Matcher> {
                 match pattern {
                     FilePattern::FilePath(path) => file_paths.push(path),
                     FilePattern::PrefixPath(path) => prefix_paths.push(path),
-                    FilePattern::FileGlob {
-                        dir,
-                        pattern: GlobPattern(pat),
-                    } => {
-                        file_globs.push((dir, pat.clone()));
+                    FilePattern::FileGlob { dir, pattern } => {
+                        file_globs.push((dir, pattern.clone()));
                     }
                 }
                 continue;
