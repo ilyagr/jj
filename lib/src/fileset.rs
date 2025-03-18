@@ -15,6 +15,8 @@
 //! Functional language for selecting a set of paths.
 
 use std::collections::HashMap;
+use std::fmt;
+use std::fmt::Debug;
 use std::iter;
 use std::path;
 use std::slice;
@@ -66,6 +68,28 @@ pub enum FilePatternParseError {
     GlobPattern(#[from] glob::PatternError),
 }
 
+/// A wrapper for [`glob::Pattern`] with a more concise Debug impl
+#[derive(Clone)]
+pub struct GlobPattern(pub glob::Pattern);
+
+impl GlobPattern {
+    #[expect(missing_docs)]
+    pub fn new(pat: &str) -> Result<Self, glob::PatternError> {
+        glob::Pattern::new(pat).map(Self)
+    }
+
+    #[expect(missing_docs)]
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
+impl Debug for GlobPattern {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("GlobPattern").field(&self.as_str()).finish()
+    }
+}
+
 /// Basic pattern to match `RepoPath`.
 #[derive(Clone, Debug)]
 pub enum FilePattern {
@@ -78,7 +102,7 @@ pub enum FilePattern {
         /// Prefix directory path where the `pattern` will be evaluated.
         dir: RepoPathBuf,
         /// Glob pattern relative to `dir`.
-        pattern: glob::Pattern,
+        pattern: GlobPattern,
     },
     // TODO: add more patterns:
     // - FilesInPath: files in directory, non-recursively?
@@ -171,7 +195,7 @@ impl FilePattern {
         }
         // Normalize separator to '/', reject ".." which will never match
         let normalized = RepoPathBuf::from_relative_path(input)?;
-        let pattern = glob::Pattern::new(normalized.as_internal_file_string())?;
+        let pattern = GlobPattern::new(normalized.as_internal_file_string())?;
         Ok(FilePattern::FileGlob { dir, pattern })
     }
 
@@ -327,8 +351,11 @@ fn build_union_matcher(expressions: &[FilesetExpression]) -> Box<dyn Matcher> {
                 match pattern {
                     FilePattern::FilePath(path) => file_paths.push(path),
                     FilePattern::PrefixPath(path) => prefix_paths.push(path),
-                    FilePattern::FileGlob { dir, pattern } => {
-                        file_globs.push((dir, pattern.clone()));
+                    FilePattern::FileGlob {
+                        dir,
+                        pattern: GlobPattern(pat),
+                    } => {
+                        file_globs.push((dir, pat.clone()));
                     }
                 }
                 continue;
@@ -872,7 +899,7 @@ mod tests {
         let glob_expr = |dir: &str, pattern: &str| {
             FilesetExpression::pattern(FilePattern::FileGlob {
                 dir: repo_path_buf(dir),
-                pattern: glob::Pattern::new(pattern).unwrap(),
+                pattern: GlobPattern::new(pattern).unwrap(),
             })
         };
 
