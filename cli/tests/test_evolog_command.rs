@@ -195,6 +195,52 @@ fn test_evolog_with_or_without_diff() {
     -- operation e0f8e58b3800 (2001-02-03 08:05:08) new empty commit
     [EOF]
     ");
+
+    // With `--diff-snapshots`, the rebase does show a diff
+    // TODO: Bug, not implemented yet with --no-graph
+    let output = work_dir.run_jj(["evolog", "--no-graph", "--git", "--diff-snapshots"]);
+    insta::assert_snapshot!(output, @r"
+    rlvkpnrz test.user@example.com 2001-02-03 08:05:10 33c10ace
+    my description
+    -- operation 3499115d3831 (2001-02-03 08:05:10) snapshot working copy
+    diff --git a/file1 b/file1
+    index 0000000000..2ab19ae607 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,7 +1,1 @@
+    -<<<<<<< Conflict 1 of 1
+    -%%%%%%% Changes from base to side #1
+    --foo
+    -+++++++ Contents of side #2
+    -foo
+    -bar
+    ->>>>>>> Conflict 1 of 1 ends
+    +resolved
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 7f56b2a0 conflict
+    my description
+    -- operation eb87ec366530 (2001-02-03 08:05:09) rebase commit 51e08f95160c897080d035d330aead3ee6ed5588
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 51e08f95
+    my description
+    -- operation 18a971ce330a (2001-02-03 08:05:09) snapshot working copy
+    diff --git a/file1 b/file1
+    index 257cc5642c..3bd1f0e297 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,1 +1,2 @@
+     foo
+    +bar
+    diff --git a/file2 b/file2
+    new file mode 100644
+    index 0000000000..257cc5642c
+    --- /dev/null
+    +++ b/file2
+    @@ -0,0 +1,1 @@
+    +foo
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:08 b955b72e
+    (empty) my description
+    -- operation e0f8e58b3800 (2001-02-03 08:05:08) new empty commit
+    [EOF]
+    ");
 }
 
 #[test]
