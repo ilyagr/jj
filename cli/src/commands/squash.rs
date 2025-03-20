@@ -23,6 +23,7 @@ use jj_lib::object_id::ObjectId as _;
 use jj_lib::repo::Repo as _;
 use jj_lib::rewrite;
 use jj_lib::rewrite::CommitWithSelection;
+use jj_lib::rewrite::SquashOptions;
 use tracing::instrument;
 
 use crate::cli_util::CommandHelper;
@@ -112,6 +113,20 @@ pub(crate) struct SquashArgs {
     /// The source revision will not be abandoned
     #[arg(long, short)]
     keep_emptied: bool,
+    /// Preserve the content (not the diff) when rebasing descendants of the
+    /// target commit
+    ///
+    /// If the target commit is a descendant of the source commit, this will
+    /// have no effect.
+    #[arg(long, visible_alias = "restore-descendants")]
+    restore_target_descendants: bool,
+    /// Preserve the content (not the diff) when rebasing descendants of the
+    /// source commit (less commonly used)
+    ///
+    /// When using `-r`, or if the target commit is an ancestor of the source
+    /// commit, this will have no effect.
+    #[arg(long)]
+    restore_source_descendants: bool,
 }
 
 #[instrument(skip_all)]
@@ -172,7 +187,10 @@ pub(crate) fn cmd_squash(
         tx.repo_mut(),
         &source_commits,
         &destination,
-        args.keep_emptied,
+        SquashOptions {
+            keep_emptied: args.keep_emptied,
+            restore_source_descendants: args.restore_source_descendants,
+        },
     )? {
         let mut commit_builder = squashed.commit_builder.detach();
         let new_description = match description {
@@ -195,6 +213,10 @@ pub(crate) fn cmd_squash(
         };
         commit_builder.set_description(new_description);
         commit_builder.write(tx.repo_mut())?;
+
+        if args.restore_target_descendants {
+            tx.repo_mut().reparent_descendants(|_, _| {})?;
+        }
     } else {
         if diff_selector.is_interactive() {
             return Err(user_error("No changes selected"));

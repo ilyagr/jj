@@ -2378,6 +2378,12 @@ If a working-copy commit gets abandoned, it will be given a new, empty commit. T
 * `-i`, `--interactive` — Interactively choose which parts to squash
 * `--tool <NAME>` — Specify diff editor to be used (implies --interactive)
 * `-k`, `--keep-emptied` — The source revision will not be abandoned
+* `--restore-target-descendants` — Preserve the content (not the diff) when rebasing descendants of the target commit
+
+   If the target commit is a descendant of the source commit, this will have no effect.
+* `--restore-source-descendants` — Preserve the content (not the diff) when rebasing descendants of the source commit (less commonly used)
+
+   When using `-r`, or if the target commit is an ancestor of the source commit, this will have no effect.
 
 
 
