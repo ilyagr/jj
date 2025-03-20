@@ -149,6 +149,48 @@ fn test_evolog_with_or_without_diff() {
     (empty) my description
     [EOF]
     ");
+
+    // With `--diff-snapshots`, the rebase does show a diff
+    // TODO: Bug, not implemented yet with --no-graph
+    let output = work_dir.run_jj(["evolog", "--no-graph", "--git", "--diff-snapshots"]);
+    insta::assert_snapshot!(output, @r"
+    rlvkpnrz test.user@example.com 2001-02-03 08:05:10 66b42ad3
+    my description
+    diff --git a/file1 b/file1
+    index 0000000000..2ab19ae607 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,7 +1,1 @@
+    -<<<<<<< Conflict 1 of 1
+    -%%%%%%% Changes from base to side #1
+    --foo
+    -+++++++ Contents of side #2
+    -foo
+    -bar
+    ->>>>>>> Conflict 1 of 1 ends
+    +resolved
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 07b18245 conflict
+    my description
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 068224a7
+    my description
+    diff --git a/file1 b/file1
+    index 257cc5642c..3bd1f0e297 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,1 +1,2 @@
+     foo
+    +bar
+    diff --git a/file2 b/file2
+    new file mode 100644
+    index 0000000000..257cc5642c
+    --- /dev/null
+    +++ b/file2
+    @@ -0,0 +1,1 @@
+    +foo
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:08 2b023b5f
+    (empty) my description
+    [EOF]
+    ");
 }
 
 #[test]
