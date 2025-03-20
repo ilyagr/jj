@@ -1332,13 +1332,18 @@ impl MutableRepo {
     /// be recursively reparented onto the new version of their parents.
     /// The content of those descendants will remain untouched.
     /// Returns the number of reparented descendants.
-    pub fn reparent_descendants(&mut self) -> BackendResult<usize> {
+    pub fn reparent_descendants(
+        &mut self,
+        mut progress: impl FnMut(Commit, Commit),
+    ) -> BackendResult<usize> {
         let roots = self.parent_mapping.keys().cloned().collect_vec();
         let mut num_reparented = 0;
         self.transform_descendants(roots, |rewriter| {
             if rewriter.parents_changed() {
+                let old_commit = rewriter.old_commit().clone();
                 let builder = rewriter.reparent();
-                builder.write()?;
+                let reparented_commit = builder.write()?;
+                progress(old_commit, reparented_commit);
                 num_reparented += 1;
             }
             Ok(())
