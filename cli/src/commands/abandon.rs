@@ -26,6 +26,7 @@ use jj_lib::rewrite::RewriteRefsOptions;
 use tracing::instrument;
 
 use crate::cli_util::print_updated_commits;
+use crate::cli_util::restore_descendants_warning;
 use crate::cli_util::CommandHelper;
 use crate::cli_util::RevisionArg;
 use crate::command_error::CommandError;
@@ -64,7 +65,11 @@ pub(crate) struct AbandonArgs {
     #[arg(long)]
     retain_bookmarks: bool,
     /// Do not modify the content of the children of the abandoned commits
-    #[arg(long)]
+    #[arg(long, visible_alias = "pdc")]
+    preserve_descendant_contents: bool,
+    /// Deprecated alias for `--preserve-descendant-contents`. TODO: Remove
+    /// after jj 0.31
+    #[arg(long, hide = true, conflicts_with = "preserve_descendant_contents")]
     restore_descendants: bool,
 }
 
@@ -77,6 +82,12 @@ pub(crate) fn cmd_abandon(
     if args.summary {
         writeln!(ui.warning_default(), "--summary is no longer supported.")?;
     }
+    if args.restore_descendants {
+        restore_descendants_warning(ui)?;
+    };
+    let preserve_descendant_contents =
+        args.preserve_descendant_contents || args.restore_descendants;
+
     let mut workspace_command = command.workspace_helper(ui)?;
     let to_abandon: Vec<_> = if !args.revisions_pos.is_empty() || !args.revisions_opt.is_empty() {
         workspace_command
@@ -104,7 +115,7 @@ pub(crate) fn cmd_abandon(
         |rewriter| {
             if to_abandon_set.contains(rewriter.old_commit().id()) {
                 rewriter.abandon();
-            } else if args.restore_descendants {
+            } else if preserve_descendant_contents {
                 rewriter.reparent().write()?;
                 num_rebased += 1;
             } else {
@@ -137,7 +148,7 @@ pub(crate) fn cmd_abandon(
             )?;
         }
         if num_rebased > 0 {
-            if args.restore_descendants {
+            if preserve_descendant_contents {
                 writeln!(
                     formatter,
                     "Rebased {num_rebased} descendant commits (while preserving their content) \
