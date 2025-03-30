@@ -1166,18 +1166,18 @@ fn test_squash_from_to_restore_descendants() {
     let output = work_dir.run_jj(["squash", "--from=a", "--into=b", "--restore-descendants"]);
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Rebased 2 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon f3face8d f | (no description set)
+    Rebased 5 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 6731518e f | (no description set)
     Parent commit (@-)      : yostqsxw d00f972b e | (no description set)
-    Parent commit (@-)      : mzvwutvl 84c37061 c | (no description set)
+    Parent commit (@-)      : mzvwutvl 4b35869d c | (no description set)
     [EOF]
     ");
     insta::assert_snapshot!(run_log(), @r"
-    @    f3face8d3626 f
+    @    6731518e08e1 f
     ├─╮  A f
-    │ ○  84c37061f88e c
+    │ ○  4b35869de719 c
     │ │  A c
-    │ ○  3e7890f3e57a b
+    │ ○  5e2135dda9b8 b
     │ │  A a
     │ │  A b
     ○ │  d00f972b8e57 e
@@ -1222,18 +1222,18 @@ fn test_squash_from_to_restore_descendants() {
     ]);
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Rebased 2 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon 7df3d054 f | (no description set)
+    Rebased 5 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 1cf804d7 f | (no description set)
     Parent commit (@-)      : yostqsxw 5a7c0319 e | (no description set)
-    Parent commit (@-)      : mzvwutvl 0810c9f6 c | (no description set)
+    Parent commit (@-)      : mzvwutvl d174424e c | (no description set)
     [EOF]
     ");
     insta::assert_snapshot!(run_log(), @r"
-    @    7df3d0546069 f
+    @    1cf804d7cb18 f
     ├─╮  A f
-    │ ○  0810c9f6be14 c
+    │ ○  d174424e38a1 c
     │ │  A c
-    │ ○  12262f386fb3 b
+    │ ○  f10d7aa60e8e b
     │ │  A a
     │ │  A b
     ○ │  5a7c031974ec e
@@ -1474,21 +1474,21 @@ fn test_squash_from_to_restore_descendants() {
     let output = work_dir.run_jj(["squash", "--from=a", "--into=e", "--restore-descendants"]);
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Rebased 1 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon 9d34b6cb f | (no description set)
-    Parent commit (@-)      : yostqsxw e323559d e | (no description set)
+    Rebased 5 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 4df59328 f | (no description set)
+    Parent commit (@-)      : yostqsxw 6a6403fc e | (no description set)
     Parent commit (@-)      : mzvwutvl f0235d79 c | (no description set)
     [EOF]
     ");
     insta::assert_snapshot!(run_log(), @r"
-    @    9d34b6cb2828 f
+    @    4df593283cf2 f
     ├─╮  A f
     │ ○  f0235d7969f6 c
     │ │  A c
     │ ○  f844dadb304c b
     │ │  A a
     │ │  A b
-    ○ │  e323559d5244 e
+    ○ │  6a6403fc9284 e
     │ │  A e
     ○ │  31c7dae860c6 d
     ├─╯  A a
