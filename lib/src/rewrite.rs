@@ -1171,33 +1171,26 @@ pub fn squash_commits<'repo>(
     }
 
     let mut rewritten_destination = destination.clone();
-    if sources.iter().any(|source| {
-        repo.index()
-            .is_ancestor(source.commit.id(), destination.id())
-    }) {
+    if !restore_descendants
+        && sources.iter().any(|source| {
+            repo.index()
+                .is_ancestor(source.commit.id(), destination.id())
+        })
+    {
         // If we're moving changes to a descendant, first rebase descendants onto the
         // rewritten sources. Otherwise it will likely already have the content
         // changes we're moving, so applying them will have no effect and the
         // changes will disappear.
-        if restore_descendants {
-            repo.reparent_descendants_with_progress(|old_commit, rebased_commit| {
-                if old_commit.id() != destination.id() {
-                    return;
-                }
-                rewritten_destination = rebased_commit;
-            })?;
-        } else {
-            let options = RebaseOptions::default();
-            repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
-                if old_commit.id() != destination.id() {
-                    return;
-                }
-                rewritten_destination = match rebased_commit {
-                    RebasedCommit::Rewritten(commit) => commit,
-                    RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
-                };
-            })?;
-        }
+        let options = RebaseOptions::default();
+        repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
+            if old_commit.id() != destination.id() {
+                return;
+            }
+            rewritten_destination = match rebased_commit {
+                RebasedCommit::Rewritten(commit) => commit,
+                RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
+            };
+        })?;
     }
     // Apply the selected changes onto the destination
     let mut destination_tree = rewritten_destination.tree()?;
