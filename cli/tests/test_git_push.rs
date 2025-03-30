@@ -1105,34 +1105,14 @@ fn test_git_push_changes_with_name(subprocess: bool) {
     work_dir.run_jj(["new", "-m", "pushed"]).success();
     work_dir.write_file("file", "modified");
 
-    // Normal behavior.
-    let output = work_dir.run_jj(["git", "push", "--named", "b1=@"]);
+    // Normal behavior. Spaces around the = sign are OK.
+    let output = work_dir.run_jj(["git", "push", "--named", "b1 = @"]);
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
     Changes to push to origin:
       Add bookmark b1 to 3e677c129c1d
     [EOF]
-    ");
-    }
-    // Spaces before the = sign are treated like part of the bookmark name and such
-    // bookmarks cannot be pushed.
-    let output = work_dir.run_jj(["git", "push", "--named", "b1 = @"]);
-    insta::allow_duplicates! {
-    insta::assert_snapshot!(output, @r"
-    ------- stderr -------
-    Error: Could not parse 'b1 ' as a bookmark name
-    Caused by:
-    1: Failed to parse bookmark name: Syntax error
-    2:  --> 1:3
-      |
-    1 | b1 
-      |   ^---
-      |
-      = expected <EOI>
-    Hint: For example, `--named myfeature=@` is valid syntax
-    [EOF]
-    [exit status: 2]
     ");
     }
     // test pushing a change with an empty name
@@ -1207,7 +1187,7 @@ fn test_git_push_changes_with_name(subprocess: bool) {
     ------- stderr -------
     Error: Revset `all:(@|@-)` resolved to more than one revision
     Hint: The revset `all:(@|@-)` resolved to these revisions:
-      yostqsxw 101e6730 b1* | pushed
+      yostqsxw 3a6573b6 b1* | pushed
       yqosqzyt a050abf4 foo
     [EOF]
     [exit status: 1]
@@ -1221,7 +1201,7 @@ fn test_git_push_changes_with_name(subprocess: bool) {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
     Changes to push to origin:
-      Add bookmark b2 to 477da21559d5
+      Add bookmark b2 to e17db4689ab6
     [EOF]
     ");
     }
@@ -1259,7 +1239,7 @@ fn test_git_push_changes_with_name_deleted_tracked(subprocess: bool) {
     work_dir.run_jj(["new", "-m", "pushed"]).success();
     work_dir.write_file("file", "modified");
     // Normal push as part of the test setup
-    let output = work_dir.run_jj(["git", "push", "--named", "b1=@"]);
+    let output = work_dir.run_jj(["git", "push", "--named", "b1 = @"]);
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
@@ -1287,7 +1267,13 @@ fn test_git_push_changes_with_name_deleted_tracked(subprocess: bool) {
 
     // Can't push `b1` with --named to the same or another remote if it's deleted
     // locally and still tracked on `origin`
-    let output = work_dir.run_jj(["git", "push", "--named", "b1=@", "--remote=another_remote"]);
+    let output = work_dir.run_jj([
+        "git",
+        "push",
+        "--named",
+        "b1 = @",
+        "--remote=another_remote",
+    ]);
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
@@ -1297,7 +1283,7 @@ fn test_git_push_changes_with_name_deleted_tracked(subprocess: bool) {
     [exit status: 1]
     ");
     }
-    let output = work_dir.run_jj(["git", "push", "--named", "b1=@", "--remote=origin"]);
+    let output = work_dir.run_jj(["git", "push", "--named", "b1 = @", "--remote=origin"]);
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
@@ -1322,7 +1308,13 @@ fn test_git_push_changes_with_name_deleted_tracked(subprocess: bool) {
     [EOF]
     ");
     }
-    let output = work_dir.run_jj(["git", "push", "--named", "b1=@", "--remote=another_remote"]);
+    let output = work_dir.run_jj([
+        "git",
+        "push",
+        "--named",
+        "b1 = @",
+        "--remote=another_remote",
+    ]);
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------

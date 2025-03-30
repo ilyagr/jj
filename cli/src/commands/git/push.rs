@@ -822,6 +822,9 @@ fn create_explicitly_named_bookmarks(
         ))
         .hinted(hint));
     };
+    // Revisions are lenient towards spaces, so let's make the name lenient as well
+    // Git does not allow bookmark names that include spaces anyway.
+    let name_str = name_str.trim();
     if name_str.is_empty() || revision_str.is_empty() {
         return Err(cli_error(format!(
             "Argument '{name_revision}' must have the form NAME=REVISION, with both NAME and \
