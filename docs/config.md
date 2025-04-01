@@ -283,16 +283,18 @@ diff-args = ["--color=always", "$left", "$right"]
 - `$left` and `$right` are replaced with the paths to the left and right
   directories to diff respectively.
 
-By default `jj` will invoke external tools with a directory containing the left
-and right sides.  The `diff-invocation-mode` config can change this to file by file
-invocations as follows:
+By default `jj` will invoke most external tools with a directory containing the left
+and right sides.
+
+For diff tools, the `diff-invocation-mode` config can be used to toggle  between
+this behavior and file-by-file invocations:
 
 ```toml
 [ui]
-diff.tool = "vimdiff"
+diff.tool = "gvimdiff"
 
-[merge-tools.vimdiff]
-diff-invocation-mode = "file-by-file"
+[merge-tools.gvimdiff]
+diff-invocation-mode = "dir"  # Or "file-by-file"
 ```
 
 By default `jj` will display a warning when the command exits with a non-success
