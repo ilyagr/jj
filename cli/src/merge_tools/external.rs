@@ -269,6 +269,7 @@ fn run_mergetool_external_single_file(
             exit_status,
         }));
     }
+    tracing::info!(%exit_status, "Tool exited successfully{}:", exit_status_implies_conflict.then_some(", informed jj to expect conflicts").unwrap_or_default());
 
     let output_file_contents: Vec<u8> =
         std::fs::read(variables.get("output").unwrap()).map_err(ExternalToolError::Io)?;
@@ -277,6 +278,13 @@ fn run_mergetool_external_single_file(
     }
 
     let new_file_ids = if editor.merge_tool_edits_conflict_markers || exit_status_implies_conflict {
+        tracing::info!(
+            "jj is reparsing output for conflicts{}.",
+            editor
+                .merge_tool_edits_conflict_markers
+                .then_some(" due to `merge-tool-edits-conflict-markers` config")
+                .unwrap_or_default()
+        );
         conflicts::update_from_content(
             file_merge,
             store,
