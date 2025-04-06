@@ -777,6 +777,782 @@ fn test_squash_from_to_partial() {
 }
 
 #[test]
+fn test_squash_working_copy_restore_descendants() {
+    let test_env = TestEnvironment::default();
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    // Create history like this:
+    //   Y
+    //   |
+    // B X@
+    // |/
+    // A
+    //
+    // Each commit adds a file named the same as the commit
+    let create_commit = |name: &str| {
+        work_dir
+            .run_jj(["bookmark", "create", "-r@", name])
+            .success();
+        work_dir.write_file(name, format!("test {name}\n"));
+    };
+
+    create_commit("a");
+    work_dir.run_jj(["new"]).success();
+    create_commit("b");
+    work_dir.run_jj(["new", "a"]).success();
+    create_commit("x");
+    work_dir.run_jj(["new"]).success();
+    create_commit("y");
+    work_dir.run_jj(["edit", "x"]).success();
+
+    let template = r#"separate(
+        " ",
+        commit_id.short(),
+        bookmarks,
+        description,
+        if(empty, "(empty)")
+    )"#;
+    let run_log = || work_dir.run_jj(["log", "-r=::", "--summary", "-T", template]);
+
+    // Verify the setup
+    insta::assert_snapshot!(run_log(), @r"
+    ○  3f45d7a3ae69 y
+    │  A y
+    @  5b4046443e64 x
+    │  A x
+    │ ○  b1e1eea2f666 b
+    ├─╯  A b
+    ○  7468364c89fc a
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=a"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    x
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=y"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    x
+    y
+    [EOF]
+    ");
+
+    let output = work_dir.run_jj(["squash", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 2 descendant commits (while preserving their content)
+    Working copy  (@) now at: kxryzmor 7ec5499d (empty) (no description set)
+    Parent commit (@-)      : qpvuntsm 1c6a069e a x | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @  7ec5499d9141 (empty)
+    │ ○  ddfef0b279f8 y
+    ├─╯  A y
+    │ ○  640ba5e85507 b
+    ├─╯  A b
+    │    D x
+    ○  1c6a069ec7e3 a x
+    │  A a
+    │  A x
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+
+    let output = work_dir.run_jj(["diff", "--summary"]);
+    //  The current commit becomes empty.
+    insta::assert_snapshot!(output, @"");
+    // Should coincide with the working copy commit before
+    let output = work_dir.run_jj(["file", "list", "-r=a"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    x
+    [EOF]
+    ");
+    // Commit b should be the same as before
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=y"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    x
+    y
+    [EOF]
+    ");
+}
+
+#[test]
+fn test_squash_from_to_restore_descendants() {
+    let test_env = TestEnvironment::default();
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    // Create history like this:
+    // F
+    // |\
+    // E C
+    // | |
+    // D B
+    // |/
+    // A
+    //
+    // Each commit adds a file named the same as the commit
+    let create_commit = |name: &str| {
+        work_dir
+            .run_jj(["bookmark", "create", "-r@", name])
+            .success();
+        work_dir.write_file(name, format!("test {name}\n"));
+    };
+
+    create_commit("a");
+    work_dir.run_jj(["new"]).success();
+    create_commit("b");
+    work_dir.run_jj(["new"]).success();
+    create_commit("c");
+    work_dir.run_jj(["new", "a"]).success();
+    create_commit("d");
+    work_dir.run_jj(["new"]).success();
+    create_commit("e");
+    work_dir.run_jj(["new", "e", "c"]).success();
+    create_commit("f");
+
+    let template = r#"separate(
+        " ",
+        commit_id.short(),
+        bookmarks,
+        description,
+        if(empty, "(empty)")
+    )"#;
+    let run_log = || work_dir.run_jj(["log", "-r=::", "--summary", "-T", template]);
+
+    // ========== Part 1 =========
+    // Verify the setup
+    insta::assert_snapshot!(run_log(), @r"
+    @    42acd0537c88 f
+    ├─╮  A f
+    │ ○  4fb9706b0f47 c
+    │ │  A c
+    │ ○  b1e1eea2f666 b
+    │ │  A b
+    ○ │  b4e3197108ba e
+    │ │  A e
+    ○ │  d707102f499f d
+    ├─╯  A d
+    ○  7468364c89fc a
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let beginning = work_dir.current_operation_id();
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
+
+    // Squash without --restore-descendants for comparison
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=b", "--into=d"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 3 descendant commits
+    Working copy  (@) now at: kpqxywon e462100a f | (no description set)
+    Parent commit (@-)      : yostqsxw 6944fd03 e | (no description set)
+    Parent commit (@-)      : mzvwutvl 6cd5d5c1 c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    e462100ae7c3 f
+    ├─╮  A f
+    │ ○  6cd5d5c1daf7 c
+    │ │  A c
+    ○ │  6944fd03dc5d e
+    │ │  A e
+    ○ │  1befcf027d1b d
+    ├─╯  A b
+    │    A d
+    ○  7468364c89fc a b
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=e"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    d
+    e
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=f"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    d
+    e
+    f
+    [EOF]
+    ");
+
+    // --restore-descendants
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=b", "--into=d", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 3 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 1d64ccbf f | (no description set)
+    Parent commit (@-)      : yostqsxw cb90d752 e | (no description set)
+    Parent commit (@-)      : mzvwutvl 4e6702ae c | (no description set)
+    [EOF]
+    ");
+    //  `d`` becomes the same as in the above example,
+    // but `c` does not lose file `b` and `e` still does not contain file `b`
+    // regardless of what happened to their parents.
+    insta::assert_snapshot!(run_log(), @r"
+    @    1d64ccbf4608 f
+    ├─╮  A f
+    │ ○  4e6702ae494c c
+    │ │  A b
+    │ │  A c
+    ○ │  cb90d75271b4 e
+    │ │  D b
+    │ │  A e
+    ○ │  853ea07451aa d
+    ├─╯  A b
+    │    A d
+    ○  7468364c89fc a b
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=e"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    e
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=f"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    d
+    e
+    f
+    [EOF]
+    ");
+
+    // --restore-descendants works with --keep-emptied, same result except for
+    // leaving an empty commit
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj([
+        "squash",
+        "--from=b",
+        "--into=d",
+        "--restore-descendants",
+        "--keep-emptied",
+    ]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 3 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 3c13920f f | (no description set)
+    Parent commit (@-)      : yostqsxw aa73012d e | (no description set)
+    Parent commit (@-)      : mzvwutvl d323deaa c | (no description set)
+    [EOF]
+    ");
+    //  `d`` becomes the same as in the above example,
+    // but `c` does not lose file `b` and `e` still does not contain file `b`
+    // regardless of what happened to their parents.
+    insta::assert_snapshot!(run_log(), @r"
+    @    3c13920f1e9a f
+    ├─╮  A f
+    │ ○  d323deaa04c2 c
+    │ │  A b
+    │ │  A c
+    │ ○  a55451e8808f b (empty)
+    ○ │  aa73012df9cd e
+    │ │  D b
+    │ │  A e
+    ○ │  d00e73142243 d
+    ├─╯  A b
+    │    A d
+    ○  7468364c89fc a
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=e"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    e
+    [EOF]
+    ");
+
+    // ========== Part 2 =========
+    // Reminder of the setup
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    insta::assert_snapshot!(run_log(), @r"
+    @    42acd0537c88 f
+    ├─╮  A f
+    │ ○  4fb9706b0f47 c
+    │ │  A c
+    │ ○  b1e1eea2f666 b
+    │ │  A b
+    ○ │  b4e3197108ba e
+    │ │  A e
+    ○ │  d707102f499f d
+    ├─╯  A d
+    ○  7468364c89fc a
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+
+    // --restore-descendants works when squashing from parent to child
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=a", "--into=b", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 2 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 7fa445c9 f | (no description set)
+    Parent commit (@-)      : yostqsxw 102e6106 e | (no description set)
+    Parent commit (@-)      : mzvwutvl a2ff7c27 c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    7fa445c9e606 f
+    ├─╮  A f
+    │ ○  a2ff7c27dbba c
+    │ │  A c
+    │ ○  2bf81678391c b
+    │ │  A a
+    │ │  A b
+    ○ │  102e61065eb2 e
+    │ │  A e
+    ○ │  7b1493a2027e d
+    ├─╯  A a
+    │    A d
+    ◆  000000000000 a (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+
+    // --restore-descendants --keep-emptied works when squashing from parent to
+    // child
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj([
+        "squash",
+        "--from=a",
+        "--into=b",
+        "--restore-descendants",
+        "--keep-emptied",
+    ]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 2 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 30c1ec1b f | (no description set)
+    Parent commit (@-)      : yostqsxw c20a2a7a e | (no description set)
+    Parent commit (@-)      : mzvwutvl 601223f5 c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    30c1ec1b6264 f
+    ├─╮  A f
+    │ ○  601223f5faa8 c
+    │ │  A c
+    │ ○  28223a4af36c b
+    │ │  A a
+    │ │  A b
+    ○ │  c20a2a7a24ba e
+    │ │  A e
+    ○ │  a224ba6ebde8 d
+    ├─╯  A a
+    │    A d
+    ○  367fe826e43e a (empty)
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+
+    // --restore-descendants works when squashing from child to parent
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=b", "--into=a", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 4 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 6ad1c62a f | (no description set)
+    Parent commit (@-)      : yostqsxw e259f026 e | (no description set)
+    Parent commit (@-)      : mzvwutvl 36192c59 c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    6ad1c62aec5b f
+    ├─╮  A b
+    │ │  A f
+    │ ○  36192c59f1e9 c
+    │ │  A c
+    ○ │  e259f02633ca e
+    │ │  A e
+    ○ │  92943f1c8204 d
+    ├─╯  D b
+    │    A d
+    ○  59aac8514774 a b
+    │  A a
+    │  A b
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+
+    // same test, but with --keep-emptied
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj([
+        "squash",
+        "--from=b",
+        "--into=a",
+        "--keep-emptied",
+        "--restore-descendants",
+    ]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 5 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 6eadede0 f | (no description set)
+    Parent commit (@-)      : yostqsxw 97233b50 e | (no description set)
+    Parent commit (@-)      : mzvwutvl 5b2d6858 c | (no description set)
+    [EOF]
+    ");
+    // BUG! b should now be empty! This is fixed in the next commit, but I
+    // think it's worth keeping in the commit history.
+    insta::assert_snapshot!(run_log(), @r"
+    @    6eadede086b1 f
+    ├─╮  A b
+    │ │  A f
+    │ ○  5b2d685868b7 c
+    │ │  A b
+    │ │  A c
+    │ ○  904dac9cd09e b
+    │ │  D b
+    ○ │  97233b506c11 e
+    │ │  A e
+    ○ │  8cbe1a629aed d
+    ├─╯  D b
+    │    A d
+    ○  c1fbbbe74a28 a
+    │  A a
+    │  A b
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=c"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+
+    // ========== Part 3 =========
+    // Reminder of the setup
+    test_env.advance_test_rng_seed_to_multiple_of(200_000);
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    insta::assert_snapshot!(run_log(), @r"
+    @    42acd0537c88 f
+    ├─╮  A f
+    │ ○  4fb9706b0f47 c
+    │ │  A c
+    │ ○  b1e1eea2f666 b
+    │ │  A b
+    ○ │  b4e3197108ba e
+    │ │  A e
+    ○ │  d707102f499f d
+    ├─╯  A d
+    ○  7468364c89fc a
+    │  A a
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=f"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    d
+    e
+    f
+    [EOF]
+    ");
+
+    // --restore-descendants works when squashing from grandchild to grandparent
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=e", "--into=a", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 4 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 6d14c928 f | (no description set)
+    Parent commit (@-)      : yqosqzyt ab775412 d e | (no description set)
+    Parent commit (@-)      : mzvwutvl 175aa1f2 c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    6d14c928f32e f
+    ├─╮  A e
+    │ │  A f
+    │ ○  175aa1f28a05 c
+    │ │  A c
+    │ ○  d1076aeca3e6 b
+    │ │  A b
+    │ │  D e
+    ○ │  ab7754126332 d e
+    ├─╯  A d
+    │    D e
+    ○  4644e0c16443 a
+    │  A a
+    │  A e
+    ◆  000000000000 (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=f"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    d
+    e
+    f
+    [EOF]
+    ");
+
+    // --restore-descendants works when squashing from grandparent to grandchild
+    work_dir
+        .run_jj(["operation", "restore", &beginning])
+        .success();
+    let output = work_dir.run_jj(["squash", "--from=a", "--into=e", "--restore-descendants"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Rebased 1 descendant commits (while preserving their content)
+    Working copy  (@) now at: kpqxywon 94ad7042 f | (no description set)
+    Parent commit (@-)      : yostqsxw 582d640e e | (no description set)
+    Parent commit (@-)      : mzvwutvl 2214436c c | (no description set)
+    [EOF]
+    ");
+    insta::assert_snapshot!(run_log(), @r"
+    @    94ad70428c4a f
+    ├─╮  A f
+    │ ○  2214436c3fa7 c
+    │ │  A c
+    │ ○  a469c893f362 b
+    │ │  A a
+    │ │  A b
+    ○ │  582d640e331f e
+    │ │  A e
+    ○ │  93671eb30330 d
+    ├─╯  A a
+    │    A d
+    ◆  000000000000 a (empty)
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=b"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=d"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    d
+    [EOF]
+    ");
+    let output = work_dir.run_jj(["file", "list", "-r=f"]);
+    insta::assert_snapshot!(output, @r"
+    a
+    b
+    c
+    d
+    e
+    f
+    [EOF]
+    ");
+}
+
+#[test]
 fn test_squash_from_multiple() {
     let test_env = TestEnvironment::default();
     test_env.run_jj_in(".", ["git", "init", "repo"]).success();
