@@ -1173,8 +1173,7 @@ fn test_git_fetch_bookmarks_some_missing(subprocess: bool) {
     insta::allow_duplicates! {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Warning: No branch matching `noexist1` found on any specified/configured remote
-    Warning: No branch matching `noexist2` found on any specified/configured remote
+    Warning: No branch matching `noexist1`, `noexist2` found on any specified/configured remote
     Nothing changed.
     [EOF]
     ");
