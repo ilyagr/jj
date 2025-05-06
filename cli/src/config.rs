@@ -43,7 +43,6 @@ use crate::command_error::config_error;
 use crate::command_error::config_error_with_message;
 use crate::command_error::CommandError;
 use crate::text_util;
-use crate::ui::Ui;
 
 // TODO(#879): Consider generating entire schema dynamically vs. static file.
 pub const CONFIG_SCHEMA: &str = include_str!("config-schema.json");
@@ -193,6 +192,7 @@ impl ConfigPath {
     fn as_path(&self) -> &Path {
         &self.path
     }
+
     fn exists(&self) -> bool {
         match self.state {
             ConfigPathState::Exists => true,
@@ -218,14 +218,13 @@ fn create_dir_all(path: &Path) -> std::io::Result<()> {
 #[derive(Clone, Default, Debug)]
 struct UnresolvedConfigEnv {
     config_dir: Option<PathBuf>,
-    // TODO: remove after jj 0.35
     macos_legacy_config_dir: Option<PathBuf>,
     home_dir: Option<PathBuf>,
     jj_config: Option<String>,
 }
 
 impl UnresolvedConfigEnv {
-    fn resolve(self, ui: &Ui) -> Vec<ConfigPath> {
+    fn resolve(self) -> Vec<ConfigPath> {
         if let Some(paths) = self.jj_config {
             return split_paths(&paths)
                 .filter(|path| !path.as_os_str().is_empty())
@@ -284,40 +283,16 @@ impl UnresolvedConfigEnv {
 
         if let Some(path) = legacy_platform_config_path {
             if path.exists() {
-                Self::warn_for_deprecated_path(
-                    ui,
-                    path.as_path(),
-                    "~/Library/Application Support/jj",
-                    "~/.config/jj",
-                );
                 paths.push(path);
             }
         }
         if let Some(path) = legacy_platform_config_dir {
             if path.exists() {
-                Self::warn_for_deprecated_path(
-                    ui,
-                    path.as_path(),
-                    "~/Library/Application Support/jj",
-                    "~/.config/jj",
-                );
                 paths.push(path);
             }
         }
 
         paths
-    }
-
-    fn warn_for_deprecated_path(ui: &Ui, path: &Path, old: &str, new: &str) {
-        let _ = indoc::writedoc!(
-            ui.warning_default(),
-            r"
-            Deprecated configuration file `{}`.
-            Configuration files in `{old}` are deprecated, and support will be removed in a future release.
-            Instead, move your configuration files to `{new}`.
-            ",
-            path.display(),
-        );
     }
 }
 
@@ -332,7 +307,7 @@ pub struct ConfigEnv {
 
 impl ConfigEnv {
     /// Initializes configuration loader based on environment variables.
-    pub fn from_environment(ui: &Ui) -> Self {
+    pub fn from_environment() -> Self {
         let config_dir = etcetera::choose_base_strategy()
             .ok()
             .map(|s| s.config_dir());
@@ -366,7 +341,7 @@ impl ConfigEnv {
         ConfigEnv {
             home_dir,
             repo_path: None,
-            user_config_paths: env.resolve(ui),
+            user_config_paths: env.resolve(),
             repo_config_path: None,
             command: None,
         }
@@ -1753,7 +1728,7 @@ mod tests {
         ConfigEnv {
             home_dir,
             repo_path: None,
-            user_config_paths: env.resolve(&Ui::null()),
+            user_config_paths: env.resolve(),
             repo_config_path: None,
             command: None,
         }
