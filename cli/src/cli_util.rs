@@ -3845,7 +3845,7 @@ impl<'a> CliRunner<'a> {
                     "Did you update to a commit where the directory doesn't exist?",
                 )
             })?;
-        let mut config_env = ConfigEnv::from_environment(ui);
+        let mut config_env = ConfigEnv::from_environment();
         let mut last_config_migration_descriptions = Vec::new();
         let mut migrate_config = |config: &mut StackedConfig| -> Result<(), CommandError> {
             last_config_migration_descriptions =
