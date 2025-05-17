@@ -158,7 +158,7 @@ pub enum DiffFormat {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum BuiltinFormatKind {
+pub enum BuiltinFormatKind {
     Summary,
     Stat,
     Types,
@@ -168,6 +168,18 @@ enum BuiltinFormatKind {
 }
 
 impl BuiltinFormatKind {
+    // Alternatively, we could use or vendor one of the crates `strum`,
+    // `enum-iterator`, or `variant_count` (for a check that the length of the array
+    // is correct). The latter is very simple and is also a nightly feature.
+    pub const ALL_VARIANTS: &[BuiltinFormatKind] = &[
+        Self::Summary,
+        Self::Stat,
+        Self::Types,
+        Self::NameOnly,
+        Self::Git,
+        Self::ColorWords,
+    ];
+
     fn from_name(name: &str) -> Result<Self, String> {
         match name {
             "summary" => Ok(Self::Summary),
@@ -211,7 +223,7 @@ impl BuiltinFormatKind {
         }
     }
 
-    fn to_arg_name(self) -> &'static str {
+    pub fn to_arg_name(self) -> &'static str {
         match self {
             Self::Summary => "summary",
             Self::Stat => "stat",
