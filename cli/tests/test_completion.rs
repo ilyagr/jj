@@ -1113,6 +1113,12 @@ fn test_merge_tools() {
     let output = test_env.run_jj_in(dir, ["--", "jj", "diffedit", "--tool", ""]);
     insta::assert_snapshot!(output, @r"
     :builtin
+    :summary
+    :stat
+    :types
+    :name-only
+    :git
+    :color-words
     diffedit3
     diffedit3-ssh
     difft
