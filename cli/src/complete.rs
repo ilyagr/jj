@@ -471,8 +471,13 @@ pub fn merge_tools() -> Vec<CompletionCandidate> {
 /// can't tell which these are. So, this not reliable, but probably good enough
 /// for command-line completion.
 pub fn diff_editors() -> Vec<CompletionCandidate> {
+    let builtin_format_kinds: Vec<String> = crate::diff_util::BuiltinFormatKind::ALL_VARIANTS
+        .iter()
+        .map(|kind| format!(":{}", kind.to_arg_name()))
+        .collect();
     with_jj(|_, settings| {
         Ok(std::iter::once(":builtin")
+            .chain(builtin_format_kinds.iter().map(|s| s.as_str()))
             .chain(configured_merge_tools(settings))
             .map(CompletionCandidate::new)
             .collect())
