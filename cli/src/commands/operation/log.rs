@@ -53,12 +53,15 @@ pub struct OperationLogArgs {
     /// reversed.
     #[arg(long, short = 'n')]
     limit: Option<usize>,
+
     /// Show operations in the opposite order (older operations first)
     #[arg(long)]
     reversed: bool,
+
     /// Don't show the graph, show a flat list of operations
     #[arg(long, short = 'G')]
     no_graph: bool,
+
     /// Render each operation using the given template
     ///
     /// You can specify arbitrary template expressions using the
@@ -70,11 +73,14 @@ pub struct OperationLogArgs {
     ///
     /// [`jj help -k templates`]:
     ///     https://docs.jj-vcs.dev/latest/templates/
-    #[arg(long, short = 'T', add = ArgValueCandidates::new(complete::template_aliases))]
+    #[arg(long, short = 'T')]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
+
     /// Show changes to the repository at each operation
     #[arg(long, short = 'd')]
     op_diff: bool,
+
     /// Show patch of modifications to changes (implies --op-diff)
     ///
     /// If the previous version has different parents, it will be temporarily
@@ -82,6 +88,7 @@ pub struct OperationLogArgs {
     /// contaminated by unrelated changes.
     #[arg(long, short = 'p')]
     patch: bool,
+
     #[command(flatten)]
     diff_format: DiffFormatArgs,
 }

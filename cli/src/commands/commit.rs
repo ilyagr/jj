@@ -52,35 +52,34 @@ use crate::ui::Ui;
 ///   child of the working-copy, and sets the new commit as the working-copy.
 ///
 /// * `jj split` allows you to move the selected changes to a different
-///   destination with `-d`/`-A`/`-B`.
+///   destination with `-o`/`-A`/`-B`.
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct CommitArgs {
     /// Interactively choose which changes to include in the current commit
     #[arg(short, long)]
     interactive: bool,
+
     /// Specify diff editor to be used (implies --interactive)
-    #[arg(
-        long,
-        value_name = "NAME",
-        add = ArgValueCandidates::new(complete::diff_editors),
-    )]
+    #[arg(long, value_name = "NAME")]
+    #[arg(add = ArgValueCandidates::new(complete::diff_editors))]
     tool: Option<String>,
+
     /// The change description to use (don't open editor)
     #[arg(long = "message", short, value_name = "MESSAGE")]
     message_paragraphs: Vec<String>,
+
     /// Open an editor to edit the change description
     ///
     /// Forces an editor to open when using `--message` to allow the
     /// message to be edited afterwards.
     #[arg(long)]
     editor: bool,
+
     /// Put these paths in the current commit
-    #[arg(
-        value_name = "FILESETS",
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::modified_files),
-    )]
+    #[arg(value_name = "FILESETS", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::modified_files))]
     paths: Vec<String>,
+
     // TODO: Delete in jj 0.40.0+
     /// Reset the author to the configured user
     ///
@@ -92,6 +91,7 @@ pub(crate) struct CommitArgs {
     /// $ JJ_USER='Foo Bar' JJ_EMAIL=foo@bar.com jj commit --reset-author
     #[arg(long, hide = true)]
     reset_author: bool,
+
     // TODO: Delete in jj 0.40.0+
     /// Set author to the provided string
     ///

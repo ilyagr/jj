@@ -65,43 +65,29 @@ pub(crate) struct DiffArgs {
     /// of the revision itself.
     ///
     /// If none of `-r`, `-f`, or `-t` is provided, then the default is `-r @`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        alias = "revision",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSETS", alias = "revision")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions: Option<Vec<RevisionArg>>,
+
     /// Show changes from this revision
     ///
     /// If none of `-r`, `-f`, or `-t` is provided, then the default is `-r @`.
-    #[arg(
-        long,
-        short,
-        conflicts_with = "revisions",
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, conflicts_with = "revisions", value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     from: Option<RevisionArg>,
+
     /// Show changes to this revision
     ///
     /// If none of `-r`, `-f`, or `-t` is provided, then the default is `-r @`.
-    #[arg(
-        long,
-        short,
-        conflicts_with = "revisions",
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, conflicts_with = "revisions", value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     to: Option<RevisionArg>,
+
     /// Restrict the diff to these paths
-    #[arg(
-        value_name = "FILESETS",
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::modified_revision_or_range_files),
-    )]
+    #[arg(value_name = "FILESETS", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::modified_revision_or_range_files))]
     paths: Vec<String>,
+
     /// Render each file diff entry using the given template
     ///
     /// All 0-argument methods of the [`TreeDiffEntry` type] are available as
@@ -118,9 +104,10 @@ pub(crate) struct DiffArgs {
         short = 'T',
         conflicts_with_all = ["short-format", "long-format", "tool"],
         help_heading = "Diff Formatting Options",
-        add = ArgValueCandidates::new(complete::template_aliases)
     )]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
+
     #[command(flatten)]
     format: DiffFormatArgs,
 }
@@ -138,6 +125,8 @@ pub(crate) fn cmd_diff(
 
     let from_tree;
     let to_tree;
+    let mut multiple_revision_revset = false;
+    let mut no_revision_revset = false;
     let mut copy_records = CopyRecords::default();
     if args.from.is_some() || args.to.is_some() {
         let resolve_revision = |r: &Option<RevisionArg>| {
@@ -157,6 +146,15 @@ pub(crate) fn cmd_diff(
             .unwrap_or(std::slice::from_ref(&RevisionArg::AT));
         let revisions_evaluator = workspace_command.parse_union_revsets(ui, revision_args)?;
         let target_expression = revisions_evaluator.expression();
+
+        let truncated_revision_count = workspace_command
+            .attach_revset_evaluator(target_expression.clone())
+            .evaluate_to_commit_ids()?
+            .take(2)
+            .count();
+        multiple_revision_revset = truncated_revision_count > 1;
+        no_revision_revset = truncated_revision_count == 0;
+
         let mut gaps_revset = workspace_command
             .attach_revset_evaluator(
                 target_expression
@@ -215,6 +213,35 @@ pub(crate) fn cmd_diff(
     }
 
     ui.request_pager();
+    // The warnings are printed here since they must be passed to the pager.
+    // Otherwise, warnings would be very easy to miss when the pager is used.
+    if no_revision_revset {
+        // This should inform a user doing e.g. `jj diff -r abc+` if `abc+` unexpectedly
+        // contains no revsions, as opposed to being a revision with an empty diff.
+        writeln!(
+            ui.warning_default(),
+            "The diff revset expanded to 0 revisions. There is no diff to show."
+        )?;
+    }
+    if let Some([single_revset]) = args.revisions.as_deref()
+        && multiple_revision_revset
+        && !single_revset.as_ref().contains("::")
+        && !single_revset.as_ref().contains("..")
+    {
+        // The primary goal of this warning is to notify the user if they are doing e.g.
+        // `jj diff -r @-`, and `@-` unexpectedly expands to multiple revisions.
+        writeln!(
+            ui.warning_default(),
+            "Showing combined diff of potentially unrelated revisions. The revset expanded to \
+             multiple revisions and is not of the form `a::b` or `a..b`."
+        )?;
+        // TODO(ilyagr, martinvonz): The behavior of `jj diff -r a::b`
+        // should change if `a::b` contains merge commits, but not all the
+        // parents of those merge commits. Once that happens, `jj diff -r
+        // a::b` will be wrong and `jj diff -r a..b` will be correct. A
+        // warning should be introduced to explain that when `a::b` is used.
+    }
+
     if let Some(template) = &maybe_template {
         let tree_diff = from_tree.diff_stream_with_copies(&to_tree, &matcher, &copy_records);
         show_templated(ui.stdout_formatter().as_mut(), tree_diff, template).block_on()?;

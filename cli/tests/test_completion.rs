@@ -294,6 +294,22 @@ fn test_bookmark_names() {
     [EOF]
     ");
 
+    // TODO: Make it so this only lists untracked remotes
+    let output = work_dir.complete_fish(["bookmark", "track", "a", "--remote", ""]);
+    insta::assert_snapshot!(output, @"
+    origin
+    upstream
+    [EOF]
+    ");
+
+    // TODO: Make it so this only lists tracked remotes
+    let output = work_dir.complete_fish(["bookmark", "untrack", "a", "--remote", ""]);
+    insta::assert_snapshot!(output, @"
+    origin
+    upstream
+    [EOF]
+    ");
+
     let output = work_dir.complete_fish(["git", "push", "-b", "a"]);
     insta::assert_snapshot!(output, @r"
     aaa-local	x
@@ -451,6 +467,42 @@ fn test_completions_are_generated() {
     complete --keep-order --exclusive --command jj --arguments ..
     [EOF]
     ");
+}
+
+#[test]
+fn test_bad_complete_env() {
+    let mut test_env = TestEnvironment::default();
+
+    test_env.add_env_var("COMPLETE", "badshell");
+    let output = test_env.run_jj_in(".", [""; 0]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    error: unknown shell `badshell`, expected one of `bash`, `elvish`, `fish`, `powershell`, `zsh`[EOF]
+    [exit status: 2]
+    ");
+
+    // Empty value of COMPLETE is ignored as is the value of "0".  This could
+    // change if `clap` changes the way it interprets an empty COMPLETE env var.
+    //
+    // In other words, jj runs normally instead of returning completions. We get
+    // an error because the default jj command needs to be run in a jj repo.
+    test_env.add_env_var("COMPLETE", "");
+    let output = test_env.run_jj_in(".", [""; 0]);
+    insta::assert_snapshot!(output, @r#"
+    ------- stderr -------
+    Hint: Use `jj -h` for a list of available commands.
+    Run `jj config set --user ui.default-command log` to disable this message.
+    Error: There is no jj repo in "."
+    [EOF]
+    [exit status: 1]
+    "#);
+    // Same thing (normal execution) happens for a sub-command and "0"
+    test_env.add_env_var("COMPLETE", "0");
+    let output = test_env.run_jj_in(".", ["config", "list", "user.name"]);
+    insta::assert_snapshot!(output, @r#"
+    user.name = "Test User"
+    [EOF]
+    "#);
 }
 
 #[test_case(Shell::Bash; "bash")]
@@ -1384,7 +1436,7 @@ fn test_files() {
     │  M f_modified
     │  M f_not_yet_copied
     │  R {f_not_yet_renamed => f_renamed}
-    │ ×  royxmykx test.user@example.com 2001-02-03 08:05:14 conflicted 16d833c2 (conflict)
+    │ ×  royxmykx test.user@example.com 2001-02-03 08:05:14 conflicted b58ba5ab (conflict)
     ├─╯  conflicted
     │    A f_added_2
     │    A f_dir/dir_file_1

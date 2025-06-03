@@ -3306,6 +3306,7 @@ pub struct GlobalArgs {
     /// ancestor of the current working directory.
     #[arg(long, short = 'R', global = true, value_hint = clap::ValueHint::DirPath)]
     pub repository: Option<String>,
+
     /// Don't snapshot the working copy, and don't update it
     ///
     /// By default, Jujutsu snapshots the working copy at the beginning of every
@@ -3320,6 +3321,7 @@ pub struct GlobalArgs {
     /// implies `--ignore-working-copy`.
     #[arg(long, global = true)]
     pub ignore_working_copy: bool,
+
     /// Allow rewriting immutable commits
     ///
     /// By default, Jujutsu prevents rewriting commits in the configured set of
@@ -3330,6 +3332,7 @@ pub struct GlobalArgs {
     /// `immutable_heads()` revset or the `immutable` template keyword.
     #[arg(long, global = true)]
     pub ignore_immutable: bool,
+
     /// Operation to load the repo at
     ///
     /// Operation to load the repo at. By default, Jujutsu loads the repo at the
@@ -3352,13 +3355,10 @@ pub struct GlobalArgs {
     /// earlier operation. Doing that is equivalent to having run concurrent
     /// commands starting at the earlier operation. There's rarely a reason to
     /// do that, but it is possible.
-    #[arg(
-        long,
-        visible_alias = "at-op",
-        global = true,
-        add = ArgValueCandidates::new(complete::operations),
-    )]
+    #[arg(long, visible_alias = "at-op", global = true)]
+    #[arg(add = ArgValueCandidates::new(complete::operations))]
     pub at_operation: Option<String>,
+
     /// Enable debug logging
     #[arg(long, global = true)]
     pub debug: bool,
@@ -3372,6 +3372,7 @@ pub struct EarlyArgs {
     /// When to colorize output
     #[arg(long, value_name = "WHEN", global = true)]
     pub color: Option<ColorChoice>,
+
     /// Silence non-primary command output
     ///
     /// For example, `jj file list` will still list files, but it won't tell
@@ -3382,18 +3383,22 @@ pub struct EarlyArgs {
     // Parsing with ignore_errors will crash if this is bool, so use
     // Option<bool>.
     pub quiet: Option<bool>,
+
     /// Disable the pager
     #[arg(long, global = true, action = ArgAction::SetTrue)]
     // Parsing with ignore_errors will crash if this is bool, so use
     // Option<bool>.
     pub no_pager: Option<bool>,
+
     /// Additional configuration options (can be repeated)
     ///
     /// The name should be specified as TOML dotted keys. The value should be
     /// specified as a TOML expression. If string value isn't enclosed by any
     /// TOML constructs (such as array notation), quotes can be omitted.
-    #[arg(long, value_name = "NAME=VALUE", global = true, add = ArgValueCompleter::new(complete::leaf_config_key_value))]
+    #[arg(long, value_name = "NAME=VALUE", global = true)]
+    #[arg(add = ArgValueCompleter::new(complete::leaf_config_key_value))]
     pub config: Vec<String>,
+
     /// Additional configuration files (can be repeated)
     #[arg(long, value_name = "PATH", global = true, value_hint = clap::ValueHint::FilePath)]
     pub config_file: Vec<String>,
@@ -3988,7 +3993,7 @@ impl<'a> CliRunner<'a> {
         migrate_config(&mut config)?;
         ui.reset(&config)?;
 
-        if env::var_os("COMPLETE").is_some() {
+        if env::var_os("COMPLETE").is_some_and(|v| !v.is_empty() && v != "0") {
             return handle_shell_completion(&Ui::null(), &self.app, &config, &cwd);
         }
 

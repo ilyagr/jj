@@ -37,7 +37,7 @@ use crate::ui::Ui;
 
 /// Start tracking given remote bookmarks
 ///
-/// A tracking remote bookmark will be imported as a local bookmark of the same
+/// A tracked remote bookmark will be imported as a local bookmark of the same
 /// name. Changes to it will propagate to the existing local bookmark on future
 /// pulls.
 #[derive(clap::Args, Clone, Debug)]
@@ -49,11 +49,8 @@ pub struct BookmarkTrackArgs {
     ///
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        required = true,
-        value_name = "BOOKMARK",
-        add = ArgValueCandidates::new(complete::untracked_bookmarks),
-    )]
+    #[arg(required = true, value_name = "BOOKMARK")]
+    #[arg(add = ArgValueCandidates::new(complete::untracked_bookmarks))]
     names: Vec<String>,
 
     /// Remote names to track
@@ -67,6 +64,8 @@ pub struct BookmarkTrackArgs {
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
     #[arg(long = "remote", value_name = "REMOTE")]
+    // TODO: Make this skip the remotes already tracked
+    #[arg(add = ArgValueCandidates::new(complete::git_remotes))]
     remotes: Option<Vec<String>>,
 }
 

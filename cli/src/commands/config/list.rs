@@ -37,14 +37,18 @@ pub struct ConfigListArgs {
     /// An optional name of a specific config option to look up.
     #[arg(add = ArgValueCandidates::new(complete::config_keys))]
     pub name: Option<ConfigNamePathBuf>,
+
     /// Whether to explicitly include built-in default values in the list.
     #[arg(long, conflicts_with = "config_level")]
     pub include_defaults: bool,
+
     /// Allow printing overridden values.
     #[arg(long)]
     pub include_overridden: bool,
+
     #[command(flatten)]
     pub level: ConfigLevelArgs,
+
     /// Render each variable using the given template
     ///
     /// The following keywords are available in the template expression:
@@ -65,11 +69,8 @@ pub struct ConfigListArgs {
     ///
     /// [`jj help -k templates`]:
     ///     https://docs.jj-vcs.dev/latest/templates/
-    #[arg(
-        long, short = 'T',
-        verbatim_doc_comment,
-        add = ArgValueCandidates::new(complete::template_aliases)
-    )]
+    #[arg(long, short = 'T', verbatim_doc_comment)]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
 }
 

@@ -8,6 +8,29 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Release highlights
+
+### Breaking changes
+
+### Deprecations
+
+### New features
+
+### Fixed bugs
+
+## [0.37.0] - 2026-01-07
+
+### Release highlights
+
+* A new syntax for referring to hidden and divergent change IDs is available:
+  `xyz/n` where `n` is a number. For instance, `xyz/0` refers to the latest
+  version of `xyz`, while `xyz/1` refers to the previous version of `xyz`.
+  This allows you to perform actions like `jj restore --from xyz/1 --to xyz` to
+  restore `xyz` to its previous contents, if you made a mistake.
+
+  For divergent changes, the numeric suffix will always be shown in the log,
+  allowing you to disambiguate them in a similar manner.
+
 ### Breaking changes
 
 * [String patterns](docs/revsets.md#string-patterns) in revsets, command
@@ -23,12 +46,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   --remote=<remote>`.
 
 * On Windows, symlinks that point to a path with `/` won't be supported. This
-  path is [invalid on Windows].
+  path is [invalid on Windows](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions).
 
 * The template alias `format_short_change_id_with_hidden_and_divergent_info(commit)`
   has been replaced by `format_short_change_id_with_change_offset(commit)`.
-
-[invalid on Windows]: https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions
 
 * The following deprecated config options have been removed:
   - `git.push-bookmark-prefix`
@@ -40,6 +61,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 * Template expansion that did not produce a terminating newline will not be
   fixed up to provide one by `jj log`, `jj evolog`, or `jj op log`.
+
+* The `diff` conflict marker style can now use `\\\\\\\` markers to indicate
+  the continuation of a conflict label from the previous line.
 
 ### Deprecations
 
@@ -76,9 +100,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * Early version of a `jj file search` command for searching for a pattern in
   files (like `git grep`).
 
-* Conflict labels can now contain information about where the sides of a
-  conflict came from (currently this is only supported for conflicts created by
-  certain commands).
+* Conflict labels now contain information about where the sides of a conflict
+  came from (e.g. `nlqwxzwn 7dd24e73 "first line of description"`).
 
 * `--insert-before` now accepts a revset that resolves to an empty set when
   used with `--insert-after`. The behavior is similar to `--onto`.
@@ -87,6 +110,26 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   to the revision with the non-selected changes.
   You can opt out of this change by setting `split.legacy-bookmark-behavior = true`,
   but this will likely be removed in a future release.
+
+* `jj tag list` now supports `--sort` option.
+
+* `TreeDiffEntry` type now has a `display_diff_path()` method that formats
+  renames/copies appropriately.
+
+* `TreeDiffEntry` now has a `status_char()` method that returns
+  single-character status codes (M/A/D/C/R).
+
+* `CommitEvolutionEntry` type now has a `predecessors()` method which
+  returns the predecessor commits (previous versions) of the entry's commit.
+
+* `CommitEvolutionEntry` type now has a  `inter_diff()` method  which
+  returns a `TreeDiff` between the entry's commit and its predecessor version.
+  Optionally accepts a fileset literal to limit the diff.
+
+* `jj file annotate` now reports an error for non-files instead of succeeding
+  and displaying no content.
+
+* `jj workspace forget` now warns about unknown workspaces instead of failing.
 
 ### Fixed bugs
 
@@ -98,8 +141,54 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 * `jj gerrit upload` now correctly handles mixed explicit and implicit
   Change-Ids in chains of commits ([#8219](https://github.com/jj-vcs/jj/pull/8219))
 
+* `jj git push` now updates partially-pushed remote bookmarks accordingly.
+  [#6787](https://github.com/jj-vcs/jj/issues/6787)
+
 * Fixed problem of loading large Git packfiles.
   https://github.com/GitoxideLabs/gitoxide/issues/2265
+
+* The builtin pager won't get stuck when stdin is redirected.
+
+* `jj workspace add` now prevents creating an empty workspace name.
+
+* Fixed checkout of symlinks pointing to themselves or `.git`/`.jj` on Unix. The
+  problem would still remain on Windows if symlinks are enabled.
+  [#8348](https://github.com/jj-vcs/jj/issues/8348)
+
+* Fixed a bug where jj would fail to read git delta objects from pack files.
+  https://github.com/GitoxideLabs/gitoxide/issues/2344
+
+### Contributors
+
+Thanks to the people who made this release happen!
+
+* Anton Älgmyr (@algmyr)
+* Austin Seipp (@thoughtpolice)
+* Bryce Berger (@bryceberger)
+* Carlos Knippschild (@chuim)
+* Cole Helbling (@cole-h)
+* David Higgs (@higgsd)
+* Eekle (@Eekle)
+* Gaëtan Lehmann (@glehmann)
+* Ian Wrzesinski (@isuffix)
+* Ilya Grigoriev (@ilyagr)
+* Julian Howes (@jlnhws)
+* Kaiyi Li (@06393993)
+* Lukas Krejci (@metlos)
+* Martin von Zweigbergk (@martinvonz)
+* Matt Stark (@matts1)
+* Ori Avtalion (@salty-horse)
+* Scott Taylor (@scott2000)
+* Shaoxuan (Max) Yuan (@ffyuanda)
+* Stephen Jennings (@jennings)
+* Steve Fink (@hotsphink)
+* Steve Klabnik (@steveklabnik)
+* Theo Buehler (@botovq)
+* Thomas Castiglione (@gulbanana)
+* Vincent Ging Ho Yim (@cenviity)
+* xtqqczze (@xtqqczze)
+* Yuantao Wang (@0WD0)
+* Yuya Nishihara (@yuja)
 
 ## [0.36.0] - 2025-12-03
 
@@ -377,6 +466,9 @@ Thanks to the people who made this release happen!
 * Add support for `--when.hostnames` config scopes. This allows configuration to
   be conditionally applied based on the hostname set in `operation.hostname`.
 
+* `jj squash` now has a `--restore-descendants` option to preserve the snapshots
+  of the children of the modified commits.
+
 * `jj bisect run` accepts the command and arguments to pass to the command
   directly as positional arguments, such as
   `jj bisect --range=..main -- cargo check --all-targets`.
@@ -616,7 +708,7 @@ Thanks to the people who made this release happen!
   (it only undid the last change).
 
 * `jj git fetch` will now only fetch the refspec patterns configured on remotes
-  when the `--bookmark` option is omitted. Only simple refspec patterns are
+  when the `--branch` option is omitted. Only simple refspec patterns are
   currently supported, and anything else (like refspecs which rename branches)
   will be ignored.
 
@@ -4465,7 +4557,8 @@ No changes, only trying to get the automated build to work.
 
 Last release before this changelog started.
 
-[unreleased]: https://github.com/jj-vcs/jj/compare/v0.36.0...HEAD
+[unreleased]: https://github.com/jj-vcs/jj/compare/v0.37.0...HEAD
+[0.37.0]: https://github.com/jj-vcs/jj/compare/v0.36.0...v0.37.0
 [0.36.0]: https://github.com/jj-vcs/jj/compare/v0.35.0...v0.36.0
 [0.35.0]: https://github.com/jj-vcs/jj/compare/v0.34.0...v0.35.0
 [0.34.0]: https://github.com/jj-vcs/jj/compare/v0.33.0...v0.34.0

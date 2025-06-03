@@ -61,18 +61,17 @@ pub struct GitFetchArgs {
     ///
     /// [logical operators]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        long, short,
-        alias = "bookmark",
-        add = ArgValueCandidates::new(complete::bookmarks),
-    )]
+    #[arg(long, short, alias = "bookmark")]
+    #[arg(add = ArgValueCandidates::new(complete::bookmarks))]
     branch: Option<Vec<String>>,
+
     /// Fetch only tracked bookmarks
     ///
     /// This fetches only bookmarks that are already tracked from the specified
     /// remote(s).
     #[arg(long, conflicts_with = "branch")]
     tracked: bool,
+
     /// The remote to fetch from (only named remotes are supported, can be
     /// repeated)
     ///
@@ -84,12 +83,10 @@ pub struct GitFetchArgs {
     ///
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        long = "remote",
-        value_name = "REMOTE",
-        add = ArgValueCandidates::new(complete::git_remotes),
-    )]
+    #[arg(long = "remote", value_name = "REMOTE")]
+    #[arg(add = ArgValueCandidates::new(complete::git_remotes))]
     remotes: Option<Vec<String>>,
+
     /// Fetch from all remotes
     #[arg(long, conflicts_with = "remotes")]
     all_remotes: bool,
@@ -170,7 +167,11 @@ pub fn cmd_git_fetch(
     let git_settings = GitSettings::from_settings(tx.settings())?;
     let remote_settings = tx.settings().remote_settings()?;
     let import_options = load_git_import_options(ui, &git_settings, &remote_settings)?;
-    let mut git_fetch = GitFetch::new(tx.repo_mut(), &git_settings, &import_options)?;
+    let mut git_fetch = GitFetch::new(
+        tx.repo_mut(),
+        git_settings.to_subprocess_options(),
+        &import_options,
+    )?;
 
     for (remote, expanded) in expansions {
         with_remote_git_callbacks(ui, |callbacks| {

@@ -37,19 +37,15 @@ use crate::ui::Ui;
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct FileAnnotateArgs {
     /// the file to annotate
-    #[arg(
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::all_revision_files),
-    )]
+    #[arg(value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::all_revision_files))]
     path: String,
+
     /// an optional revision to start at
-    #[arg(
-        long,
-        short,
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revision: Option<RevisionArg>,
+
     /// Render each line using the given template
     ///
     /// All 0-argument methods of the [`AnnotationLine` type] are available as
@@ -64,7 +60,8 @@ pub(crate) struct FileAnnotateArgs {
     ///
     /// [`jj help -k templates`]:
     ///     https://docs.jj-vcs.dev/latest/templates/
-    #[arg(long, short = 'T', add = ArgValueCandidates::new(complete::template_aliases))]
+    #[arg(long, short = 'T')]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
 }
 
@@ -81,10 +78,11 @@ pub(crate) fn cmd_file_annotate(
     let file_path = workspace_command.parse_file_path(&args.path)?;
     let file_value = starting_commit.tree().path_value(&file_path)?;
     let ui_path = workspace_command.format_file_path(&file_path);
+
     if file_value.is_absent() {
         return Err(user_error(format!("No such path: {ui_path}")));
     }
-    if file_value.is_tree() {
+    if file_value.to_file_merge().is_none() {
         return Err(user_error(format!(
             "Path exists but is not a regular file: {ui_path}"
         )));

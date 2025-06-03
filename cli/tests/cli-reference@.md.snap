@@ -304,7 +304,7 @@ Hint: You can pass your shell as evaluation command. You can then run manual tes
 
 Example: To run `cargo test` with the changes from revision `xyz` applied:
 
-`jj bisect --range v1.0..main -- bash -c "jj duplicate -r xyz -B @ && cargo test"`
+`jj bisect run --range v1.0..main -- bash -c "jj duplicate -r xyz -B @ && cargo test"`
 
 **Usage:** `jj bisect run [OPTIONS] --range <REVSETS> [COMMAND] [ARGS]...`
 
@@ -428,7 +428,7 @@ If a local bookmark is forgotten, any corresponding remote bookmarks will become
 
 List bookmarks and their targets
 
-By default, a tracking remote bookmark will be included only if its target is different from the local target. A non-tracking remote bookmark won't be listed. For a conflicted bookmark (both local and remote), old target revisions are preceded by a "-" and new target revisions are preceded by a "+".
+By default, a tracked remote bookmark will be included only if its target is different from the local target. An untracked remote bookmark won't be listed. For a conflicted bookmark (both local and remote), old target revisions are preceded by a "-" and new target revisions are preceded by a "+".
 
 See [`jj help -k bookmarks`] for more information.
 
@@ -448,15 +448,17 @@ See [`jj help -k bookmarks`] for more information.
 
 ###### **Options:**
 
-* `-a`, `--all-remotes` — Show all tracking and non-tracking remote bookmarks including the ones whose targets are synchronized with the local bookmarks
-* `--remote <REMOTE>` — Show all tracking and non-tracking remote bookmarks belonging to this remote
+* `-a`, `--all-remotes` — Show all tracked and untracked remote bookmarks including the ones whose targets are synchronized with the local bookmarks
+* `--remote <REMOTE>` — Show all tracked and untracked remote bookmarks belonging to this remote
 
    Can be combined with `--tracked` or `--conflicted` to filter the bookmarks shown (can be repeated.)
 
    By default, the specified pattern matches remote names with glob syntax. You can also use other [string pattern syntax].
 
    [string pattern syntax]: https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-* `-t`, `--tracked` — Show remote tracked bookmarks only. Omits local Git-tracking bookmarks by default
+* `-t`, `--tracked` — Show tracked remote bookmarks only
+
+   This omits local Git-tracking bookmarks by default.
 * `-c`, `--conflicted` — Show conflicted bookmarks only
 * `-r`, `--revisions <REVSETS>` — Show bookmarks whose local targets are in the given revisions
 
@@ -555,7 +557,7 @@ Create or update a bookmark to point to a certain commit
 
 Start tracking given remote bookmarks
 
-A tracking remote bookmark will be imported as a local bookmark of the same name. Changes to it will propagate to the existing local bookmark on future pulls.
+A tracked remote bookmark will be imported as a local bookmark of the same name. Changes to it will propagate to the existing local bookmark on future pulls.
 
 **Usage:** `jj bookmark track [OPTIONS] <BOOKMARK>...`
 
@@ -585,7 +587,7 @@ A tracking remote bookmark will be imported as a local bookmark of the same name
 
 Stop tracking given remote bookmarks
 
-A non-tracking remote bookmark is just a pointer to the last-fetched remote bookmark. It won't be imported as a local bookmark on future pulls.
+An untracked remote bookmark is just a pointer to the last-fetched remote bookmark. It won't be imported as a local bookmark on future pulls.
 
 If you want to forget a local bookmark while also untracking the corresponding remote bookmarks, use `jj bookmark forget` instead.
 
@@ -625,7 +627,7 @@ When using `--interactive` or path arguments, the selected changes stay in the c
 
 * `jj split` creates the new commit as a parent of the source commit, and doesn't move the working-copy. `jj commit` creates the new commit as a child of the working-copy, and sets the new commit as the working-copy.
 
-* `jj split` allows you to move the selected changes to a different destination with `-d`/`-A`/`-B`.
+* `jj split` allows you to move the selected changes to a different destination with `-o`/`-A`/`-B`.
 
 **Usage:** `jj commit [OPTIONS] [FILESETS]...`
 
@@ -953,7 +955,7 @@ By default, the duplicated commits retain the descriptions of the originals. Thi
 
 ###### **Options:**
 
-* `-o`, `--onto <REVSETS>` — The revision(s) to duplicate onto (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to duplicate onto (can be repeated to create a merge commit)
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — The revision(s) to insert before (can be repeated to create a merge commit)
 
@@ -1940,7 +1942,13 @@ Whenever any metadata is updated, the committer name, email, and timestamp are a
 * `--author <AUTHOR>` — Set author to the provided string
 
    This changes author name and email while retaining author timestamp for non-discardable commits.
-* `--author-timestamp <AUTHOR_TIMESTAMP>` — Set the author date to the given date either human readable, eg Sun, 23 Jan 2000 01:23:45 JST) or as a time stamp, eg 2000-01-23T01:23:45+09:00)
+* `--author-timestamp <AUTHOR_TIMESTAMP>` — Set the author date to the given date
+
+   The date can either be human readable ([RFC2822], eg 'Sun, 23 Jan 2000 01:23:45 PST') or a time stamp ([RFC3339], eg '2000-01-23T01:23:45-08:00').
+
+   [RFC2822]: https://datatracker.ietf.org/doc/html/rfc2822
+
+   [RFC3339]: https://datatracker.ietf.org/doc/html/rfc3339
 * `--force-rewrite` — Rewrite the commit, even if no other metadata changed
 
    This updates the committer timestamp to the current time, as well as the committer name and email.
@@ -2733,7 +2741,7 @@ The description of the new revisions can be customized with the `templates.rever
 ###### **Options:**
 
 * `-r`, `--revisions <REVSETS>` — The revision(s) to apply the reverse of
-* `-o`, `--onto <REVSETS>` — The revision(s) to apply the reverse changes on top of
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to apply the reverse changes on top of
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert the reverse changes after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — The revision(s) to insert the reverse changes before (can be repeated to create a merge commit)
 
@@ -2961,7 +2969,7 @@ achieved with `jj new`.
 * `-r`, `--revision <REVSET>` — The revision to split
 
   Default value: `@`
-* `-o`, `--onto <REVSETS>` — The revision(s) to rebase the selected changes onto (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — The revision(s) to rebase the selected changes onto (can be repeated to create a merge commit)
 
    Extracts the selected changes into a new commit based on the given revision(s). The remaining changes stay in the original commit's location.
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — The revision(s) to insert after (can be repeated to create a merge commit)
@@ -3013,7 +3021,7 @@ An alternative squashing UI is available via the `-o`, `-A`, and `-B` options. U
 * `-r`, `--revision <REVSET>` — Revision to squash into its parent (default: @). Incompatible with the experimental `-o`/`-A`/`-B` options
 * `-f`, `--from <REVSETS>` — Revision(s) to squash from (default: @)
 * `-t`, `--into <REVSET>` [alias: `to`] — Revision to squash into (default: @)
-* `-o`, `--onto <REVSETS>` — (Experimental) The revision(s) to use as parent for the new commit (can be repeated to create a merge commit)
+* `-o`, `--onto <REVSETS>` [alias: `destination`] — (Experimental) The revision(s) to use as parent for the new commit (can be repeated to create a merge commit)
 * `-A`, `--insert-after <REVSETS>` [alias: `after`] — (Experimental) The revision(s) to insert the new commit after (can be repeated to create a merge commit)
 * `-B`, `--insert-before <REVSETS>` [alias: `before`] — (Experimental) The revision(s) to insert the new commit before (can be repeated to create a merge commit)
 * `-m`, `--message <MESSAGE>` — The description to use for squashed revision (don't open editor)
@@ -3024,6 +3032,11 @@ An alternative squashing UI is available via the `-o`, `-A`, and `-B` options. U
 * `-i`, `--interactive` — Interactively choose which parts to squash
 * `--tool <NAME>` — Specify diff editor to be used (implies --interactive)
 * `-k`, `--keep-emptied` — The source revision will not be abandoned
+* `--restore-descendants` — Preserve the content (not the diff) when rebasing descendants of the source and target commits
+
+   Only the snapshots of the `--from` and the `--into` commits will be modified.
+
+   If you'd like to preserve the content of *only* the target's descendants (or *only* the source's), consider using `jj rebase -r` or `jj duplicate` before squashing.
 
 
 
@@ -3108,6 +3121,14 @@ List tags
    [`CommitRef` type]: https://docs.jj-vcs.dev/latest/templates/#commitref-type
 
    [`jj help -k templates`]: https://docs.jj-vcs.dev/latest/templates/
+* `--sort <SORT_KEY>` — Sort tags based on the given key (or multiple keys)
+
+   Suffix the key with `-` to sort in descending order of the value (e.g. `--sort name-`). Note that when using multiple keys, the first key is the most significant.
+
+   This defaults to the `ui.tag-list-sort-keys` setting.
+
+  Possible values: `name`, `name-`, `author-name`, `author-name-`, `author-email`, `author-email-`, `author-date`, `author-date-`, `committer-name`, `committer-name-`, `committer-email`, `committer-email-`, `committer-date`, `committer-date-`
+
 
 
 

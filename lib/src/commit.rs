@@ -217,7 +217,10 @@ impl Commit {
             format!(
                 "{} \"{}\"",
                 self.conflict_label_short(),
-                subject.escape_default()
+                // Control characters shouldn't be written in conflict markers, and '\0' isn't
+                // supported by the Git backend, so we just remove them. Unicode characters are
+                // supported, so we don't have to remove them.
+                subject.trim().replace(char::is_control, "")
             )
         } else {
             self.conflict_label_short()
@@ -229,6 +232,12 @@ impl Commit {
     fn conflict_label_short(&self) -> String {
         // Example: nlqwxzwn 7dd24e73
         format!("{:.8} {:.8}", self.change_id(), self.id())
+    }
+
+    /// A string describing the commit's parents to be used in conflict markers.
+    pub fn parents_conflict_label(&self) -> BackendResult<String> {
+        let parents: Vec<_> = self.parents().try_collect()?;
+        Ok(conflict_label_for_commits(&parents))
     }
 }
 

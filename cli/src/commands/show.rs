@@ -33,20 +33,14 @@ use crate::ui::Ui;
 pub(crate) struct ShowArgs {
     /// Show changes in this revision, compared to its parent(s) [default: @]
     /// [aliases: -r]
-    #[arg(
-        group = "revision",
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(group = "revision", value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revision_pos: Option<RevisionArg>,
-    #[arg(
-        short = 'r',
-        group = "revision",
-        hide = true,
-        value_name = "REVSET",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+
+    #[arg(short = 'r', group = "revision", hide = true, value_name = "REVSET")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revision_opt: Option<RevisionArg>,
+
     /// Render a revision using the given template
     ///
     /// You can specify arbitrary template expressions using the
@@ -57,10 +51,13 @@ pub(crate) struct ShowArgs {
     ///
     /// [`jj help -k templates`]:
     ///     https://docs.jj-vcs.dev/latest/templates/
-    #[arg(long, short = 'T', add = ArgValueCandidates::new(complete::template_aliases))]
+    #[arg(long, short = 'T')]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
+
     #[command(flatten)]
     format: DiffFormatArgs,
+
     /// Do not show the patch
     #[arg(long, conflicts_with = "DiffFormatArgs")]
     no_patch: bool,

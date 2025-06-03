@@ -190,6 +190,10 @@ This type cannot be printed. The following methods are defined.
 * `.commit() -> Commit`: New commit.
 * `.operation() -> Operation`: Operation where the commit was created or
   rewritten.
+* `.predecessors() -> List<Commit>`: Predecessor commits of this entry.
+* `.inter_diff([files: StringLiteral]) -> TreeDiff`: Changes between this commit and its
+  predecessor version(s), rebased onto the parents of this commit to avoid unrelated
+  changes (similar to `jj evolog -p`).
 
 ### `ChangeId` type
 
@@ -301,6 +305,7 @@ This type holds the diff stats per file. The following methods are defined.
 * `.lines_removed() -> Integer`: Number of lines deleted.
 * `.path() -> RepoPath`: Path to the entry. If the entry is a copy/rename, this
   points to the target (or right) entry.
+* `.display_diff_path() -> String`: Format path for display, taking into account copy/rename information.
 * `.status() -> String`: One of `"modified"`, `"added"`, `"removed"`, `"copied"`, or `"renamed"`.
 * `.status_char() -> String`: One of `"M"` (modified), `"A"` (added), `"D"` (removed),
   `"C"` (copied), or `"R"` (renamed).
@@ -626,8 +631,11 @@ This type cannot be printed. The following methods are defined.
 
 * `.path() -> RepoPath`: Path to the entry. If the entry is a copy/rename, this
   points to the target (or right) entry.
+* `.display_diff_path() -> String`: Format path for display, taking into account copy/rename information.
 * `.status() -> String`: One of `"modified"`, `"added"`, `"removed"`,
   `"copied"`, or `"renamed"`.
+* `.status_char() -> String`: Single-character status indicator: `"M"` for modified,
+  `"A"` for added, `"D"` for removed, `"C"` for copied, or `"R"` for renamed.
 * `.source() -> TreeEntry`: The source (or left) entry.
 * `.target() -> TreeEntry`: The target (or right) entry.
 

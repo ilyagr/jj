@@ -72,32 +72,30 @@ pub(crate) struct LogArgs {
     ///
     /// If no paths nor revisions are specified, this defaults to the
     /// `revsets.log` setting.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions: Vec<RevisionArg>,
+
     /// Show revisions modifying the given paths
-    #[arg(
-        value_name = "FILESETS",
-        value_hint = clap::ValueHint::AnyPath,
-        add = ArgValueCompleter::new(complete::log_files),
-    )]
+    #[arg(value_name = "FILESETS", value_hint = clap::ValueHint::AnyPath)]
+    #[arg(add = ArgValueCompleter::new(complete::log_files))]
     paths: Vec<String>,
+
     /// Limit number of revisions to show
     ///
     /// Applied after revisions are filtered and reordered topologically, but
     /// before being reversed.
     #[arg(long, short = 'n')]
     limit: Option<usize>,
+
     /// Show revisions in the opposite order (older revisions first)
     #[arg(long)]
     reversed: bool,
+
     /// Don't show the graph, show a flat list of revisions
     #[arg(long, short = 'G')]
     no_graph: bool,
+
     /// Render each revision using the given template
     ///
     /// Run `jj log -T` to list the built-in templates.
@@ -113,14 +111,18 @@ pub(crate) struct LogArgs {
     ///
     /// [`jj help -k templates`]:
     ///     https://docs.jj-vcs.dev/latest/templates/
-    #[arg(long, short = 'T', add = ArgValueCandidates::new(complete::template_aliases))]
+    #[arg(long, short = 'T')]
+    #[arg(add = ArgValueCandidates::new(complete::template_aliases))]
     template: Option<String>,
+
     /// Show patch
     #[arg(long, short = 'p')]
     patch: bool,
+
     /// Print the number of commits instead of showing them
     #[arg(long, conflicts_with_all = ["DiffFormatArgs", "no_graph", "patch", "reversed", "template"])]
     count: bool,
+
     #[command(flatten)]
     diff_format: DiffFormatArgs,
 }

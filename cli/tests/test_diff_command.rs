@@ -3246,6 +3246,7 @@ fn test_diff_external_tool() {
 #[test]
 fn test_diff_do_chdir() {
     let mut test_env = TestEnvironment::default();
+    test_env.set_up_fake_echo_merge_tool();
     let edit_script = test_env.set_up_fake_diff_editor();
     test_env.run_jj_in(".", ["git", "init", "repo"]).success();
     let work_dir = test_env.work_dir("repo");
@@ -3275,12 +3276,12 @@ fn test_diff_do_chdir() {
             != "$TEST_ENV/repo"
     );
 
-    insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=echo"]), @r"
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=fake-echo"]), @r"
     left right
     [EOF]
     ");
-    insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=echo",
-        "--config=merge-tools.echo.diff-invocation-mode=file-by-file"]).normalize_backslash(), @r"
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=fake-echo",
+        "--config=merge-tools.fake-echo.diff-invocation-mode=file-by-file"]).normalize_backslash(), @r"
     left/file1 right/file1
     [EOF]
     ");
@@ -3289,7 +3290,8 @@ fn test_diff_do_chdir() {
 #[test]
 fn test_diff_external_available_width() {
     let test_env = TestEnvironment::default();
-    test_env.add_config("merge-tools.echo.diff-args = ['$width']");
+    test_env.set_up_fake_echo_merge_tool();
+    test_env.add_config("merge-tools.fake-echo.diff-args = ['$width']");
     test_env.run_jj_in(".", ["git", "init", "repo"]).success();
     let work_dir = test_env.work_dir("repo");
     work_dir.write_file("file1", "file1\n");
@@ -3297,7 +3299,8 @@ fn test_diff_external_available_width() {
     work_dir.write_file("file2", "file2\n");
 
     // Directory diff
-    let output = work_dir.run_jj_with(|cmd| cmd.args(["diff", "--tool=echo"]).env("COLUMNS", "50"));
+    let output =
+        work_dir.run_jj_with(|cmd| cmd.args(["diff", "--tool=fake-echo"]).env("COLUMNS", "50"));
     insta::assert_snapshot!(output, @r"
     50
     [EOF]
@@ -3305,8 +3308,8 @@ fn test_diff_external_available_width() {
 
     // File-by-file diff
     let output = work_dir.run_jj_with(|cmd| {
-        cmd.args(["diff", "--tool=echo"])
-            .arg("--config=merge-tools.echo.diff-invocation-mode=file-by-file")
+        cmd.args(["diff", "--tool=fake-echo"])
+            .arg("--config=merge-tools.fake-echo.diff-invocation-mode=file-by-file")
             .env("COLUMNS", "50")
     });
     insta::assert_snapshot!(output, @r"
@@ -3316,7 +3319,7 @@ fn test_diff_external_available_width() {
 
     // Graph width should be subtracted
     let output = work_dir.run_jj_with(|cmd| {
-        cmd.args(["log", "--tool=echo", "-T''"])
+        cmd.args(["log", "--tool=fake-echo", "-T''"])
             .env("COLUMNS", "50")
     });
     insta::assert_snapshot!(output, @"
@@ -3944,6 +3947,11 @@ fn test_diff_revisions() {
     [EOF]
     ");
 
+    insta::assert_snapshot!(diff_revisions("none()"), @r"
+    ------- stderr -------
+    Warning: The diff revset expanded to 0 revisions. There is no diff to show.
+    [EOF]
+    ");
     // A gap in the range is not allowed (yet at least)
     insta::assert_snapshot!(diff_revisions("A|C"), @r"
     ------- stderr -------
@@ -3986,6 +3994,9 @@ fn test_diff_revisions() {
     D
     E
     [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of potentially unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
     ");
 
     // Can diff a set with multiple heads
@@ -3994,10 +4005,24 @@ fn test_diff_revisions() {
     C
     D
     [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of potentially unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
     ");
 
     // Can diff a set with multiple root and multiple heads
     insta::assert_snapshot!(diff_revisions("B|C"), @r"
+    B
+    C
+    [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of potentially unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
+    ");
+
+    // If the user has multiple `-r` arguments, they probably expect to be diffing
+    // multiple revisions. No warning is shown.
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--name-only", "-r=B", "-r=C"]), @r"
     B
     C
     [EOF]

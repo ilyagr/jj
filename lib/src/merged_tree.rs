@@ -78,15 +78,9 @@ impl fmt::Debug for MergedTree {
 impl MergedTree {
     /// Creates a `MergedTree` with the given resolved tree ID.
     pub fn resolved(store: Arc<Store>, tree_id: TreeId) -> Self {
-        Self::unlabeled(store, Merge::resolved(tree_id))
-    }
-
-    /// Creates a `MergedTree` with the given tree IDs, without conflict labels.
-    // TODO: remove when all callers are migrated to `MergedTree::new`.
-    pub fn unlabeled(store: Arc<Store>, tree_ids: Merge<TreeId>) -> Self {
         Self {
             store,
-            tree_ids,
+            tree_ids: Merge::resolved(tree_id),
             labels: ConflictLabels::unlabeled(),
         }
     }
@@ -138,12 +132,7 @@ impl MergedTree {
     }
 
     /// Reads the merge of tree objects represented by this `MergedTree`.
-    pub fn trees(&self) -> BackendResult<Merge<Tree>> {
-        self.trees_async().block_on()
-    }
-
-    /// Async version of `trees()`.
-    pub async fn trees_async(&self) -> BackendResult<Merge<Tree>> {
+    pub async fn trees(&self) -> BackendResult<Merge<Tree>> {
         self.tree_ids
             .try_map_async(|id| self.store.get_tree_async(RepoPathBuf::root(), id))
             .await
@@ -186,7 +175,7 @@ impl MergedTree {
             self.labels.simplify_with(&merged)
         };
         // If debug assertions are enabled, check that the merge was idempotent. In
-        // particular,  that this last simplification doesn't enable further automatic
+        // particular, that this last simplification doesn't enable further automatic
         // resolutions
         if cfg!(debug_assertions) {
             let re_merged = merge_trees(&self.store, simplified.clone()).await.unwrap();
@@ -233,7 +222,7 @@ impl MergedTree {
     pub async fn path_value_async(&self, path: &RepoPath) -> BackendResult<MergedTreeValue> {
         match path.split() {
             Some((dir, basename)) => {
-                let trees = self.trees_async().await?;
+                let trees = self.trees().await?;
                 match trees.sub_tree_recursive(dir).await? {
                     None => Ok(Merge::absent()),
                     Some(tree) => Ok(tree.value(basename).cloned()),
@@ -323,18 +312,6 @@ impl MergedTree {
             other.clone(),
             copy_records,
         ))
-    }
-
-    /// Merges this tree with `other`, using `base` as base. Any conflicts will
-    /// be resolved recursively if possible. Does not add conflict labels.
-    // TODO: remove when all callers are migrated to `MergedTree::merge`.
-    pub async fn merge_unlabeled(self, base: Self, other: Self) -> BackendResult<Self> {
-        Self::merge(Merge::from_vec(vec![
-            (self, String::new()),
-            (base, String::new()),
-            (other, String::new()),
-        ]))
-        .await
     }
 
     /// Merges the provided trees into a single `MergedTree`. Any conflicts will
@@ -1042,6 +1019,15 @@ impl MergedTreeBuilder {
         match new_tree_ids.simplify().into_resolved() {
             Ok(single_tree_id) => Ok(MergedTree::resolved(store, single_tree_id)),
             Err(tree_ids) => {
+                let labels = if labels.num_sides() == Some(tree_ids.num_sides()) {
+                    labels
+                } else {
+                    // If the number of sides changed, we need to discard the conflict labels,
+                    // otherwise `MergedTree::new` would panic.
+                    // TODO: we should preserve conflict labels when setting conflicted tree values
+                    // originating from a different tree than the base tree.
+                    ConflictLabels::unlabeled()
+                };
                 let tree = MergedTree::new(store, tree_ids, labels);
                 tree.resolve().block_on()
             }

@@ -71,6 +71,7 @@ use jj_lib::revset::RevsetDiagnostics;
 use jj_lib::revset::RevsetModifier;
 use jj_lib::revset::RevsetParseContext;
 use jj_lib::revset::UserRevsetExpression;
+use jj_lib::rewrite::rebase_to_dest_parent;
 use jj_lib::settings::UserSettings;
 use jj_lib::signing::SigStatus;
 use jj_lib::signing::SignError;
@@ -1445,7 +1446,42 @@ fn builtin_commit_evolution_entry_methods<'repo>()
             Ok(out_property.into_dyn_wrapped())
         },
     );
-    // TODO: add predecessors() -> Vec<Commit>?
+    map.insert(
+        "predecessors",
+        |_language, _diagnostics, _build_ctx, self_property, function| {
+            function.expect_no_arguments()?;
+            let out_property = self_property.and_then(|entry| {
+                let commits: Vec<_> = entry.predecessors().try_collect()?;
+                Ok(commits)
+            });
+            Ok(out_property.into_dyn_wrapped())
+        },
+    );
+    map.insert(
+        "inter_diff",
+        |language, diagnostics, _build_ctx, self_property, function| {
+            let ([], [files_node]) = function.expect_arguments()?;
+            let files = if let Some(node) = files_node {
+                expect_fileset_literal(diagnostics, node, language.path_converter)?
+            } else {
+                FilesetExpression::all()
+            };
+            let repo = language.repo;
+            let matcher: Rc<dyn Matcher> = files.to_matcher().into();
+            let out_property = self_property.and_then(move |entry| {
+                let predecessors: Vec<_> = entry.predecessors().try_collect()?;
+                let from_tree = rebase_to_dest_parent(repo, &predecessors, &entry.commit)?;
+                let to_tree = entry.commit.tree();
+                Ok(TreeDiff {
+                    from_tree,
+                    to_tree,
+                    matcher: matcher.clone(),
+                    copy_records: CopyRecords::default(), // TODO: copy tracking
+                })
+            });
+            Ok(out_property.into_dyn_wrapped())
+        },
+    );
     map
 }
 
@@ -2442,8 +2478,8 @@ impl TreeDiffEntry {
         })
     }
 
-    fn status_label(&self) -> &'static str {
-        diff_util::diff_status(&self.path, &self.values).label()
+    fn status(&self) -> diff_util::DiffEntryStatus {
+        diff_util::diff_status(&self.path, &self.values)
     }
 
     fn into_source_entry(self) -> TreeEntry {
@@ -2461,6 +2497,16 @@ impl TreeDiffEntry {
     }
 }
 
+fn format_diff_path(
+    path: &CopiesTreeDiffEntryPath,
+    path_converter: &RepoPathUiConverter,
+) -> String {
+    match path.to_diff() {
+        Some(paths) => path_converter.format_copied_path(paths),
+        None => path_converter.format_file_path(path.target()),
+    }
+}
+
 fn builtin_tree_diff_entry_methods<'repo>() -> CommitTemplateBuildMethodFnMap<'repo, TreeDiffEntry>
 {
     // Not using maplit::hashmap!{} or custom declarative macro here because
@@ -2475,14 +2521,31 @@ fn builtin_tree_diff_entry_methods<'repo>() -> CommitTemplateBuildMethodFnMap<'r
         },
     );
     map.insert(
-        "status",
-        |_language, _diagnostics, _build_ctx, self_property, function| {
+        "display_diff_path",
+        |language, _diagnostics, _build_ctx, self_property, function| {
             function.expect_no_arguments()?;
-            let out_property = self_property.map(|entry| entry.status_label().to_owned());
+            let path_converter = language.path_converter;
+            let out_property =
+                self_property.map(move |entry| format_diff_path(&entry.path, path_converter));
             Ok(out_property.into_dyn_wrapped())
         },
     );
-    // TODO: add status_code() or status_char()?
+    map.insert(
+        "status",
+        |_language, _diagnostics, _build_ctx, self_property, function| {
+            function.expect_no_arguments()?;
+            let out_property = self_property.map(|entry| entry.status().label().to_owned());
+            Ok(out_property.into_dyn_wrapped())
+        },
+    );
+    map.insert(
+        "status_char",
+        |_language, _diagnostics, _build_ctx, self_property, function| {
+            function.expect_no_arguments()?;
+            let out_property = self_property.map(|entry| entry.status().char().to_string());
+            Ok(out_property.into_dyn_wrapped())
+        },
+    );
     map.insert(
         "source",
         |_language, _diagnostics, _build_ctx, self_property, function| {
@@ -2637,6 +2700,16 @@ fn builtin_diff_stat_entry_methods<'repo>() -> CommitTemplateBuildMethodFnMap<'r
         |_language, _diagnostics, _build_ctx, self_property, function| {
             function.expect_no_arguments()?;
             let out_property = self_property.map(|entry| entry.path.target);
+            Ok(out_property.into_dyn_wrapped())
+        },
+    );
+    map.insert(
+        "display_diff_path",
+        |language, _diagnostics, _build_ctx, self_property, function| {
+            function.expect_no_arguments()?;
+            let path_converter = language.path_converter;
+            let out_property =
+                self_property.map(move |entry| format_diff_path(&entry.path, path_converter));
             Ok(out_property.into_dyn_wrapped())
         },
     );

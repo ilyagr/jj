@@ -228,25 +228,25 @@ concat(
 '''
 ```
 
-### Bookmark listing order
+### Bookmark/tag listing order
 
-By default, `jj bookmark list` displays bookmarks sorted alphabetically by name.
-You can customize this sorting behavior by specifying sort keys in your config
-file:
+By default, `jj bookmark list` and `jj tag list` display bookmarks and tags
+sorted alphabetically by name. You can customize this sorting behavior by
+specifying sort keys in your config file:
 
 ```toml
 [ui]
 bookmark-list-sort-keys = ["name"]
+tag-list-sort-keys = ["name"]
 ```
 
-The configuration works identically to using the `--sort` option for
-`jj bookmark list`. The following sort keys are supported: `name`, `author-name`,
-`author-email`, `author-date`, `committer-name`, `committer-email`,
-`committer-date`. Suffix the key with `-` to sort in descending order. Multiple
-keys can be supplied here, the first key is the most significant.
+The configuration works identically to using the `--sort` option. The following
+sort keys are supported: `name`, `author-name`, `author-email`, `author-date`,
+`committer-name`, `committer-email`, `committer-date`. Suffix the key with `-`
+to sort in descending order. Multiple keys can be supplied here, the first key
+is the most significant.
 
-When the `--sort` option is used with `jj bookmark list`, the configuration
-is ignored.
+When the `--sort` option is used, the configuration is ignored.
 
 ### Commit trailers
 
@@ -394,7 +394,7 @@ diff-args = ["--color=always", "$left", "$right"]
   not work for viewing diffs.
 
 By default `jj` will invoke external tools with a directory containing the left
-and right sides.  The `diff-invocation-mode` config can change this to file by file
+and right sides. The `diff-invocation-mode` config can change this to file by file
 invocations as follows:
 
 ```toml
@@ -929,7 +929,7 @@ Obviously, you would only set one line, don't copy them all in!
 ## Editing diffs
 
 The `ui.diff-editor` setting affects the default tool used for editing diffs
-(e.g.  `jj split`, `jj squash -i`). If it is not set, the special value
+(e.g. `jj split`, `jj squash -i`). If it is not set, the special value
 `:builtin` is used. It launches a built-in TUI tool (known as [scm-diff-editor])
 to edit the diff in your terminal.
 

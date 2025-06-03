@@ -273,12 +273,8 @@ pub(crate) struct RebaseArgs {
     /// -o=dst`.
     ///
     /// If none of `-b`, `-s`, or `-r` is provided, then the default is `-b @`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     branch: Vec<RevisionArg>,
 
     /// Rebase specified revision(s) together with their trees of descendants
@@ -289,13 +285,10 @@ pub(crate) struct RebaseArgs {
     /// of others.
     ///
     /// If none of `-b`, `-s`, or `-r` is provided, then the default is `-b @`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     source: Vec<RevisionArg>,
+
     /// Rebase the given revisions, rebasing descendants onto this revision's
     /// parent(s)
     ///
@@ -303,12 +296,8 @@ pub(crate) struct RebaseArgs {
     /// descendant of `A`.
     ///
     /// If none of `-b`, `-s`, or `-r` is provided, then the default is `-b @`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     revisions: Vec<RevisionArg>,
 
     #[command(flatten)]
@@ -339,11 +328,12 @@ pub struct RebaseDestinationArgs {
         long,
         alias = "destination",
         short,
-        short_alias = 'd',
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        visible_short_alias = 'd',
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     onto: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert after (can be repeated to create a merge
     /// commit)
     #[arg(
@@ -351,10 +341,11 @@ pub struct RebaseDestinationArgs {
         short = 'A',
         visible_alias = "after",
         conflicts_with = "onto",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_all),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     insert_after: Option<Vec<RevisionArg>>,
+
     /// The revision(s) to insert before (can be repeated to create a merge
     /// commit)
     #[arg(
@@ -362,9 +353,9 @@ pub struct RebaseDestinationArgs {
         short = 'B',
         visible_alias = "before",
         conflicts_with = "onto",
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
+        value_name = "REVSETS"
     )]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     insert_before: Option<Vec<RevisionArg>>,
 }
 

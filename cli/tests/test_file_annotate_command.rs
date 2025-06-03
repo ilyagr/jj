@@ -16,6 +16,9 @@ use std::fs::OpenOptions;
 use std::io::Write as _;
 use std::path::Path;
 
+use jj_lib::file_util::check_symlink_support;
+use jj_lib::file_util::symlink_file;
+
 use crate::common::TestEnvironment;
 
 fn append_to_file(file_path: &Path, contents: &str) {
@@ -48,6 +51,41 @@ fn test_annotate_linear() {
     kkmpptxz test.use 2001-02-03 08:05:10    2: new text from new commit
     [EOF]
     ");
+}
+
+#[test]
+fn test_annotate_non_file() {
+    let test_env = TestEnvironment::default();
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    let output = work_dir.run_jj(["file", "annotate", "non-existent.txt"]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    Error: No such path: non-existent.txt
+    [EOF]
+    [exit status: 1]
+    ");
+
+    work_dir.write_file("dir/file.txt", "");
+    let output = work_dir.run_jj(["file", "annotate", "dir"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Error: Path exists but is not a regular file: dir
+    [EOF]
+    [exit status: 1]
+    ");
+
+    if check_symlink_support().unwrap() {
+        symlink_file("target", work_dir.root().join("symlink")).unwrap();
+        let output = work_dir.run_jj(["file", "annotate", "symlink"]);
+        insta::assert_snapshot!(output, @"
+        ------- stderr -------
+        Error: Path exists but is not a regular file: symlink
+        [EOF]
+        [exit status: 1]
+        ");
+    }
 }
 
 #[test]

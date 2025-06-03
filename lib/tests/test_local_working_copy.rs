@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::convert::Infallible;
 use std::fs::File;
+use std::io;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::Component;
@@ -23,21 +25,26 @@ use std::time::Duration;
 use std::time::SystemTime;
 
 use assert_matches::assert_matches;
+use bstr::BString;
 use indoc::indoc;
 use itertools::Itertools as _;
 use jj_lib::backend::CopyId;
 use jj_lib::backend::TreeId;
 use jj_lib::backend::TreeValue;
 use jj_lib::conflict_labels::ConflictLabels;
+use jj_lib::conflicts::ConflictMaterializeOptions;
 use jj_lib::file_util;
 use jj_lib::file_util::check_symlink_support;
-use jj_lib::file_util::try_symlink;
+use jj_lib::file_util::symlink_dir;
+use jj_lib::file_util::symlink_file;
+use jj_lib::files::FileMergeHunkLevel;
 use jj_lib::fsmonitor::FsmonitorSettings;
 use jj_lib::gitignore::GitIgnoreFile;
 use jj_lib::local_working_copy::LocalWorkingCopy;
 use jj_lib::local_working_copy::TreeState;
 use jj_lib::local_working_copy::TreeStateSettings;
 use jj_lib::merge::Merge;
+use jj_lib::merge::SameChange;
 use jj_lib::merged_tree::MergedTree;
 use jj_lib::merged_tree::MergedTreeBuilder;
 use jj_lib::op_store::OperationId;
@@ -46,8 +53,10 @@ use jj_lib::repo::ReadonlyRepo;
 use jj_lib::repo::Repo as _;
 use jj_lib::repo_path::RepoPath;
 use jj_lib::repo_path::RepoPathBuf;
+use jj_lib::rewrite::merge_commit_trees;
 use jj_lib::secret_backend::SecretBackend;
 use jj_lib::tree_builder::TreeBuilder;
+use jj_lib::tree_merge::MergeOptions;
 use jj_lib::working_copy::CheckoutError;
 use jj_lib::working_copy::CheckoutStats;
 use jj_lib::working_copy::SnapshotOptions;
@@ -69,6 +78,7 @@ use testutils::repo_path;
 use testutils::repo_path_buf;
 use testutils::repo_path_component;
 use testutils::write_random_commit;
+use tokio::io::AsyncReadExt as _;
 
 fn check_icase_fs(dir: &Path) -> bool {
     let test_file = tempfile::Builder::new()
@@ -418,7 +428,13 @@ fn test_conflict_subdirectory() {
     let tree1 = create_tree(repo, &[(path, "0")]);
     let commit1 = commit_with_tree(repo.store(), tree1.clone());
     let tree2 = create_tree(repo, &[(path, "1")]);
-    let merged_tree = tree1.merge_unlabeled(empty_tree, tree2).block_on().unwrap();
+    let merged_tree = MergedTree::merge(Merge::from_vec(vec![
+        (tree1, "tree 1".into()),
+        (empty_tree, "empty".into()),
+        (tree2, "tree 2".into()),
+    ]))
+    .block_on()
+    .unwrap();
     let merged_commit = commit_with_tree(repo.store(), merged_tree);
     let repo = &test_workspace.repo;
     let ws = &mut test_workspace.workspace;
@@ -854,13 +870,15 @@ fn test_materialize_snapshot_conflicted_files() {
     let side2_tree = create_tree(repo, &[(file1_path, "a\n"), (file2_path, "4\n")]);
     let base2_tree = create_tree(repo, &[(file1_path, "b\n"), (file2_path, "3\n")]);
     let side3_tree = create_tree(repo, &[(file1_path, "c\n"), (file2_path, "3\n")]);
-    let merged_tree = side1_tree
-        .merge_unlabeled(base1_tree, side2_tree)
-        .block_on()
-        .unwrap()
-        .merge_unlabeled(base2_tree, side3_tree)
-        .block_on()
-        .unwrap();
+    let merged_tree = MergedTree::merge(Merge::from_vec(vec![
+        (side1_tree, "side 1".into()),
+        (base1_tree, "base 1".into()),
+        (side2_tree, "side 2".into()),
+        (base2_tree, "base 2".into()),
+        (side3_tree, "side 3".into()),
+    ]))
+    .block_on()
+    .unwrap();
     let commit = commit_with_tree(repo.store(), merged_tree.clone());
 
     let stats = ws.check_out(repo.op_id().clone(), None, &commit).unwrap();
@@ -884,10 +902,11 @@ fn test_materialize_snapshot_conflicted_files() {
         std::fs::read_to_string(file1_path.to_fs_path_unchecked(&workspace_root)).ok().unwrap(),
         @r"
     <<<<<<< conflict 1 of 1
-    %%%%%%% diff from base to side #1
+    %%%%%%% diff from: base 2
+    \\\\\\\        to: side 2
     -b
     +a
-    +++++++ side #2
+    +++++++ side 3
     c
     >>>>>>> conflict 1 of 1 ends
     ");
@@ -895,10 +914,11 @@ fn test_materialize_snapshot_conflicted_files() {
         std::fs::read_to_string(file2_path.to_fs_path_unchecked(&workspace_root)).ok().unwrap(),
         @r"
     <<<<<<< conflict 1 of 1
-    %%%%%%% diff from base to side #1
+    %%%%%%% diff from: base 1
+    \\\\\\\        to: side 1
     -2
     +1
-    +++++++ side #2
+    +++++++ side 2
     4
     >>>>>>> conflict 1 of 1 ends
     ");
@@ -986,10 +1006,13 @@ fn test_materialize_snapshot_unchanged_conflicts() {
     let base_tree = create_tree(repo, &[(file_path, base_content)]);
     let left_tree = create_tree(repo, &[(file_path, left_content)]);
     let right_tree = create_tree(repo, &[(file_path, right_content)]);
-    let merged_tree = left_tree
-        .merge_unlabeled(base_tree, right_tree)
-        .block_on()
-        .unwrap();
+    let merged_tree = MergedTree::merge(Merge::from_vec(vec![
+        (left_tree, "left".into()),
+        (base_tree, "base".into()),
+        (right_tree, "right".into()),
+    ]))
+    .block_on()
+    .unwrap();
     let commit = commit_with_tree(repo.store(), merged_tree.clone());
 
     test_workspace
@@ -1004,11 +1027,12 @@ fn test_materialize_snapshot_unchanged_conflicts() {
     line 1
     line 2
     <<<<<<< conflict 1 of 1
-    +++++++ side #1
+    +++++++ left
     left 3.1
     left 3.2
     left 3.3
-    %%%%%%% diff from base to side #2
+    %%%%%%% diff from: base
+    \\\\\\\        to: right
     -line 3
     +right 3.1
     >>>>>>> conflict 1 of 1 ends
@@ -1066,6 +1090,304 @@ fn test_materialize_snapshot_unchanged_conflicts() {
     // could be deleted from all sides.
     let snapshotted_tree = test_workspace.snapshot().unwrap();
     assert_tree_eq!(snapshotted_tree, merged_tree_with_labels);
+}
+
+struct SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: Option<&'static str>,
+    parent1_contents: Option<&'static str>,
+    parent2_contents: Option<&'static str>,
+    // Edit the conflict contents of the conflict file. The input is the parsed hunks of the
+    // conflict file. The contents of the conflict file will be replaced by the hunks returned.
+    get_new_merge_hunks: fn(Vec<Merge<BString>>) -> Vec<Merge<BString>>,
+
+    expected_file_contents: Merge<Option<&'static str>>,
+}
+
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        for (i, side) in hunks[0].iter_mut().enumerate() {
+            if i == 0 {
+                side.extend(b"appended\n");
+            }
+        }
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\nappended\n"),
+        None,
+        Some("parent2\n"),
+    ]),
+}; "no base contents parent 1 appended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        for (i, side) in hunks[0].iter_mut().enumerate() {
+            if i == 2 {
+                side.extend(b"appended\n");
+            }
+        }
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\n"),
+        None,
+        Some("parent2\nappended\n"),
+    ]),
+}; "no base contents parent 2 appended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        for (i, side) in hunks[0].iter_mut().enumerate() {
+            if i == 0 || i == 2 {
+                side.extend(b"appended\n");
+            }
+        }
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\nappended\n"),
+        None,
+        Some("parent2\nappended\n"),
+    ]),
+}; "no base contents both parents appended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        hunks.push(Merge::resolved(BString::from("appended\n")));
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\nappended\n"),
+        // The file in the base change is also modified to preserve the materialized conflict.
+        Some("appended\n"),
+        Some("parent2\nappended\n"),
+    ]),
+}; "no base contents a new resolved hunk appended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        for side in &mut hunks[0] {
+            side.extend(b"appended\n");
+        }
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\nappended\n"),
+        // The file in the base change is also modified to preserve the materialized conflict.
+        Some("appended\n"),
+        Some("parent2\nappended\n"),
+    ]),
+}; "no base contents all sides of the existing hunk appended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        hunks[0].iter_mut().nth(1).unwrap().extend(b"new base\n");
+        hunks
+    },
+    // If the user adds contents to the absent side of a conflict hunk, we consider the conflict resolved.
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\n"),
+        // The file in the base change is modified to preserve the materialized conflict.
+        Some("new base\n"),
+        Some("parent2\n"),
+    ]),
+}; "no base contents base side appended only")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: None,
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        hunks.insert(0, Merge::resolved(BString::from("prepended\n")));
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("prepended\nparent1\n"),
+        // The file in the base change is also modified to preserve the materialized conflict.
+        Some("prepended\n"),
+        Some("prepended\nparent2\n"),
+    ]),
+}; "no base contents a new resolved hunk prepended")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: Some("base\n"),
+    parent1_contents: None,
+    parent2_contents: Some("parent2\n"),
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        hunks.push(Merge::resolved(BString::from("appended\n")));
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        // The file in the parent1 change is also modified to preserve the materialized conflict.
+        Some("appended\n"),
+        Some("base\nappended\n"),
+        Some("parent2\nappended\n"),
+    ]),
+}; "file removed in parent1 a resolved hunk appended in merge")]
+#[test_case(SnapshotModifiedMaterializedConflictTestConfig {
+    base_contents: Some("base\n"),
+    parent1_contents: Some("parent1\n"),
+    parent2_contents: None,
+    get_new_merge_hunks: |mut hunks: Vec<Merge<BString>>| {
+        hunks.push(Merge::resolved(BString::from("appended\n")));
+        hunks
+    },
+    expected_file_contents: Merge::from_vec(vec![
+        Some("parent1\nappended\n"),
+        Some("base\nappended\n"),
+        // The file in the parent2 change is also modified to preserve the materialized conflict.
+        Some("appended\n"),
+    ]),
+}; "file removed in parent2 a resolved hunk appended in merge")]
+fn test_snapshot_modified_materialized_conflict(
+    SnapshotModifiedMaterializedConflictTestConfig {
+        base_contents,
+        parent1_contents,
+        parent2_contents,
+        get_new_merge_hunks,
+        expected_file_contents,
+    }: SnapshotModifiedMaterializedConflictTestConfig,
+) {
+    // In this test, we create the following commits, checkout the merge commit,
+    // modify the merge contents, snapshot, and verify if the new merged tree is
+    // correct.
+
+    // D
+    // |\
+    // B C
+    // |/
+    // A
+
+    // We can't use the tokio runtime here because the test backend will create
+    // the tokio runtime in TestWorkspace::init, and tokio will panic if the
+    // tokio runtime is dropped in an async context. See
+    // https://docs.rs/tokio/1.47.1/tokio/runtime/struct.Handle.html#panics-2
+    // for details.
+    let mut test_workspace = TestWorkspace::init();
+    let file_repo_path = repo_path("test-file");
+    let file_disk_path = file_repo_path
+        .to_fs_path(test_workspace.workspace.workspace_root())
+        .unwrap();
+
+    // Create the commits with given contents.
+    let mut tx = test_workspace.repo.start_transaction();
+    let tree = create_tree(
+        &test_workspace.repo,
+        base_contents
+            .map(|contents| (file_repo_path, contents))
+            .as_slice(),
+    );
+    let base_commit = tx
+        .repo_mut()
+        .new_commit(
+            vec![test_workspace.repo.store().root_commit_id().clone()],
+            tree,
+        )
+        .write()
+        .unwrap();
+    let tree = create_tree(
+        &test_workspace.repo,
+        &parent1_contents
+            .map(|contents| (file_repo_path, contents))
+            .into_iter()
+            .collect::<Vec<_>>(),
+    );
+    let parent1_commit = tx
+        .repo_mut()
+        .new_commit(vec![base_commit.id().clone()], tree)
+        .write()
+        .unwrap();
+    let tree = create_tree(
+        &test_workspace.repo,
+        &parent2_contents
+            .map(|contents| (file_repo_path, contents))
+            .into_iter()
+            .collect::<Vec<_>>(),
+    );
+    let parent2_commit = tx
+        .repo_mut()
+        .new_commit(vec![base_commit.id().clone()], tree)
+        .write()
+        .unwrap();
+    // Update the repo to pick up the new commits.
+    test_workspace.repo = tx.commit("create parent commits").unwrap();
+
+    // Create the merge commit.
+    let tree = merge_commit_trees(&*test_workspace.repo, &[parent1_commit, parent2_commit])
+        .block_on()
+        .unwrap();
+    let merge_commit = commit_with_tree(test_workspace.repo.store(), tree);
+
+    // Checkout the merge commit.
+    test_workspace
+        .workspace
+        .check_out(test_workspace.repo.op_id().clone(), None, &merge_commit)
+        .unwrap();
+    let contents = std::fs::read(&file_disk_path).unwrap();
+    let hunks =
+        jj_lib::conflicts::parse_conflict(&contents, 2, jj_lib::conflicts::MIN_CONFLICT_MARKER_LEN)
+            .unwrap();
+    let hunks = get_new_merge_hunks(hunks);
+    let mut new_contents = vec![];
+    for hunk in hunks {
+        jj_lib::conflicts::materialize_merge_result(
+            &hunk,
+            &ConflictLabels::unlabeled(),
+            &mut new_contents,
+            &ConflictMaterializeOptions {
+                marker_style: jj_lib::conflicts::ConflictMarkerStyle::Diff,
+                marker_len: None,
+                merge: MergeOptions {
+                    hunk_level: FileMergeHunkLevel::Line,
+                    same_change: SameChange::Accept,
+                },
+            },
+        )
+        .unwrap();
+    }
+    std::fs::write(&file_disk_path, new_contents).unwrap();
+
+    // Snapshot.
+    let tree = test_workspace.snapshot().unwrap();
+    let actual_file_contents = tree
+        .path_value_async(file_repo_path)
+        .block_on()
+        .unwrap()
+        .try_map_async(async |tree_value| {
+            let Some(tree_value) = tree_value else {
+                return Ok::<_, Infallible>(None);
+            };
+            let TreeValue::File { id, .. } = tree_value else {
+                panic!("All sides of the conflict should be either a file or absent.");
+            };
+            let mut contents = vec![];
+            test_workspace
+                .repo
+                .store()
+                .read_file(file_repo_path, id)
+                .await
+                .unwrap()
+                .read_to_end(&mut contents)
+                .await
+                .unwrap();
+            Ok::<_, Infallible>(Some(String::from_utf8(contents).unwrap()))
+        })
+        .block_on()
+        .unwrap();
+    let expected_file_contents =
+        expected_file_contents.map(|contents| contents.as_deref().map(str::to_string));
+    assert_eq!(actual_file_contents, expected_file_contents);
 }
 
 #[test]
@@ -1345,7 +1667,7 @@ fn test_gitignores_ignored_directory_already_tracked() {
     let fs_path = modified_symlink_path.to_fs_path_unchecked(&workspace_root);
     std::fs::remove_file(&fs_path).unwrap();
     if check_symlink_support().unwrap_or(false) {
-        try_symlink("modified", &fs_path).unwrap();
+        symlink_file("modified", &fs_path).unwrap();
     } else {
         std::fs::write(fs_path, "modified").unwrap();
     }
@@ -1578,7 +1900,7 @@ fn test_check_out_existing_directory_symlink() {
 
     // Creates a symlink in working directory, and a tree that will add a file
     // under the symlinked directory.
-    try_symlink("..", workspace_root.join("parent")).unwrap();
+    symlink_dir("..", workspace_root.join("parent")).unwrap();
 
     // Test two file paths writing to the same directory to ensure that
     // any directory creation optimizations which depend on how
@@ -1613,7 +1935,7 @@ fn test_check_out_existing_directory_symlink_icase_fs() {
 
     // Creates a symlink in working directory, and a tree that will add a file
     // under the symlinked directory.
-    try_symlink("..", workspace_root.join("parent")).unwrap();
+    symlink_dir("..", workspace_root.join("parent")).unwrap();
 
     let file_path1 = repo_path("PARENT/escaped1");
     let file_path2 = repo_path("PARENT/escaped2");
@@ -1649,7 +1971,7 @@ fn test_check_out_existing_file_symlink_icase_fs(victim_exists: bool) {
 
     // Creates a symlink in working directory, and a tree that will overwrite
     // the symlink content.
-    try_symlink(
+    symlink_file(
         PathBuf::from_iter(["..", "pwned"]),
         workspace_root.join("parent"),
     )
@@ -1707,7 +2029,7 @@ fn test_check_out_file_removal_over_existing_directory_symlink() {
     // "parent/escaped" would be skipped in that case.
     std::fs::remove_file(file_path.to_fs_path_unchecked(&workspace_root)).unwrap();
     std::fs::remove_dir(workspace_root.join("parent")).unwrap();
-    try_symlink("..", workspace_root.join("parent")).unwrap();
+    symlink_dir("..", workspace_root.join("parent")).unwrap();
     let victim_file_path = workspace_root.parent().unwrap().join("escaped");
     std::fs::write(&victim_file_path, "").unwrap();
     assert!(file_path.to_fs_path_unchecked(&workspace_root).exists());
@@ -1718,6 +2040,53 @@ fn test_check_out_file_removal_over_existing_directory_symlink() {
 
     // "../escaped" shouldn't be removed.
     assert!(victim_file_path.exists());
+}
+
+#[test_case(".git"; "reserved .git dir")]
+#[test_case(".jj"; "reserved .jj dir")]
+#[test_case("symlink"; "looped")]
+#[test_case("unknown"; "dead")]
+#[cfg_attr(windows, ignore = "Windows impl follows symlink")] // FIXME
+fn test_check_out_symlink_unusual_target(link_target: &str) {
+    if !check_symlink_support().unwrap() {
+        eprintln!("Skipping test because symlink isn't supported");
+        return;
+    }
+
+    let mut test_workspace = TestWorkspace::init();
+    let repo = &test_workspace.repo;
+    let workspace_root = test_workspace.workspace.workspace_root().to_owned();
+    std::fs::create_dir(workspace_root.join(".git")).unwrap();
+
+    let symlink_path = repo_path("symlink");
+    let symlink_disk_path = symlink_path.to_fs_path_unchecked(&workspace_root);
+    let tree1 = create_tree_with(repo, |builder| {
+        builder.symlink(symlink_path, link_target);
+    });
+    let tree2 = create_tree(repo, &[]);
+    let commit1 = commit_with_tree(repo.store(), tree1);
+    let commit2 = commit_with_tree(repo.store(), tree2);
+
+    // Check out tree containing symlink
+    let ws = &mut test_workspace.workspace;
+    let stats = ws.check_out(repo.op_id().clone(), None, &commit1).unwrap();
+    assert_eq!(stats.added_files, 1);
+
+    // Symlink should be created
+    assert_eq!(
+        symlink_disk_path.read_link().unwrap().as_os_str(),
+        link_target
+    );
+
+    // Check out empty tree
+    let stats = ws.check_out(repo.op_id().clone(), None, &commit2).unwrap();
+    assert_eq!(stats.removed_files, 1);
+
+    // Symlink should be deleted
+    assert_matches!(
+        symlink_disk_path.symlink_metadata().map_err(|e| e.kind()),
+        Err(io::ErrorKind::NotFound)
+    );
 }
 
 #[test_case("../pwned"; "escape from root")]
@@ -2008,6 +2377,57 @@ fn test_check_out_reserved_file_path_vfat(vfat_path_str: &str, file_path_strs: &
     }
 }
 
+#[test_case(".git"; "root .git file")]
+#[test_case(".git/pwned"; "root .git dir")]
+fn test_check_out_reserved_file_path_dot_git_symlink(file_path_str: &str) {
+    if !check_symlink_support().unwrap() {
+        eprintln!("Skipping test because symlink isn't supported");
+        return;
+    }
+
+    let mut test_workspace = TestWorkspace::init();
+    let repo = &test_workspace.repo;
+    let workspace_root = test_workspace.workspace.workspace_root().to_owned();
+
+    // Create symlink .git -> ../git-repo
+    let git_repo_dir = test_workspace.env.root().join("git-repo");
+    let dot_git_path = workspace_root.join(".git");
+    std::fs::create_dir(&git_repo_dir).unwrap();
+    symlink_dir(&git_repo_dir, &dot_git_path).unwrap();
+    assert!(dot_git_path.exists());
+
+    let file_path = repo_path(file_path_str);
+    let disk_path = file_path.to_fs_path_unchecked(&workspace_root);
+    let tree1 = create_tree(repo, &[(file_path, "contents")]);
+    let tree2 = create_tree(repo, &[]);
+    let commit1 = commit_with_tree(repo.store(), tree1);
+    let commit2 = commit_with_tree(repo.store(), tree2);
+
+    // Checkout should fail.
+    let ws = &mut test_workspace.workspace;
+    let result = ws.check_out(repo.op_id().clone(), None, &commit1);
+    assert_matches!(result, Err(CheckoutError::ReservedPathComponent { .. }));
+
+    // Therefore, "pwned" file shouldn't be created.
+    assert!(!git_repo_dir.join("pwned").exists());
+    assert!(!dot_git_path.join("pwned").exists());
+
+    // Pretend that the checkout somehow succeeded.
+    let mut locked_ws = ws.start_working_copy_mutation().unwrap();
+    locked_ws.locked_wc().reset(&commit1).block_on().unwrap();
+    locked_ws.finish(repo.op_id().clone()).unwrap();
+    if file_path_str != ".git" {
+        std::fs::write(&disk_path, "").unwrap();
+    }
+
+    // Check out empty tree, which tries to remove the file.
+    let result = ws.check_out(repo.op_id().clone(), None, &commit2);
+    assert_matches!(result, Err(CheckoutError::ReservedPathComponent { .. }));
+
+    // The existing file shouldn't be removed.
+    assert!(disk_path.exists());
+}
+
 #[test]
 fn test_fsmonitor() {
     let test_repo = TestRepo::init();
@@ -2200,7 +2620,7 @@ fn test_snapshot_symlink_use_forward_slash() {
     let link_path = link.to_fs_path(&workspace_root).unwrap();
     let link_contents = "../target/link/target.txt";
     std::fs::create_dir_all(link_path.parent().unwrap()).unwrap();
-    file_util::try_symlink(link_contents, link_path).unwrap();
+    symlink_file(link_contents, link_path).unwrap();
 
     let tree = test_workspace
         .snapshot()
@@ -2299,7 +2719,7 @@ fn test_snapshot_and_update_valid_symlink(get_link_target: impl FnOnce(&Path, &P
     let link_path = link.to_fs_path(&workspace_root).unwrap();
     let link_contents = get_link_target(&link_path, &target_path);
     std::fs::create_dir_all(link_path.parent().unwrap()).unwrap();
-    file_util::try_symlink(&link_contents, &link_path).unwrap();
+    symlink_file(&link_contents, &link_path).unwrap();
     std::fs::read_link(&link_path).expect("The symlink itself should exist.");
     assert_eq!(std::fs::read(&link_path).unwrap(), file_contents);
     assert_eq!(

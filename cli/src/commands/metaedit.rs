@@ -40,17 +40,12 @@ use crate::ui::Ui;
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct MetaeditArgs {
     /// The revision(s) to modify (default: @) [aliases: -r]
-    #[arg(
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable)
-    )]
+    #[arg(value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     revisions_pos: Vec<RevisionArg>,
-    #[arg(
-        short = 'r',
-        hide = true,
-        value_name = "REVSETS",
-        add = ArgValueCompleter::new(complete::revset_expression_mutable)
-    )]
+
+    #[arg(short = 'r', hide = true, value_name = "REVSETS")]
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     revisions_opt: Vec<RevisionArg>,
 
     /// Generate a new change-id
@@ -98,9 +93,15 @@ pub(crate) struct MetaeditArgs {
     )]
     author: Option<(String, String)>,
 
-    /// Set the author date to the given date either human
-    /// readable, eg Sun, 23 Jan 2000 01:23:45 JST) or as a time stamp, eg
-    /// 2000-01-23T01:23:45+09:00)
+    /// Set the author date to the given date
+    ///
+    /// The date can either be human readable
+    /// ([RFC2822], eg 'Sun, 23 Jan 2000 01:23:45 PST')
+    /// or a time stamp ([RFC3339], eg '2000-01-23T01:23:45-08:00').
+    ///
+    /// [RFC2822]: https://datatracker.ietf.org/doc/html/rfc2822
+    ///
+    /// [RFC3339]: https://datatracker.ietf.org/doc/html/rfc3339
     #[arg(
         long,
         conflicts_with = "update_author_timestamp",

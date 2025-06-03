@@ -39,7 +39,7 @@ use std::sync::Arc;
 use std::sync::OnceLock;
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::channel;
-use std::time::UNIX_EPOCH;
+use std::time::SystemTime;
 
 use async_trait::async_trait;
 use either::Either;
@@ -80,10 +80,11 @@ use crate::conflicts::materialize_tree_value;
 pub use crate::eol::EolConversionMode;
 use crate::eol::TargetEolStrategy;
 use crate::file_util::BlockingAsyncReader;
+use crate::file_util::FileIdentity;
 use crate::file_util::check_symlink_support;
 use crate::file_util::copy_async_to_sync;
 use crate::file_util::persist_temp_file;
-use crate::file_util::try_symlink;
+use crate::file_util::symlink_file;
 use crate::fsmonitor::FsmonitorSettings;
 #[cfg(feature = "watchman")]
 use crate::fsmonitor::WatchmanConfig;
@@ -320,25 +321,29 @@ impl FileState {
         }
     }
 
-    fn for_file(exec_bit: ExecBit, size: u64, metadata: &Metadata) -> Self {
-        Self {
+    fn for_file(
+        exec_bit: ExecBit,
+        size: u64,
+        metadata: &Metadata,
+    ) -> Result<Self, MtimeOutOfRange> {
+        Ok(Self {
             file_type: FileType::Normal { exec_bit },
-            mtime: mtime_from_metadata(metadata),
+            mtime: mtime_from_metadata(metadata)?,
             size,
             materialized_conflict_data: None,
-        }
+        })
     }
 
-    fn for_symlink(metadata: &Metadata) -> Self {
+    fn for_symlink(metadata: &Metadata) -> Result<Self, MtimeOutOfRange> {
         // When using fscrypt, the reported size is not the content size. So if
         // we were to record the content size here (like we do for regular files), we
         // would end up thinking the file has changed every time we snapshot.
-        Self {
+        Ok(Self {
             file_type: FileType::Symlink,
-            mtime: mtime_from_metadata(metadata),
+            mtime: mtime_from_metadata(metadata)?,
             size: metadata.len(),
             materialized_conflict_data: None,
-        }
+        })
     }
 
     fn for_gitsubmodule() -> Self {
@@ -682,13 +687,10 @@ fn create_parent_dirs(
         // A directory named ".git" or ".jj" can be temporarily created. It
         // might trick workspace path discovery, but is harmless so long as the
         // directory is empty.
-        let new_dir_created = match fs::create_dir(&dir_path) {
-            Ok(()) => true, // New directory
+        let (new_dir_created, is_dir) = match fs::create_dir(&dir_path) {
+            Ok(()) => (true, true), // New directory
             Err(err) => match dir_path.symlink_metadata() {
-                Ok(m) if m.is_dir() => false, // Existing directory
-                Ok(_) => {
-                    return Ok(None); // Skip existing file or symlink
-                }
+                Ok(m) => (false, m.is_dir()), // Existing file or directory
                 Err(_) => {
                     return Err(CheckoutError::Other {
                         message: format!(
@@ -707,6 +709,9 @@ fn create_parent_dirs(
                 fs::remove_dir(&dir_path).ok();
             }
         })?;
+        if !is_dir {
+            return Ok(None); // Skip existing file or symlink
+        }
     }
 
     let mut file_path = dir_path;
@@ -790,86 +795,88 @@ fn can_create_new_file(disk_path: &Path) -> Result<bool, CheckoutError> {
 
 const RESERVED_DIR_NAMES: &[&str] = &[".git", ".jj"];
 
-fn same_file_handle_from_path(disk_path: &Path) -> io::Result<Option<same_file::Handle>> {
-    match same_file::Handle::from_path(disk_path) {
-        Ok(handle) => Ok(Some(handle)),
+fn file_identity_from_symlink_path(disk_path: &Path) -> io::Result<Option<FileIdentity>> {
+    match FileIdentity::from_symlink_path(disk_path) {
+        Ok(identity) => Ok(Some(identity)),
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(err) => Err(err),
     }
 }
 
-/// Wrapper for [`reject_reserved_existing_handle`] which avoids a syscall
-/// by converting the provided `file` to a `same_file::Handle` via its
+/// Wrapper for [`reject_reserved_existing_file_identity`] which avoids a
+/// syscall by converting the provided `file` to a `FileIdentity` via its
 /// file descriptor.
 ///
-/// See [`reject_reserved_existing_handle`] for more info.
+/// See [`reject_reserved_existing_file_identity`] for more info.
 fn reject_reserved_existing_file(file: File, disk_path: &Path) -> Result<(), CheckoutError> {
     // Note: since the file is open, we don't expect that it's possible for
     // `io::ErrorKind::NotFound` to be a possible error returned here.
-    let file_handle = same_file::Handle::from_file(file).map_err(|err| CheckoutError::Other {
+    let file_identity = FileIdentity::from_file(file).map_err(|err| CheckoutError::Other {
         message: format!("Failed to validate path {}", disk_path.display()),
         err: err.into(),
     })?;
 
-    reject_reserved_existing_handle(file_handle, disk_path)
+    reject_reserved_existing_file_identity(file_identity, disk_path)
 }
 
-/// Wrapper for [`reject_reserved_existing_handle`] which converts
-/// the provided `disk_path` to a `same_file::Handle`.
+/// Wrapper for [`reject_reserved_existing_file_identity`] which converts
+/// the provided `disk_path` to a `FileIdentity`.
 ///
-/// See [`reject_reserved_existing_handle`] for more info.
+/// See [`reject_reserved_existing_file_identity`] for more info.
 ///
 /// # Remarks
 ///
-/// Incurs an additional syscall cost to open and close the file
-/// descriptor/`HANDLE` for `disk_path`.
+/// On Windows, this incurs an additional syscall cost to open and close the
+/// file `HANDLE` for `disk_path`. On Unix, `lstat()` is used.
 fn reject_reserved_existing_path(disk_path: &Path) -> Result<(), CheckoutError> {
-    let Some(disk_handle) =
-        same_file_handle_from_path(disk_path).map_err(|err| CheckoutError::Other {
+    let Some(disk_identity) =
+        file_identity_from_symlink_path(disk_path).map_err(|err| CheckoutError::Other {
             message: format!("Failed to validate path {}", disk_path.display()),
             err: err.into(),
         })?
     else {
         // If the existing disk_path pointed to the reserved path, we would have
-        // gotten a handle back. Since we got nothing, the file does not exist
+        // gotten an identity back. Since we got nothing, the file does not exist
         // and cannot be a reserved path name.
         return Ok(());
     };
 
-    reject_reserved_existing_handle(disk_handle, disk_path)
+    reject_reserved_existing_file_identity(disk_identity, disk_path)
 }
 
 /// Suppose the `disk_path` exists, checks if the last component points to
 /// ".git" or ".jj" in the same parent directory.
 ///
-/// `disk_handle` is expected to be a handle to the file described by
+/// `disk_identity` is expected to be an identity of the file described by
 /// `disk_path`.
 ///
 /// # Remarks
 ///
-/// Incurs a syscall cost to open and close a file descriptor/`HANDLE` for
-/// each filename in `RESERVED_DIR_NAMES`.
-fn reject_reserved_existing_handle(
-    disk_handle: same_file::Handle,
+/// On Windows, this incurs a syscall cost to open and close a file `HANDLE` for
+/// each filename in `RESERVED_DIR_NAMES`. On Unix, `lstat()` is used.
+fn reject_reserved_existing_file_identity(
+    disk_identity: FileIdentity,
     disk_path: &Path,
 ) -> Result<(), CheckoutError> {
     let parent_dir_path = disk_path.parent().expect("content path shouldn't be root");
     for name in RESERVED_DIR_NAMES {
         let reserved_path = parent_dir_path.join(name);
 
-        let Some(reserved_handle) =
-            same_file_handle_from_path(&reserved_path).map_err(|err| CheckoutError::Other {
-                message: format!("Failed to validate path {}", disk_path.display()),
-                err: err.into(),
+        let Some(reserved_identity) =
+            file_identity_from_symlink_path(&reserved_path).map_err(|err| {
+                CheckoutError::Other {
+                    message: format!("Failed to validate path {}", disk_path.display()),
+                    err: err.into(),
+                }
             })?
         else {
             // If the existing disk_path pointed to the reserved path, we would have
-            // gotten a handle back. Since we got nothing, the file does not exist
+            // gotten an identity back. Since we got nothing, the file does not exist
             // and cannot be a reserved path name.
             continue;
         };
 
-        if disk_handle == reserved_handle {
+        if disk_identity == reserved_identity {
             return Err(CheckoutError::ReservedPathComponent {
                 path: disk_path.to_owned(),
                 name,
@@ -880,22 +887,27 @@ fn reject_reserved_existing_handle(
     Ok(())
 }
 
-fn mtime_from_metadata(metadata: &Metadata) -> MillisSinceEpoch {
+#[derive(Debug, Error)]
+#[error("Out-of-range file modification time")]
+struct MtimeOutOfRange;
+
+fn mtime_from_metadata(metadata: &Metadata) -> Result<MillisSinceEpoch, MtimeOutOfRange> {
     let time = metadata
         .modified()
         .expect("File mtime not supported on this platform?");
-    let since_epoch = time
-        .duration_since(UNIX_EPOCH)
-        .expect("mtime before unix epoch");
+    system_time_to_millis(time).ok_or(MtimeOutOfRange)
+}
 
-    MillisSinceEpoch(
-        i64::try_from(since_epoch.as_millis())
-            .expect("mtime billions of years into the future or past"),
-    )
+fn system_time_to_millis(time: SystemTime) -> Option<MillisSinceEpoch> {
+    let millis = match time.duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(duration) => i64::try_from(duration.as_millis()).ok()?,
+        Err(err) => -i64::try_from(err.duration().as_millis()).ok()?,
+    };
+    Some(MillisSinceEpoch(millis))
 }
 
 /// Create a new [`FileState`] from metadata.
-fn file_state(metadata: &Metadata) -> Option<FileState> {
+fn file_state(metadata: &Metadata) -> Result<Option<FileState>, MtimeOutOfRange> {
     let metadata_file_type = metadata.file_type();
     let file_type = if metadata_file_type.is_dir() {
         None
@@ -907,16 +919,16 @@ fn file_state(metadata: &Metadata) -> Option<FileState> {
     } else {
         None
     };
-    file_type.map(|file_type| {
-        let mtime = mtime_from_metadata(metadata);
-        let size = metadata.len();
-        FileState {
+    if let Some(file_type) = file_type {
+        Ok(Some(FileState {
             file_type,
-            mtime,
-            size,
+            mtime: mtime_from_metadata(metadata)?,
+            size: metadata.len(),
             materialized_conflict_data: None,
-        }
-    })
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 struct FsmonitorMatcher {
@@ -1078,8 +1090,10 @@ impl TreeState {
     }
 
     fn update_own_mtime(&mut self) {
-        if let Ok(metadata) = self.state_path.join("tree_state").symlink_metadata() {
-            self.own_mtime = mtime_from_metadata(&metadata);
+        if let Ok(metadata) = self.state_path.join("tree_state").symlink_metadata()
+            && let Ok(mtime) = mtime_from_metadata(&metadata)
+        {
+            self.own_mtime = mtime;
         } else {
             self.own_mtime = MillisSinceEpoch(0);
         }
@@ -1609,7 +1623,9 @@ impl FileSnapshotter<'_> {
                     };
                     self.untracked_paths_tx.send((path, reason)).ok();
                     Ok(None)
-                } else if let Some(new_file_state) = file_state(&metadata) {
+                } else if let Some(new_file_state) = file_state(&metadata)
+                    .map_err(|err| snapshot_error_for_mtime_out_of_range(err, &entry.path()))?
+                {
                     self.process_present_file(
                         path,
                         &entry.path(),
@@ -1647,7 +1663,10 @@ impl FileSnapshotter<'_> {
                     });
                 }
             };
-            if let Some(new_file_state) = metadata.as_ref().and_then(file_state) {
+            if let Some(metadata) = &metadata
+                && let Some(new_file_state) = file_state(metadata)
+                    .map_err(|err| snapshot_error_for_mtime_out_of_range(err, &disk_path))?
+            {
                 self.process_present_file(
                     tracked_path.to_owned(),
                     &disk_path,
@@ -1947,6 +1966,13 @@ impl FileSnapshotter<'_> {
     }
 }
 
+fn snapshot_error_for_mtime_out_of_range(err: MtimeOutOfRange, path: &Path) -> SnapshotError {
+    SnapshotError::Other {
+        message: format!("Failed to process file metadata {}", path.display()),
+        err: err.into(),
+    }
+}
+
 /// Functions to update local-disk files from the store.
 impl TreeState {
     async fn write_file(
@@ -1993,7 +2019,8 @@ impl TreeState {
         let metadata = file
             .metadata()
             .map_err(|err| checkout_error_for_stat_error(err, disk_path))?;
-        Ok(FileState::for_file(exec_bit, size as u64, &metadata))
+        FileState::for_file(exec_bit, size as u64, &metadata)
+            .map_err(|err| checkout_error_for_mtime_out_of_range(err, disk_path))
     }
 
     fn write_symlink(&self, disk_path: &Path, target: String) -> Result<FileState, CheckoutError> {
@@ -2016,7 +2043,10 @@ impl TreeState {
             );
         }
 
-        try_symlink(&target, disk_path).map_err(|err| CheckoutError::Other {
+        // On Windows, this will create a nonfunctional link for directories,
+        // but at the moment we don't have enough information in the tree to
+        // determine whether the symlink target is a file or a directory.
+        symlink_file(&target, disk_path).map_err(|err| CheckoutError::Other {
             message: format!(
                 "Failed to create symlink from {} to {}",
                 disk_path.display(),
@@ -2027,7 +2057,8 @@ impl TreeState {
         let metadata = disk_path
             .symlink_metadata()
             .map_err(|err| checkout_error_for_stat_error(err, disk_path))?;
-        Ok(FileState::for_symlink(&metadata))
+        FileState::for_symlink(&metadata)
+            .map_err(|err| checkout_error_for_mtime_out_of_range(err, disk_path))
     }
 
     async fn write_conflict(
@@ -2063,7 +2094,8 @@ impl TreeState {
         let metadata = file
             .metadata()
             .map_err(|err| checkout_error_for_stat_error(err, disk_path))?;
-        Ok(FileState::for_file(exec_bit, size, &metadata))
+        FileState::for_file(exec_bit, size, &metadata)
+            .map_err(|err| checkout_error_for_mtime_out_of_range(err, disk_path))
     }
 
     pub fn check_out(&mut self, new_tree: &MergedTree) -> Result<CheckoutStats, CheckoutError> {
@@ -2410,6 +2442,13 @@ impl TreeState {
 fn checkout_error_for_stat_error(err: io::Error, path: &Path) -> CheckoutError {
     CheckoutError::Other {
         message: format!("Failed to stat file {}", path.display()),
+        err: err.into(),
+    }
+}
+
+fn checkout_error_for_mtime_out_of_range(err: MtimeOutOfRange, path: &Path) -> CheckoutError {
+    CheckoutError::Other {
+        message: format!("Failed to process file metadata {}", path.display()),
         err: err.into(),
     }
 }
@@ -2813,6 +2852,8 @@ impl LockedLocalWorkingCopy {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use maplit::hashset;
 
     use super::*;
@@ -2999,5 +3040,33 @@ mod tests {
             prefixed_states.get_at(repo_path("b#"), repo_path_component("#")),
             None
         );
+    }
+
+    #[test]
+    fn test_system_time_to_millis() {
+        let epoch = SystemTime::UNIX_EPOCH;
+        assert_eq!(system_time_to_millis(epoch), Some(MillisSinceEpoch(0)));
+        if let Some(time) = epoch.checked_add(Duration::from_millis(1)) {
+            assert_eq!(system_time_to_millis(time), Some(MillisSinceEpoch(1)));
+        }
+        if let Some(time) = epoch.checked_sub(Duration::from_millis(1)) {
+            assert_eq!(system_time_to_millis(time), Some(MillisSinceEpoch(-1)));
+        }
+        if let Some(time) = epoch.checked_add(Duration::from_millis(i64::MAX as u64)) {
+            assert_eq!(
+                system_time_to_millis(time),
+                Some(MillisSinceEpoch(i64::MAX))
+            );
+        }
+        if let Some(time) = epoch.checked_sub(Duration::from_millis(i64::MAX as u64)) {
+            assert_eq!(
+                system_time_to_millis(time),
+                Some(MillisSinceEpoch(-i64::MAX))
+            );
+        }
+        if let Some(time) = epoch.checked_sub(Duration::from_millis(i64::MAX as u64 + 1)) {
+            // i64::MIN could be returned, but we don't care such old timestamp
+            assert_eq!(system_time_to_millis(time), None);
+        }
     }
 }

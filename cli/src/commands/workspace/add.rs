@@ -52,12 +52,14 @@ pub struct WorkspaceAddArgs {
     /// Where to create the new workspace
     #[arg(value_hint = clap::ValueHint::DirPath)]
     destination: String,
+
     /// A name for the workspace
     ///
     /// To override the default, which is the basename of the destination
     /// directory.
     #[arg(long)]
     name: Option<WorkspaceNameBuf>,
+
     /// A list of parent revisions for the working-copy commit of the newly
     /// created workspace. You may specify nothing, or any number of parents.
     ///
@@ -72,6 +74,7 @@ pub struct WorkspaceAddArgs {
     /// new r1 r2 r3 ...`.
     #[arg(long, short, value_name = "REVSETS")]
     revision: Vec<RevisionArg>,
+
     /// How to handle sparse patterns when creating a new workspace.
     #[arg(long, value_enum, default_value_t = SparseInheritance::Copy)]
     sparse_patterns: SparseInheritance,
@@ -85,13 +88,6 @@ pub fn cmd_workspace_add(
 ) -> Result<(), CommandError> {
     let old_workspace_command = command.workspace_helper(ui)?;
     let destination_path = command.cwd().join(&args.destination);
-    if !destination_path.exists() {
-        fs::create_dir(&destination_path).context(&destination_path)?;
-    } else if !file_util::is_empty_dir(&destination_path)? {
-        return Err(user_error(
-            "Destination path exists and is not an empty directory",
-        ));
-    }
     let workspace_name = if let Some(name) = &args.name {
         name.to_owned()
     } else {
@@ -101,12 +97,23 @@ pub fn cmd_workspace_add(
             .ok_or_else(|| user_error("Destination path is not valid UTF-8"))?
             .into()
     };
+    if workspace_name.as_str().is_empty() {
+        return Err(user_error("New workspace name cannot be empty"));
+    }
+
     let repo = old_workspace_command.repo();
     if repo.view().get_wc_commit_id(&workspace_name).is_some() {
         return Err(user_error(format!(
             "Workspace named '{name}' already exists",
             name = workspace_name.as_symbol()
         )));
+    }
+    if !destination_path.exists() {
+        fs::create_dir(&destination_path).context(&destination_path)?;
+    } else if !file_util::is_empty_dir(&destination_path)? {
+        return Err(user_error(
+            "Destination path exists and is not an empty directory",
+        ));
     }
 
     let working_copy_factory = command.get_working_copy_factory()?;

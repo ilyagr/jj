@@ -19,7 +19,9 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::default::Default;
+use std::ffi::OsString;
 use std::fs::File;
+use std::iter;
 use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -98,6 +100,33 @@ impl GitSettings {
             abandon_unreachable_commits: settings.get_bool("git.abandon-unreachable-commits")?,
             executable_path: settings.get("git.executable-path")?,
             write_change_id_header: settings.get("git.write-change-id-header")?,
+        })
+    }
+
+    pub fn to_subprocess_options(&self) -> GitSubprocessOptions {
+        GitSubprocessOptions {
+            executable_path: self.executable_path.clone(),
+            environment: HashMap::new(),
+        }
+    }
+}
+
+/// Configuration for a Git subprocess
+#[derive(Clone, Debug)]
+pub struct GitSubprocessOptions {
+    pub executable_path: PathBuf,
+    /// Used by consumers of jj-lib to set environment variables like
+    /// GIT_ASKPASS (for authentication callbacks) or GIT_TRACE (for debugging).
+    /// Setting per-subcommand environment variables avoids the need for unsafe
+    /// code and process-wide state.
+    pub environment: HashMap<OsString, OsString>,
+}
+
+impl GitSubprocessOptions {
+    pub fn from_settings(settings: &UserSettings) -> Result<Self, ConfigGetError> {
+        Ok(Self {
+            executable_path: settings.get("git.executable-path")?,
+            environment: HashMap::new(),
         })
     }
 }
@@ -486,27 +515,43 @@ pub fn import_some_refs(
     options: &GitImportOptions,
     git_ref_filter: impl Fn(GitRefKind, RemoteRefSymbol<'_>) -> bool,
 ) -> Result<GitImportStats, GitImportError> {
+    let git_repo = get_git_repo(mut_repo.store())?;
+
+    // Allocate views for new remotes configured externally. There may be
+    // remotes with no refs, but the user might still want to "track" absent
+    // remote refs.
+    for remote_name in iter_remote_names(&git_repo) {
+        mut_repo.ensure_remote(&remote_name);
+    }
+
+    let refs_to_import = diff_refs_to_import(mut_repo.view(), &git_repo, git_ref_filter)?;
+    import_refs_inner(mut_repo, refs_to_import, options)
+}
+
+fn import_refs_inner(
+    mut_repo: &mut MutableRepo,
+    refs_to_import: RefsToImport,
+    options: &GitImportOptions,
+) -> Result<GitImportStats, GitImportError> {
     let store = mut_repo.store();
-    let git_backend = get_git_backend(store)?;
-    let git_repo = git_backend.git_repo();
+    let git_backend = get_git_backend(store).expect("backend type should have been tested");
 
     let RefsToImport {
         changed_git_refs,
         changed_remote_bookmarks,
         changed_remote_tags,
         failed_ref_names,
-    } = diff_refs_to_import(mut_repo.view(), &git_repo, git_ref_filter)?;
+    } = refs_to_import;
 
     // Bulk-import all reachable Git commits to the backend to reduce overhead
     // of table merging and ref updates.
     //
-    // changed_remote_bookmarks/tags might contain new_targets that are not in
-    // changed_git_refs, but such targets should have already been imported to
-    // the backend.
+    // changed_git_refs aren't respected because changed_remote_bookmarks/tags
+    // should include all heads that will become reachable in jj.
+    let iter_changed_refs = || itertools::chain(&changed_remote_bookmarks, &changed_remote_tags);
     let index = mut_repo.index();
-    let missing_head_ids: Vec<&CommitId> = changed_git_refs
-        .iter()
-        .flat_map(|(_, new_target)| new_target.added_ids())
+    let missing_head_ids: Vec<&CommitId> = iter_changed_refs()
+        .flat_map(|(_, (_, new_target))| new_target.added_ids())
         .filter_map(|id| match index.has_id(id) {
             Ok(false) => Some(Ok(id)),
             Ok(true) => None,
@@ -530,9 +575,7 @@ pub fn import_some_refs(
         }
         store.get_commit(id).map_err(missing_ref_err)
     };
-    for (symbol, (_, new_target)) in
-        itertools::chain(&changed_remote_bookmarks, &changed_remote_tags)
-    {
+    for (symbol, (_, new_target)) in iter_changed_refs() {
         for id in new_target.added_ids() {
             let commit = get_commit(id, symbol)?;
             head_commits.push(commit);
@@ -543,13 +586,6 @@ pub fn import_some_refs(
     mut_repo
         .add_heads(&head_commits)
         .map_err(GitImportError::Backend)?;
-
-    // Allocate views for new remotes configured externally. There may be
-    // remotes with no refs, but the user might still want to "track" absent
-    // remote refs.
-    for remote_name in iter_remote_names(&git_repo) {
-        mut_repo.ensure_remote(&remote_name);
-    }
 
     // Apply the change that happened in git since last time we imported refs.
     for (full_name, new_target) in changed_git_refs {
@@ -667,11 +703,15 @@ fn diff_refs_to_import(
         .filter(|&(symbol, _)| git_ref_filter(GitRefKind::Bookmark, symbol))
         .map(|(symbol, remote_ref)| (RemoteRefKey(symbol), remote_ref))
         .collect();
-    let mut known_remote_tags = view
-        .all_remote_tags()
-        .filter(|&(symbol, _)| git_ref_filter(GitRefKind::Tag, symbol))
-        .map(|(symbol, remote_ref)| (RemoteRefKey(symbol), remote_ref))
-        .collect();
+    let mut known_remote_tags = {
+        // Exclude real remote tags, which should never be updated by Git.
+        let remote = REMOTE_NAME_FOR_LOCAL_GIT_REPO;
+        view.remote_tags(remote)
+            .map(|(name, remote_ref)| (name.to_remote_symbol(remote), remote_ref))
+            .filter(|&(symbol, _)| git_ref_filter(GitRefKind::Tag, symbol))
+            .map(|(symbol, remote_ref)| (RemoteRefKey(symbol), remote_ref))
+            .collect()
+    };
 
     let mut changed_git_refs = Vec::new();
     let mut changed_remote_bookmarks = Vec::new();
@@ -2446,7 +2486,7 @@ fn split_into_positive_negative_patterns(
 }
 
 /// A list of fetch refspecs configured within a remote that were ignored during
-/// a expansion. Callers should consider displaying these in the UI as
+/// an expansion. Callers should consider displaying these in the UI as
 /// appropriate.
 #[derive(Debug)]
 #[must_use = "warnings should be surfaced in the UI"]
@@ -2569,7 +2609,7 @@ fn parse_fetch_refspec(
 pub struct GitFetch<'a> {
     mut_repo: &'a mut MutableRepo,
     git_repo: Box<gix::Repository>,
-    git_ctx: GitSubprocessContext<'a>,
+    git_ctx: GitSubprocessContext,
     import_options: &'a GitImportOptions,
     fetched: Vec<FetchedBranches>,
 }
@@ -2577,13 +2617,12 @@ pub struct GitFetch<'a> {
 impl<'a> GitFetch<'a> {
     pub fn new(
         mut_repo: &'a mut MutableRepo,
-        git_settings: &'a GitSettings,
+        subprocess_options: GitSubprocessOptions,
         import_options: &'a GitImportOptions,
     ) -> Result<Self, UnexpectedGitBackendError> {
         let git_backend = get_git_backend(mut_repo.store())?;
         let git_repo = Box::new(git_backend.git_repo());
-        let git_ctx =
-            GitSubprocessContext::from_git_backend(git_backend, &git_settings.executable_path);
+        let git_ctx = GitSubprocessContext::from_git_backend(git_backend, subprocess_options);
         Ok(GitFetch {
             mut_repo,
             git_repo,
@@ -2693,19 +2732,19 @@ impl<'a> GitFetch<'a> {
     #[tracing::instrument(skip(self))]
     pub fn import_refs(&mut self) -> Result<GitImportStats, GitImportError> {
         tracing::debug!("import_refs");
-        let import_stats =
-            import_some_refs(
-                self.mut_repo,
-                self.import_options,
-                |kind, symbol| match kind {
-                    GitRefKind::Bookmark => self
-                        .fetched
-                        .iter()
-                        .filter(|fetched| fetched.remote == symbol.remote)
-                        .any(|fetched| fetched.bookmark_matcher.is_match(symbol.name.as_str())),
-                    GitRefKind::Tag => true,
-                },
-            )?;
+        let refs_to_import = diff_refs_to_import(
+            self.mut_repo.view(),
+            &self.git_repo,
+            |kind, symbol| match kind {
+                GitRefKind::Bookmark => self
+                    .fetched
+                    .iter()
+                    .filter(|fetched| fetched.remote == symbol.remote)
+                    .any(|fetched| fetched.bookmark_matcher.is_match(symbol.name.as_str())),
+                GitRefKind::Tag => true,
+            },
+        )?;
+        let import_stats = import_refs_inner(self.mut_repo, refs_to_import, self.import_options)?;
 
         self.fetched.clear();
 
@@ -2743,7 +2782,7 @@ pub struct GitRefUpdate {
 /// Pushes the specified branches and updates the repo view accordingly.
 pub fn push_branches(
     mut_repo: &mut MutableRepo,
-    git_settings: &GitSettings,
+    subprocess_options: GitSubprocessOptions,
     remote: &RemoteName,
     targets: &GitBranchPushTargets,
     callbacks: RemoteCallbacks,
@@ -2760,27 +2799,31 @@ pub fn push_branches(
         })
         .collect_vec();
 
-    let push_stats = push_updates(mut_repo, git_settings, remote, &ref_updates, callbacks)?;
+    let push_stats = push_updates(
+        mut_repo,
+        subprocess_options,
+        remote,
+        &ref_updates,
+        callbacks,
+    )?;
     tracing::debug!(?push_stats);
 
-    // TODO: add support for partially pushed refs? we could update the view
-    // excluding rejected refs, but the transaction would be aborted anyway
-    // if we returned an Err.
-    if push_stats.all_ok() {
-        for (name, update) in &targets.branch_updates {
-            let git_ref_name: GitRefNameBuf = format!(
-                "refs/remotes/{remote}/{name}",
-                remote = remote.as_str(),
-                name = name.as_str()
-            )
-            .into();
-            let new_remote_ref = RemoteRef {
-                target: RefTarget::resolved(update.new_target.clone()),
-                state: RemoteRefState::Tracked,
-            };
-            mut_repo.set_git_ref_target(&git_ref_name, new_remote_ref.target.clone());
-            mut_repo.set_remote_bookmark(name.to_remote_symbol(remote), new_remote_ref);
-        }
+    let pushed: HashSet<&GitRefName> = push_stats.pushed.iter().map(AsRef::as_ref).collect();
+    let pushed_branch_updates = iter::zip(&targets.branch_updates, &ref_updates)
+        .filter(|(_, ref_update)| pushed.contains(&*ref_update.qualified_name));
+    for ((name, update), _) in pushed_branch_updates {
+        let git_ref_name: GitRefNameBuf = format!(
+            "refs/remotes/{remote}/{name}",
+            remote = remote.as_str(),
+            name = name.as_str(),
+        )
+        .into();
+        let new_remote_ref = RemoteRef {
+            target: RefTarget::resolved(update.new_target.clone()),
+            state: RemoteRefState::Tracked,
+        };
+        mut_repo.set_git_ref_target(&git_ref_name, new_remote_ref.target.clone());
+        mut_repo.set_remote_bookmark(name.to_remote_symbol(remote), new_remote_ref);
     }
 
     Ok(push_stats)
@@ -2789,7 +2832,7 @@ pub fn push_branches(
 /// Pushes the specified Git refs without updating the repo view.
 pub fn push_updates(
     repo: &dyn Repo,
-    git_settings: &GitSettings,
+    subprocess_options: GitSubprocessOptions,
     remote_name: &RemoteName,
     updates: &[GitRefUpdate],
     mut callbacks: RemoteCallbacks,
@@ -2816,8 +2859,7 @@ pub fn push_updates(
 
     let git_backend = get_git_backend(repo.store())?;
     let git_repo = git_backend.git_repo();
-    let git_ctx =
-        GitSubprocessContext::from_git_backend(git_backend, &git_settings.executable_path);
+    let git_ctx = GitSubprocessContext::from_git_backend(git_backend, subprocess_options);
 
     // check the remote exists
     if git_repo.try_find_remote(remote_name.as_str()).is_none() {
@@ -2842,9 +2884,6 @@ pub fn push_updates(
 pub struct RemoteCallbacks<'a> {
     pub progress: Option<&'a mut dyn FnMut(&Progress)>,
     pub sideband_progress: Option<&'a mut dyn FnMut(&[u8])>,
-    pub get_ssh_keys: Option<&'a mut dyn FnMut(&str) -> Vec<PathBuf>>,
-    pub get_password: Option<&'a mut dyn FnMut(&str, &str) -> Option<String>>,
-    pub get_username_password: Option<&'a mut dyn FnMut(&str) -> Option<(String, String)>>,
 }
 
 #[derive(Clone, Debug)]

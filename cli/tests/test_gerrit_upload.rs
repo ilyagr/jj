@@ -14,6 +14,7 @@
 
 use crate::common::TestEnvironment;
 use crate::common::create_commit;
+use crate::common::create_commit_with_files;
 
 #[test]
 fn test_gerrit_upload_dryrun() {
@@ -85,6 +86,69 @@ fn test_gerrit_upload_dryrun() {
 }
 
 #[test]
+fn test_gerrit_upload_failure() {
+    let test_env = TestEnvironment::default();
+    test_env
+        .run_jj_in(".", ["git", "init", "--colocate", "remote"])
+        .success();
+    let remote_dir = test_env.work_dir("remote");
+    create_commit(&remote_dir, "a", &[]);
+
+    test_env
+        .run_jj_in(".", ["git", "clone", "remote", "local"])
+        .success();
+    let local_dir = test_env.work_dir("local");
+
+    // construct test revisions
+    create_commit_with_files(&local_dir, "b", &["a@origin"], &[]);
+    create_commit(&local_dir, "c", &["a@origin"]);
+    local_dir.run_jj(["describe", "-m="]).success();
+    create_commit(&local_dir, "d", &["a@origin"]);
+
+    let output = local_dir.run_jj(["gerrit", "upload", "-r", "none()", "--remote-branch=main"]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    No revisions to upload.
+    [EOF]
+    ");
+
+    // empty revisions are not allowed
+    let output = local_dir.run_jj(["gerrit", "upload", "-r", "b", "--remote-branch=main"]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    Error: Refusing to upload revision mzvwutvlkqwt because it is empty
+    Hint: Perhaps you squashed then ran upload? Maybe you meant to upload the parent commit instead (eg. @-)
+    [EOF]
+    [exit status: 1]
+    ");
+
+    // empty descriptions are not allowed
+    let output = local_dir.run_jj(["gerrit", "upload", "-r", "c", "--remote-branch=main"]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    Error: Refusing to upload revision yqosqzytrlsw because it is has no description
+    Hint: Maybe you meant to upload the parent commit instead (eg. @-)
+    [EOF]
+    [exit status: 1]
+    ");
+
+    // upload failure
+    local_dir
+        .run_jj(["git", "remote", "set-url", "origin", "nonexistent"])
+        .success();
+    let output = local_dir.run_jj(["gerrit", "upload", "-r", "d", "--remote-branch=main"]);
+    insta::assert_snapshot!(output, @"
+    ------- stderr -------
+    Found 1 heads to push to Gerrit (remote 'origin'), target branch 'main'
+    Pushing znkkpsqq 47f1f88c d | d
+    Error: Internal git error while pushing to gerrit
+    Caused by: Could not find repository at '$TEST_ENV/local/nonexistent'
+    [EOF]
+    [exit status: 1]
+    ");
+}
+
+#[test]
 fn test_gerrit_upload_local_implicit_change_ids() {
     let test_env = TestEnvironment::default();
     test_env
@@ -100,11 +164,21 @@ fn test_gerrit_upload_local_implicit_change_ids() {
     create_commit(&local_dir, "b", &["a@origin"]);
     create_commit(&local_dir, "c", &["b"]);
 
+    // Ensure other trailers are preserved (no extra newlines)
+    local_dir
+        .run_jj([
+            "describe",
+            "c",
+            "-m",
+            "c\n\nSigned-off-by: Lucky K Maintainer <lucky@maintainer.example.org>\n",
+        ])
+        .success();
+
     // The output should only mention commit IDs from the log output above (no
     // temporary commits)
     let output = local_dir.run_jj(["log", "-r", "all()"]);
-    insta::assert_snapshot!(output, @r"
-    @  yqosqzyt test.user@example.com 2001-02-03 08:05:14 c 9590bf26
+    insta::assert_snapshot!(output, @"
+    @  yqosqzyt test.user@example.com 2001-02-03 08:05:15 c f6e97ced
     │  c
     ○  mzvwutvl test.user@example.com 2001-02-03 08:05:12 b 3bcb28c4
     │  b
@@ -115,18 +189,18 @@ fn test_gerrit_upload_local_implicit_change_ids() {
     ");
 
     let output = local_dir.run_jj(["gerrit", "upload", "-r", "c", "--remote-branch=main"]);
-    insta::assert_snapshot!(output, @r"
+    insta::assert_snapshot!(output, @"
     ------- stderr -------
     Found 1 heads to push to Gerrit (remote 'origin'), target branch 'main'
-    Pushing yqosqzyt 9590bf26 c | c
+    Pushing yqosqzyt f6e97ced c | c
     [EOF]
     ");
 
     // The output should be unchanged because we only add Change-Id trailers
     // transiently
     let output = local_dir.run_jj(["log", "-r", "all()"]);
-    insta::assert_snapshot!(output, @r"
-    @  yqosqzyt test.user@example.com 2001-02-03 08:05:14 c 9590bf26
+    insta::assert_snapshot!(output, @"
+    @  yqosqzyt test.user@example.com 2001-02-03 08:05:15 c f6e97ced
     │  c
     ○  mzvwutvl test.user@example.com 2001-02-03 08:05:12 b 3bcb28c4
     │  b
@@ -139,13 +213,14 @@ fn test_gerrit_upload_local_implicit_change_ids() {
     // There's no particular reason to run this with jj util exec, it's just that
     // the infra makes it easier to run this way.
     let output = remote_dir.run_jj(["util", "exec", "--", "git", "log", "refs/for/main"]);
-    insta::assert_snapshot!(output, @r"
-    commit ab6776c073b82fbbd2cd0858482a9646afd56f85
+    insta::assert_snapshot!(output, @"
+    commit 68b986d2eb820643b767ae219fb48128dcc2fc03
     Author: Test User <test.user@example.com>
     Date:   Sat Feb 3 04:05:13 2001 +0700
 
         c
         
+        Signed-off-by: Lucky K Maintainer <lucky@maintainer.example.org>
         Change-Id: I19b790168e73f7a73a98deae21e807c06a6a6964
 
     commit 81b723522d1c1a583a045eab5bfb323e45e6198d
@@ -385,9 +460,17 @@ fn test_gerrit_upload_bad_change_ids() {
     let local_dir = test_env.work_dir("local");
     create_commit(&local_dir, "b", &["a@origin"]);
     create_commit(&local_dir, "c", &["a@origin"]);
+    create_commit(&local_dir, "bb", &["b"]);
 
     local_dir
         .run_jj(["describe", "-rb", "-m\n\nChange-Id: malformed\n"])
+        .success();
+    local_dir
+        .run_jj([
+            "describe",
+            "-rbb",
+            "-m\n\nChange-Id: i0000000000000000000000000000000000000000\n",
+        ])
         .success();
     local_dir
         .run_jj([
@@ -410,12 +493,14 @@ fn test_gerrit_upload_bad_change_ids() {
     [exit status: 1]
     ");
 
-    let output = local_dir.run_jj(["gerrit", "upload", "-rb", "--remote-branch=main"]);
-    insta::assert_snapshot!(output, @r"
+    // check both badly and slightly malformed Change-Id trailers
+    let output = local_dir.run_jj(["gerrit", "upload", "-rbb", "--remote-branch=main"]);
+    insta::assert_snapshot!(output, @"
     ------- stderr -------
     Warning: Invalid Change-Id footer in revision mzvwutvlkqwt
+    Warning: Invalid Change-Id footer in revision yostqsxwqrlt
     Found 1 heads to push to Gerrit (remote 'origin'), target branch 'main'
-    Pushing mzvwutvl 360bfd4f b
+    Pushing yostqsxw 7252a52a bb
     [EOF]
     ");
 }

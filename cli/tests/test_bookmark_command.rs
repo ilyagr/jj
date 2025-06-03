@@ -1233,10 +1233,17 @@ fn test_bookmark_track_untrack() {
     ");
 
     // Track new bookmark. Local bookmark should be created.
-    let output = work_dir.run_jj(["bookmark", "track", "feature1@origin", "main@origin"]);
-    insta::assert_snapshot!(output, @r"
+    let output = work_dir.run_jj([
+        "bookmark",
+        "track",
+        "feature1@origin",
+        "main@origin",
+        "nonexistent@origin",
+    ]);
+    insta::assert_snapshot!(output, @"
     ------- stderr -------
     Warning: <bookmark>@<remote> syntax is deprecated, use `<bookmark> --remote=<remote>` instead.
+    Warning: No matching remote bookmarks for names: nonexistent@origin
     Started tracking 2 remote bookmarks.
     [EOF]
     ");
@@ -2482,6 +2489,19 @@ fn test_bookmark_list_tracked() {
     [EOF]
     ");
 
+    let output = local_dir.run_jj(["bookmark", "list", "--tracked", "--remote=git"]);
+    insta::assert_snapshot!(output, @"
+    local-only: nmzmmopx 2a685e16 (empty) local-only
+      @git: nmzmmopx 2a685e16 (empty) local-only
+    remote-sync: rlvkpnrz 7a07dbee (empty) remote-sync
+      @git: rlvkpnrz 7a07dbee (empty) remote-sync
+    remote-unsync: nmzmmopx 2a685e16 (empty) local-only
+      @git: nmzmmopx 2a685e16 (empty) local-only
+    upstream-sync: lylxulpl 169ba7d9 (empty) upstream-sync
+      @git: lylxulpl 169ba7d9 (empty) upstream-sync
+    [EOF]
+    ");
+
     let output = local_dir.run_jj(["bookmark", "list", "--tracked", "remote-unsync"]);
     insta::assert_snapshot!(output, @r"
     remote-unsync: nmzmmopx 2a685e16 (empty) local-only
@@ -2659,12 +2679,16 @@ fn test_create_and_set_auto_track_bookmarks() {
     root_dir
         .run_jj(["git", "init", "--colocate", "origin"])
         .success();
+
+    // auto-tracking an unknown remote (upstream) will have no effect
     test_env.add_config(
         "
         [remotes.origin]
         auto-track-bookmarks = 'mine/*'
         [remotes.fork]
         auto-track-bookmarks = 'mine/* | not-mine/*'
+        [remotes.upstream]
+        auto-track-bookmarks = '*'
         ",
     );
 

@@ -111,8 +111,10 @@ pub struct GitPushArgs {
     ///
     /// This defaults to the `git.push` setting. If that is not configured, and
     /// if there are multiple remotes, the remote named "origin" will be used.
-    #[arg(long, add = ArgValueCandidates::new(complete::git_remotes))]
+    #[arg(long)]
+    #[arg(add = ArgValueCandidates::new(complete::git_remotes))]
     remote: Option<RemoteNameBuf>,
+
     /// Push only this bookmark, or bookmarks matching a pattern (can be
     /// repeated)
     ///
@@ -121,15 +123,14 @@ pub struct GitPushArgs {
     ///
     /// [string pattern syntax]:
     ///     https://docs.jj-vcs.dev/latest/revsets/#string-patterns
-    #[arg(
-        long, short,
-        alias = "branch",
-        add = ArgValueCandidates::new(complete::local_bookmarks),
-    )]
+    #[arg(long, short, alias = "branch")]
+    #[arg(add = ArgValueCandidates::new(complete::local_bookmarks))]
     bookmark: Vec<String>,
+
     /// Push all bookmarks (including new bookmarks)
     #[arg(long)]
     all: bool,
+
     /// Push all tracked bookmarks
     ///
     /// This usually means that the bookmark was already pushed to or fetched
@@ -139,6 +140,7 @@ pub struct GitPushArgs {
     ///     https://docs.jj-vcs.dev/latest/bookmarks#remotes-and-tracked-bookmarks
     #[arg(long)]
     tracked: bool,
+
     /// Push all deleted bookmarks
     ///
     /// Only tracked bookmarks can be successfully deleted on the remote. A
@@ -146,15 +148,18 @@ pub struct GitPushArgs {
     /// correspond to missing local bookmarks.
     #[arg(long, conflicts_with = "specific")]
     deleted: bool,
+
     // TODO: Delete in jj 0.42.0+
     /// Allow pushing new bookmarks
     ///
     /// Newly-created remote bookmarks will be tracked automatically.
     #[arg(long, short = 'N', hide = true, conflicts_with = "what")]
     allow_new: bool,
+
     /// Allow pushing commits with empty descriptions
     #[arg(long)]
     allow_empty_description: bool,
+
     /// Allow pushing commits that are private
     ///
     /// The set of private commits can be configured by the
@@ -162,43 +167,35 @@ pub struct GitPushArgs {
     /// commits are eligible to be pushed.
     #[arg(long)]
     allow_private: bool,
+
     /// Push bookmarks pointing to these commits (can be repeated)
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        // While `-r` will often be used with mutable revisions, immutable
-        // revisions can be useful as parts of revsets or to push
-        // special-purpose branches.
-        add = ArgValueCompleter::new(complete::revset_expression_all),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    // While `-r` will often be used with mutable revisions, immutable revisions
+    // can be useful as parts of revsets or to push special-purpose branches.
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_all))]
     revisions: Vec<RevisionArg>,
+
     /// Push this commit by creating a bookmark (can be repeated)
     ///
     /// The created bookmark will be tracked automatically. Use the
     /// `templates.git_push_bookmark` setting to customize the generated
     /// bookmark name. The default is `"push-" ++ change_id.short()`.
-    #[arg(
-        long,
-        short,
-        value_name = "REVSETS",
-        // I'm guessing that `git push -c` is almost exclusively used with
-        // recently created mutable revisions, even though it can in theory
-        // be used with immutable ones as well. We can change it if the guess
-        // turns out to be wrong.
-        add = ArgValueCompleter::new(complete::revset_expression_mutable),
-    )]
+    #[arg(long, short, value_name = "REVSETS")]
+    // I'm guessing that `git push -c` is almost exclusively used with recently
+    // created mutable revisions, even though it can in theory be used with
+    // immutable ones as well. We can change it if the guess turns out to be
+    // wrong.
+    #[arg(add = ArgValueCompleter::new(complete::revset_expression_mutable))]
     change: Vec<RevisionArg>,
+
     /// Specify a new bookmark name and a revision to push under that name, e.g.
     /// '--named myfeature=@'
     ///
     /// Automatically tracks the bookmark if it is new.
-    #[arg(
-        long,
-        value_name = "NAME=REVISION",
-        add = ArgValueCompleter::new(complete::branch_name_equals_any_revision)
-    )]
+    #[arg(long, value_name = "NAME=REVISION")]
+    #[arg(add = ArgValueCompleter::new(complete::branch_name_equals_any_revision))]
     named: Vec<String>,
+
     /// Only display what will change on the remote
     #[arg(long)]
     dry_run: bool,
@@ -462,56 +459,70 @@ pub fn cmd_git_push(
     };
     let git_settings = GitSettings::from_settings(tx.settings())?;
     let push_stats = with_remote_git_callbacks(ui, |cb| {
-        git::push_branches(tx.repo_mut(), &git_settings, remote, &targets, cb)
+        git::push_branches(
+            tx.repo_mut(),
+            git_settings.to_subprocess_options(),
+            remote,
+            &targets,
+            cb,
+        )
     })?;
-    process_push_stats(&push_stats)?;
-    tx.finish(ui, tx_description)?;
-    Ok(())
+    print_stats(ui, &push_stats)?;
+    // TODO: On partial success, locally-created --change/--named bookmarks will
+    // be committed. It's probably better to remove failed local bookmarks.
+    if push_stats.all_ok() || !push_stats.pushed.is_empty() {
+        tx.finish(ui, tx_description)?;
+    }
+    if push_stats.all_ok() {
+        Ok(())
+    } else {
+        Err(user_error("Failed to push some bookmarks"))
+    }
 }
 
-fn process_push_stats(push_stats: &GitPushStats) -> Result<(), CommandError> {
-    if !push_stats.all_ok() {
-        let mut error = user_error("Failed to push some bookmarks");
-        if !push_stats.rejected.is_empty() {
-            error.add_formatted_hint_with(|formatter| {
-                writeln!(
-                    formatter,
-                    "The following references unexpectedly moved on the remote:"
-                )?;
-                for (reference, reason) in &push_stats.rejected {
-                    write!(formatter, "  ")?;
-                    write!(formatter.labeled("git_ref"), "{}", reference.as_symbol())?;
-                    if let Some(r) = reason {
-                        write!(formatter, " (reason: {r})")?;
-                    }
-                    writeln!(formatter)?;
-                }
-                Ok(())
-            });
-            error.add_hint(
-                "Try fetching from the remote, then make the bookmark point to where you want it \
-                 to be, and push again.",
-            );
+fn print_stats(ui: &Ui, stats: &GitPushStats) -> io::Result<()> {
+    if !stats.rejected.is_empty() {
+        writeln!(
+            ui.warning_default(),
+            "The following references unexpectedly moved on the remote:"
+        )?;
+        let mut formatter = ui.stderr_formatter();
+        for (reference, reason) in &stats.rejected {
+            write!(formatter, "  ")?;
+            write!(formatter.labeled("git_ref"), "{}", reference.as_symbol())?;
+            if let Some(r) = reason {
+                write!(formatter, " (reason: {r})")?;
+            }
+            writeln!(formatter)?;
         }
-        if !push_stats.remote_rejected.is_empty() {
-            error.add_formatted_hint_with(|formatter| {
-                writeln!(formatter, "The remote rejected the following updates:")?;
-                for (reference, reason) in &push_stats.remote_rejected {
-                    write!(formatter, "  ")?;
-                    write!(formatter.labeled("git_ref"), "{}", reference.as_symbol())?;
-                    if let Some(r) = reason {
-                        write!(formatter, " (reason: {r})")?;
-                    }
-                    writeln!(formatter)?;
-                }
-                Ok(())
-            });
-            error.add_hint("Try checking if you have permission to push to all the bookmarks.");
-        }
-        Err(error)
-    } else {
-        Ok(())
+        drop(formatter);
+        writeln!(
+            ui.hint_default(),
+            "Try fetching from the remote, then make the bookmark point to where you want it to \
+             be, and push again.",
+        )?;
     }
+    if !stats.remote_rejected.is_empty() {
+        writeln!(
+            ui.warning_default(),
+            "The remote rejected the following updates:"
+        )?;
+        let mut formatter = ui.stderr_formatter();
+        for (reference, reason) in &stats.remote_rejected {
+            write!(formatter, "  ")?;
+            write!(formatter.labeled("git_ref"), "{}", reference.as_symbol())?;
+            if let Some(r) = reason {
+                write!(formatter, " (reason: {r})")?;
+            }
+            writeln!(formatter)?;
+        }
+        drop(formatter);
+        writeln!(
+            ui.hint_default(),
+            "Try checking if you have permission to push to all the bookmarks."
+        )?;
+    }
+    Ok(())
 }
 
 /// Validates that the commits that will be pushed are ready (have authorship
