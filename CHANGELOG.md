@@ -101,6 +101,11 @@ should not be broken.
 * Added `join()` template function. This is different from `separate()` in that
   it adds a separator between all arguments, even if empty.
 
+* `jj split` assigns the change id and the bookmarks of the source revision
+  to the revision with the non-selected changes.
+  You can opt out of this change by setting `split.legacy-bookmark-behavior = true`,
+  but this will likely be removed in a future release.
+
 ### Fixed bugs
 
 * `jj fix` now prints a warning if a tool failed to run on a file.
