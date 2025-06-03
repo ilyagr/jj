@@ -95,6 +95,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   text when outputting to a non-terminal, instead of emitting raw OSC 8 escape
   codes. [#7592](https://github.com/jj-vcs/jj/issues/7592)
 
+* `jj split` assigns the change id and the bookmarks of the source revision
+  to the revision with the non-selected changes.
+  You can opt out of this change by setting `split.legacy-bookmark-behavior = true`,
+  but this will likely be removed in a future release.
+
 ### Fixed bugs
 
 * `jj git init --colocate` now refuses to run inside a Git worktree, providing
@@ -294,6 +299,7 @@ Thanks to the people who made this release happen!
 
 * `jj workspace forget` now warns about unknown workspaces instead of failing.
 
+>>>>>>> Side #2 (Conflict 1 of 1 ends)
 ### Fixed bugs
 
 * Broken symlink on Windows. [#6934](https://github.com/jj-vcs/jj/issues/6934).
