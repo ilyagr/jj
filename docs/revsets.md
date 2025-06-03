@@ -6,9 +6,9 @@ Expressions in this language are called "revsets" (the idea comes from
 consists of symbols, operators, and functions.
 
 Most `jj` commands accept a revset (or multiple). Many commands, such as
-`jj diff -r <revset>` expect the revset to resolve to a single commit; it is
-an error to pass a revset that resolves to more than one commit (or zero
-commits) to such commands.
+`jj edit <revset>` expect the revset to resolve to a single commit; it is an
+error to pass a revset that resolves to more than one commit (or zero commits)
+to such commands.
 
 The words "revisions" and "commits" are used interchangeably in this document.
 
@@ -32,15 +32,16 @@ workspace. Use `<name>@<remote>` to refer to a remote-tracking bookmark.
 A full commit ID refers to a single commit. A unique prefix of the full commit
 ID can also be used. It is an error to use a non-unique prefix.
 
-A full change ID refers to all visible commits with that change ID (there is
-typically only one visible commit with a given change ID). A unique prefix of
-the full change ID can also be used. It is an error to use a non-unique prefix.
+A full change ID refers to a visible commit with that change ID. A unique prefix
+of the full change ID can also be used. It is an error to use a non-unique
+prefix or [a divergent change ID][divergent-change].
 
 Use [single or double quotes][string-literals] to prevent a symbol from being
 interpreted as an expression. For example, `"x-"` is the symbol `x-`, not the
 parents of symbol `x`. Taking shell quoting into account, you may need to use
 something like `jj log -r '"x-"'`.
 
+[divergent-change]: glossary.md#divergent-change
 [string-literals]: templates.md#string-literals
 
 ### Priority
@@ -51,6 +52,10 @@ Jujutsu attempts to resolve a symbol in the following order:
 2. Bookmark name
 3. Git ref
 4. Commit ID or change ID
+
+To override the priority, use the appropriate [revset function](#functions). For
+example, to resolve `abc` as a commit ID even if there happens to be a bookmark
+by the same name, use `commit_id(abc)`. This is particularly useful in scripts.
 
 ## Operators
 
@@ -164,6 +169,7 @@ You can use parentheses to control evaluation order, such as `(x & y) | z` or
 
     * `D::D` ⇒ `{D}`
     * `B::D` ⇒ `{D,B}` (note that, unlike `B..D`, this includes `B` and excludes `C`)
+    * `B::C` ⇒ `{}` (empty set) (note that, unlike `B..C`, this excludes `C`)
     * `A::D` ⇒ `{D,C,B,A}`
     * `root()::D` ⇒ `{D,C,B,A,root()}`
     * `none()::D` ⇒ `{}` (empty set)
@@ -174,6 +180,7 @@ You can use parentheses to control evaluation order, such as `(x & y) | z` or
 
     * `D..D` ⇒ `{}` (empty set)
     * `B..D` ⇒ `{D,C}` (note that, unlike `B::D`, this includes `C` and excludes `B`)
+    * `B..C` ⇒ `{C}` (note that, unlike `B::C`, this includes `C`)
     * `A..D` ⇒ `{D,C,B}`
     * `root()..D` ⇒ `{D,C,B,A}`
     * `none()..D` ⇒ `{D,C,B,A,root()}`
@@ -211,8 +218,9 @@ revsets (expressions) as arguments.
 * `none()`: No commits. This function is rarely useful; it is provided for
   completeness.
 
-* `change_id(prefix)`: Commits with the given change ID prefix. It is an error
-  to use a non-unique prefix. Unmatched prefix isn't an error.
+* `change_id(prefix)`: Commits with the given change ID prefix. If the specified
+  change is divergent, this resolves to multiple commits. It is an error to use a
+  non-unique prefix. Unmatched prefix isn't an error.
 
 * `commit_id(prefix)`: Commits with the given commit ID prefix. It is an error
   to use a non-unique prefix. Unmatched prefix isn't an error.
@@ -439,7 +447,7 @@ quotes are optional):
 * `"string"` or `substring:"string"`: Matches strings that contain `string`.
 * `exact:"string"`: Matches strings exactly equal to `string`.
 * `glob:"pattern"`: Matches strings with Unix-style shell [wildcard
-  `pattern`](https://docs.rs/glob/latest/glob/struct.Pattern.html).
+  `pattern`](https://docs.rs/globset/latest/globset/#syntax).
 * `regex:"pattern"`: Matches substrings with [regular
   expression `pattern`](https://docs.rs/regex/latest/regex/#syntax).
 
@@ -531,13 +539,12 @@ for a comprehensive list.
 ## The `all:` modifier
 
 Certain commands (such as `jj rebase`) can take multiple revset arguments, and
-each of these may resolve to one-or-many revisions. By default, `jj` will not
+each of these may resolve to one-or-many revisions.
+
+If you set the `ui.always-allow-large-revsets` option to `false`, `jj` will not
 allow revsets that resolve to more than one revision &mdash; a so-called "large
 revset" &mdash; and will ask you to confirm that you want to proceed by
-prefixing it with the `all:` modifier.
-
-If you set the `ui.always-allow-large-revsets` option to `true`, `jj` will
-behave as though the `all:` modifier was used every time it would matter.
+prefixing it with the `all:` modifier. *This option is planned to be removed.*
 
 An `all:` modifier before a revset expression does not otherwise change its
 meaning. Strictly speaking, it is not part of the revset language. The notation
@@ -548,11 +555,11 @@ For example, `jj rebase -r w -d xyz+` will rebase `w` on top of the child of
 `xyz` as long as `xyz` has exactly one child.
 
 If `xyz` has more than one child, the `all:` modifier is *not* specified, and
-`ui.always-allow-large-revsets` is `false` (the default), `jj rebase -r w -d
-xyz+` will return an error.
+`ui.always-allow-large-revsets` is `false`, `jj rebase -r w -d xyz+` will return
+an error.
 
-If `ui.always-allow-large-revsets` was `true`, the above command would act as if
-`all:` was set (see the next paragraph).
+If `ui.always-allow-large-revsets` was `true` (the default), the above command
+would act as if `all:` was set (see the next paragraph).
 
 With the `all:` modifier, `jj rebase -r w -d all:xyz+` will make `w` into a merge
 commit if `xyz` has more than one child. The `all:` modifier confirms that the

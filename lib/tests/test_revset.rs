@@ -58,9 +58,11 @@ use jj_lib::signing::SignBehavior;
 use jj_lib::signing::Signer;
 use jj_lib::test_signing_backend::TestSigningBackend;
 use jj_lib::workspace::Workspace;
+use pollster::FutureExt as _;
 use test_case::test_case;
 use testutils::create_random_commit;
 use testutils::create_tree;
+use testutils::create_tree_with;
 use testutils::repo_path;
 use testutils::write_random_commit;
 use testutils::CommitGraphBuilder;
@@ -395,6 +397,33 @@ fn test_resolve_symbol_change_id(readonly: bool) {
 }
 
 #[test]
+fn test_resolve_symbol_divergent_change_id() {
+    let test_repo = TestRepo::init();
+    let repo = &test_repo.repo;
+
+    let mut tx = repo.start_transaction();
+    let commit1 = write_random_commit(tx.repo_mut());
+    let commit2 = create_random_commit(tx.repo_mut())
+        .set_change_id(commit1.change_id().clone())
+        .write()
+        .unwrap();
+
+    let change_id = commit1.change_id();
+    assert_matches!(
+        resolve_symbol(tx.repo(), &format!("{change_id}")),
+        Err(RevsetResolutionError::DivergentChangeId { symbol, targets })
+            if symbol == change_id.to_string()
+                && targets == vec![commit1.id().clone(), commit2.id().clone()]
+    );
+    assert_eq!(
+        resolve_symbol(tx.repo(), &format!("change_id({change_id})")).unwrap(),
+        // The order is unspecified at resolution stage, but the current index
+        // implementation returns commit ids in ascending position order.
+        vec![commit1.id().clone(), commit2.id().clone()]
+    );
+}
+
+#[test]
 fn test_resolve_symbol_in_different_disambiguation_context() {
     let test_repo = TestRepo::init();
     let repo0 = &test_repo.repo;
@@ -424,13 +453,13 @@ fn test_resolve_symbol_in_different_disambiguation_context() {
         symbol_resolver
             .resolve_symbol(repo2.as_ref(), &change_hex[0..1])
             .unwrap(),
-        vec![commit2.id().clone()]
+        commit2.id().clone()
     );
     assert_eq!(
         symbol_resolver
             .resolve_symbol(repo2.as_ref(), &commit2.id().hex()[0..1])
             .unwrap(),
-        vec![commit2.id().clone()]
+        commit2.id().clone()
     );
 
     // Change ID is disambiguated within repo2, then resolved in repo1.
@@ -438,7 +467,7 @@ fn test_resolve_symbol_in_different_disambiguation_context() {
         symbol_resolver
             .resolve_symbol(repo1.as_ref(), &change_hex[0..1])
             .unwrap(),
-        vec![commit1.id().clone()]
+        commit1.id().clone()
     );
 
     // Commit ID can be found in the disambiguation index, but doesn't exist in
@@ -673,12 +702,28 @@ fn test_resolve_symbol_bookmarks() {
     );
 
     // Conflicted
+    assert_matches!(
+        resolve_symbol(mut_repo, "local-conflicted"),
+        Err(RevsetResolutionError::ConflictedRef { kind: "bookmark", symbol, targets })
+            if symbol == "local-conflicted"
+                && targets == vec![commit3.id().clone(), commit2.id().clone()]
+    );
+    assert_matches!(
+        resolve_symbol(mut_repo, "remote-conflicted@origin"),
+        Err(RevsetResolutionError::ConflictedRef { kind: "remote_bookmark", symbol, targets })
+            if symbol == "remote-conflicted@origin"
+                && targets == vec![commit5.id().clone(), commit4.id().clone()]
+    );
     assert_eq!(
-        resolve_symbol(mut_repo, "local-conflicted").unwrap(),
+        resolve_symbol(mut_repo, "bookmarks(exact:local-conflicted)").unwrap(),
         vec![commit3.id().clone(), commit2.id().clone()],
     );
     assert_eq!(
-        resolve_symbol(mut_repo, "remote-conflicted@origin").unwrap(),
+        resolve_symbol(
+            mut_repo,
+            "remote_bookmarks(exact:remote-conflicted, exact:origin)"
+        )
+        .unwrap(),
         vec![commit5.id().clone(), commit4.id().clone()],
     );
 
@@ -935,10 +980,12 @@ fn test_resolve_symbol_git_refs() {
         Err(RevsetResolutionError::NoSuchRevision { .. })
     );
 
-    // Conflicted ref resolves to its "adds"
-    assert_eq!(
-        resolve_symbol(mut_repo, "refs/heads/conflicted").unwrap(),
-        vec![commit1.id().clone(), commit3.id().clone()]
+    // Conflicted ref is an error
+    assert_matches!(
+        resolve_symbol(mut_repo, "refs/heads/conflicted"),
+        Err(RevsetResolutionError::ConflictedRef { kind: "git_ref", symbol, targets })
+            if symbol == "refs/heads/conflicted"
+                && targets == vec![commit1.id().clone(), commit3.id().clone()]
     );
 }
 
@@ -4118,6 +4165,31 @@ fn test_evaluate_expression_diff_contains() {
 }
 
 #[test]
+fn test_evaluate_expression_diff_contains_non_utf8() {
+    let test_workspace = TestWorkspace::init();
+    let repo = &test_workspace.repo;
+
+    let mut tx = repo.start_transaction();
+    let mut_repo = tx.repo_mut();
+    let tree1 = create_tree_with(repo, |builder| {
+        builder.file(repo_path("file"), b"\x81\x40");
+    });
+    let commit1 = mut_repo
+        .new_commit(vec![repo.store().root_commit_id().clone()], tree1.id())
+        .write()
+        .unwrap();
+
+    let query = |revset_str: &str| resolve_commit_ids(mut_repo, revset_str);
+
+    // non-utf-8 line shouldn't be ignored
+    assert_eq!(
+        query("diff_contains(regex:'(?-u)^.{2}$')"),
+        vec![commit1.id().clone()]
+    );
+    assert_eq!(query("diff_contains(regex:'(?-u)^.$')"), vec![]);
+}
+
+#[test]
 fn test_evaluate_expression_diff_contains_conflict() {
     let test_workspace = TestWorkspace::init();
     let repo = &test_workspace.repo;
@@ -4125,15 +4197,15 @@ fn test_evaluate_expression_diff_contains_conflict() {
     let mut tx = repo.start_transaction();
     let mut_repo = tx.repo_mut();
 
-    let file_path = repo_path("file");
-    let tree1 = create_tree(repo, &[(file_path, "0\n1\n")]);
-    let tree2 = create_tree(repo, &[(file_path, "0\n2\n")]);
-    let tree3 = create_tree(repo, &[(file_path, "0\n3\n")]);
-    let tree4 = tree2.merge(&tree1, &tree3).unwrap();
-
     let mut create_commit =
         |parent_ids, tree_id| mut_repo.new_commit(parent_ids, tree_id).write().unwrap();
+
+    let file_path = repo_path("file");
+    let tree1 = create_tree(repo, &[(file_path, "0\n1\n")]);
     let commit1 = create_commit(vec![repo.store().root_commit_id().clone()], tree1.id());
+    let tree2 = create_tree(repo, &[(file_path, "0\n2\n")]);
+    let tree3 = create_tree(repo, &[(file_path, "0\n3\n")]);
+    let tree4 = tree2.merge(tree1, tree3).block_on().unwrap();
     let commit2 = create_commit(vec![commit1.id().clone()], tree4.id());
 
     assert_eq!(
@@ -4227,19 +4299,22 @@ fn test_evaluate_expression_conflict() {
     let mut tx = repo.start_transaction();
     let mut_repo = tx.repo_mut();
 
+    let mut create_commit =
+        |parent_ids, tree_id| mut_repo.new_commit(parent_ids, tree_id).write().unwrap();
+
     // Create a few trees, including one with a conflict in `file1`
     let file_path1 = repo_path("file1");
     let file_path2 = repo_path("file2");
     let tree1 = create_tree(repo, &[(file_path1, "1"), (file_path2, "1")]);
-    let tree2 = create_tree(repo, &[(file_path1, "2"), (file_path2, "2")]);
-    let tree3 = create_tree(repo, &[(file_path1, "3"), (file_path2, "1")]);
-    let tree4 = tree2.merge(&tree1, &tree3).unwrap();
-
-    let mut create_commit =
-        |parent_ids, tree_id| mut_repo.new_commit(parent_ids, tree_id).write().unwrap();
     let commit1 = create_commit(vec![repo.store().root_commit_id().clone()], tree1.id());
+    let tree2 = create_tree(repo, &[(file_path1, "2"), (file_path2, "2")]);
     let commit2 = create_commit(vec![commit1.id().clone()], tree2.id());
+    let tree3 = create_tree(repo, &[(file_path1, "3"), (file_path2, "1")]);
     let commit3 = create_commit(vec![commit2.id().clone()], tree3.id());
+    let tree4 = tree2
+        .merge(tree1.clone(), tree3.clone())
+        .block_on()
+        .unwrap();
     let commit4 = create_commit(vec![commit3.id().clone()], tree4.id());
 
     // Only commit4 has a conflict

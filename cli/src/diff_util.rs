@@ -23,6 +23,7 @@ use std::path::PathBuf;
 
 use bstr::BStr;
 use bstr::BString;
+use clap_complete::ArgValueCandidates;
 use futures::executor::block_on_stream;
 use futures::stream::BoxStream;
 use futures::StreamExt as _;
@@ -126,7 +127,10 @@ pub struct DiffFormatArgs {
     ///
     /// A builtin format can also be specified as `:<name>`. For example,
     /// `--tool=:git` is equivalent to `--git`.
-    #[arg(long)]
+    #[arg(
+        long,
+        add = ArgValueCandidates::new(crate::complete::diff_formatters),
+    )]
     pub tool: Option<String>,
     /// Number of lines of context to show
     #[arg(long)]
@@ -164,6 +168,18 @@ enum BuiltinFormatKind {
 }
 
 impl BuiltinFormatKind {
+    // Alternatively, we could use or vendor one of the crates `strum`,
+    // `enum-iterator`, or `variant_count` (for a check that the length of the array
+    // is correct). The latter is very simple and is also a nightly feature.
+    const ALL_VARIANTS: &[BuiltinFormatKind] = &[
+        Self::Summary,
+        Self::Stat,
+        Self::Types,
+        Self::NameOnly,
+        Self::Git,
+        Self::ColorWords,
+    ];
+
     fn from_name(name: &str) -> Result<Self, String> {
         match name {
             "summary" => Ok(Self::Summary),
@@ -246,6 +262,29 @@ impl BuiltinFormatKind {
     }
 }
 
+/// Returns the list of builtin diff format names such as `:git`
+pub fn all_builtin_diff_format_names() -> Vec<String> {
+    BuiltinFormatKind::ALL_VARIANTS
+        .iter()
+        .map(|kind| format!(":{}", kind.to_arg_name()))
+        .collect()
+}
+
+fn diff_formatter_tool(
+    settings: &UserSettings,
+    name: &str,
+) -> Result<Option<ExternalMergeTool>, CommandError> {
+    let maybe_tool = merge_tools::get_external_tool_config(settings, name)?;
+    if let Some(tool) = &maybe_tool {
+        if tool.diff_args.is_empty() {
+            return Err(cli_error(format!(
+                "The tool `{name}` cannot be used for diff formatting"
+            )));
+        };
+    };
+    Ok(maybe_tool)
+}
+
 /// Returns a list of requested diff formats, which will never be empty.
 pub fn diff_formats_for(
     settings: &UserSettings,
@@ -310,9 +349,9 @@ fn diff_formats_from_args(
                 long_format = Some(format);
             }
         } else {
-            let tool = merge_tools::get_external_tool_config(settings, name)?
-                .unwrap_or_else(|| ExternalMergeTool::with_program(name));
             ensure_new(long_kind)?;
+            let tool = diff_formatter_tool(settings, name)?
+                .unwrap_or_else(|| ExternalMergeTool::with_program(name));
             long_format = Some(DiffFormat::Tool(Box::new(tool)));
         }
     }
@@ -322,19 +361,19 @@ fn diff_formats_from_args(
 fn default_diff_format(
     settings: &UserSettings,
     args: &DiffFormatArgs,
-) -> Result<DiffFormat, ConfigGetError> {
+) -> Result<DiffFormat, CommandError> {
     let tool_args: CommandNameAndArgs = settings.get("ui.diff-formatter")?;
     if let Some(name) = tool_args.as_str().and_then(|s| s.strip_prefix(':')) {
-        BuiltinFormatKind::from_name(name)
+        Ok(BuiltinFormatKind::from_name(name)
             .map_err(|err| ConfigGetError::Type {
                 name: "ui.diff-formatter".to_owned(),
                 error: err.into(),
                 source_path: None,
             })?
-            .to_format(settings, args)
+            .to_format(settings, args)?)
     } else {
         let tool = if let Some(name) = tool_args.as_str() {
-            merge_tools::get_external_tool_config(settings, name)?
+            diff_formatter_tool(settings, name)?
         } else {
             None
         }
@@ -2025,6 +2064,13 @@ pub fn show_diff_stats(
             }
         })
         .collect_vec();
+
+    // Entries format like:
+    //   path/to/file | 123 ++--
+    //
+    // Depending on display widths, we can elide part of the path,
+    // and the the ++-- bar will adjust its scale to fill the rest.
+
     let max_path_width = ui_paths.iter().map(|s| s.width()).max().unwrap_or(0);
     let max_diffs = stats
         .entries()
@@ -2033,12 +2079,13 @@ pub fn show_diff_stats(
         .max()
         .unwrap_or(0);
 
-    let number_padding = max_diffs.to_string().len();
-    // 4 characters padding for the graph
-    let available_width = display_width.saturating_sub(4 + " | ".len() + number_padding);
-    // Always give at least a tiny bit of room
+    let number_width = max_diffs.to_string().len();
+    // Available width to distribute between path and bar:
+    let available_width = display_width.saturating_sub(" | ".len() + number_width + " ".len());
+    // Always use at least a tiny bit of room
     let available_width = max(available_width, 5);
-    let max_path_width = max_path_width.clamp(3, (0.7 * available_width as f64) as usize);
+
+    let max_path_width = max_path_width.min((0.7 * available_width as f64) as usize);
     let max_bar_length = available_width.saturating_sub(max_path_width);
     let factor = if max_diffs < max_bar_length {
         1.0
@@ -2047,14 +2094,27 @@ pub fn show_diff_stats(
     };
 
     for (stat, ui_path) in iter::zip(stats.entries(), &ui_paths) {
-        let bar_added = (stat.added as f64 * factor).ceil() as usize;
-        let bar_removed = (stat.removed as f64 * factor).ceil() as usize;
+        let bar_length = ((stat.added + stat.removed) as f64 * factor) as usize;
+        // If neither adds nor removes are present, bar length should be zero.
+        // If only one is present, bar length should be at least 1.
+        // If both are present, bar length should be at least 2.
+        //
+        // Fractional space after scaling is given to whichever of adds/removes is
+        // smaller, to show at least one tick for small (but nonzero) counts.
+        let bar_length = bar_length.max((stat.added > 0) as usize + (stat.removed > 0) as usize);
+        let (bar_added, bar_removed) = if stat.added < stat.removed {
+            let len = (stat.added as f64 * factor).ceil() as usize;
+            (len, bar_length - len)
+        } else {
+            let len = (stat.removed as f64 * factor).ceil() as usize;
+            (bar_length - len, len)
+        };
         // replace start of path with ellipsis if the path is too long
         let (path, path_width) = text_util::elide_start(ui_path, "...", max_path_width);
         let path_pad_width = max_path_width - path_width;
         write!(
             formatter,
-            "{path}{:path_pad_width$} | {:>number_padding$}{}",
+            "{path}{:path_pad_width$} | {:>number_width$}{}",
             "", // pad to max_path_width
             stat.added + stat.removed,
             if bar_added + bar_removed > 0 { " " } else { "" },

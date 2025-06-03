@@ -571,6 +571,11 @@ where
             })
     }
 
+    /// Whether this merge is present and not a tree
+    pub fn is_file_like(&self) -> bool {
+        self.is_present() && !self.is_tree()
+    }
+
     /// If this merge contains only files or absent entries, returns a merge of
     /// the `FileId`s`. The executable bits and copy IDs will be ignored. Use
     /// `Merge::with_new_file_ids()` to produce a new merge with the original
@@ -638,7 +643,7 @@ where
         if let Ok(tree_id_merge) = tree_id_merge {
             Ok(Some(
                 tree_id_merge
-                    .try_map_async(|id| async move {
+                    .try_map_async(async |id| {
                         if let Some(id) = id {
                             store.get_tree_async(dir.to_owned(), id).await
                         } else {

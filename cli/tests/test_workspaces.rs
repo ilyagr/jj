@@ -137,7 +137,7 @@ fn test_workspaces_add_second_workspace_on_merge() {
 
     main_dir.run_jj(["describe", "-m=left"]).success();
     main_dir.run_jj(["new", "@-", "-m=right"]).success();
-    main_dir.run_jj(["new", "all:@-+", "-m=merge"]).success();
+    main_dir.run_jj(["new", "@-+", "-m=merge"]).success();
 
     let output = main_dir.run_jj(["workspace", "list"]);
     insta::assert_snapshot!(output, @r"
@@ -890,7 +890,7 @@ fn test_workspaces_current_op_discarded_by_other(automatic: bool) {
         insta::assert_snapshot!(output, @r"
         @  kmkuslsw test.user@example.com 2001-02-03 08:05:18 secondary@ 18851b39
         │  RECOVERY COMMIT FROM `jj workspace update-stale`
-        │  -- operation 90fc02cc90ab (2001-02-03 08:05:18) snapshot working copy
+        │  -- operation 0a26da4b0149 (2001-02-03 08:05:18) snapshot working copy
         ○  kmkuslsw hidden test.user@example.com 2001-02-03 08:05:18 866928d1
            (empty) RECOVERY COMMIT FROM `jj workspace update-stale`
            -- operation 83f707034db1 (2001-02-03 08:05:18) recovery commit
@@ -1176,8 +1176,9 @@ fn test_list_workspaces_template() {
     test_env.run_jj_in(".", ["git", "init", "main"]).success();
     test_env.add_config(
         r#"
-        templates.commit_summary = """commit_id.short() ++ " " ++ description.first_line() ++
-                                      if(current_working_copy, " (current)")"""
+        templates.workspace_list = """name ++ ": " ++ target.commit_id().short() ++ " " ++
+                                      target.description().first_line() ++
+                                      if(target.current_working_copy(), " (current)") ++ "\n""""
         "#,
     );
     let main_dir = test_env.work_dir("main");
@@ -1201,6 +1202,15 @@ fn test_list_workspaces_template() {
     insta::assert_snapshot!(output, @r"
     default: 504e3d8c1bcd 
     second: 058f604dffcd  (current)
+    [EOF]
+    ");
+
+    // Using template option
+    let template = r#"name ++ ": " ++ target.commit_id().short() ++ "\n""#;
+    let output = main_dir.run_jj(["workspace", "list", "-T", template]);
+    insta::assert_snapshot!(output, @r"
+    default: 504e3d8c1bcd
+    second: 058f604dffcd
     [EOF]
     ");
 }

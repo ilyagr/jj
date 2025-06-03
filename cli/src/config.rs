@@ -21,6 +21,7 @@ use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::LazyLock;
 
 use etcetera::BaseStrategy as _;
 use itertools::Itertools as _;
@@ -714,7 +715,7 @@ pub fn default_config_migrations() -> Vec<ConfigMigrationRule> {
         // TODO: Delete in jj 0.34+
         ConfigMigrationRule::rename_value(
             "core.watchman.register_snapshot_trigger",
-            "core.watchman.register-snapshot-trigger",
+            "fsmonitor.watchman.register-snapshot-trigger",
         ),
         // TODO: Delete in jj 0.34+
         ConfigMigrationRule::rename_value("diff.format", "ui.diff.format"),
@@ -740,6 +741,23 @@ pub fn default_config_migrations() -> Vec<ConfigMigrationRule> {
                 let value = old_value.as_str().ok_or("expected a string")?;
                 Ok(format!(":{value}").into())
             },
+        ),
+        // TODO: Delete in jj 0.37+
+        ConfigMigrationRule::rename_update_value(
+            "git.push-bookmark-prefix",
+            "templates.git_push_bookmark",
+            |old_value| {
+                let value = old_value.as_str().ok_or("expected a string")?;
+                let escaped = dsl_util::escape_string(value);
+                Ok(format!(r#""{escaped}" ++ change_id.short()"#).into())
+            },
+        ),
+        // TODO: Delete in jj 0.38.0+
+        ConfigMigrationRule::rename_value("core.fsmonitor", "fsmonitor.backend"),
+        // TODO: Delete in jj 0.38.0+
+        ConfigMigrationRule::rename_value(
+            "core.watchman.register-snapshot-trigger",
+            "fsmonitor.watchman.register-snapshot-trigger",
         ),
     ]
 }
@@ -839,8 +857,7 @@ impl fmt::Display for CommandNameAndArgs {
 }
 
 // Not interested in $UPPER_CASE_VARIABLES
-static VARIABLE_REGEX: once_cell::sync::Lazy<Regex> =
-    once_cell::sync::Lazy::new(|| Regex::new(r"\$([a-z0-9_]+)\b").unwrap());
+static VARIABLE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\$([a-z0-9_]+)\b").unwrap());
 
 pub fn interpolate_variables<V: AsRef<str>>(
     args: &[String],

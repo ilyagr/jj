@@ -48,7 +48,6 @@ use crate::repo_path::RepoPath;
 use crate::repo_path::RepoPathBuf;
 use crate::signing::Signer;
 use crate::tree::Tree;
-use crate::tree_builder::TreeBuilder;
 
 // There are more tree objects than commits, and trees are often shared across
 // commits.
@@ -208,13 +207,22 @@ impl Store {
     }
 
     pub fn get_root_tree(self: &Arc<Self>, id: &MergedTreeId) -> BackendResult<MergedTree> {
+        self.get_root_tree_async(id).block_on()
+    }
+
+    pub async fn get_root_tree_async(
+        self: &Arc<Self>,
+        id: &MergedTreeId,
+    ) -> BackendResult<MergedTree> {
         match &id {
             MergedTreeId::Legacy(id) => {
-                let tree = self.get_tree(RepoPathBuf::root(), id)?;
+                let tree = self.get_tree_async(RepoPathBuf::root(), id).await?;
                 MergedTree::from_legacy_tree(tree)
             }
             MergedTreeId::Merge(ids) => {
-                let trees = ids.try_map(|id| self.get_tree(RepoPathBuf::root(), id))?;
+                let trees = ids
+                    .try_map_async(|id| self.get_tree_async(RepoPathBuf::root(), id))
+                    .await?;
                 Ok(MergedTree::new(trees))
             }
         }
@@ -277,11 +285,13 @@ impl Store {
             .write_conflict(path, &contents.clone().into_backend_conflict())
     }
 
-    pub fn tree_builder(self: &Arc<Self>, base_tree_id: TreeId) -> TreeBuilder {
-        TreeBuilder::new(self.clone(), base_tree_id)
-    }
-
     pub fn gc(&self, index: &dyn Index, keep_newer: SystemTime) -> BackendResult<()> {
         self.backend.gc(index, keep_newer)
+    }
+
+    /// Clear cached objects. Mainly intended for testing.
+    pub fn clear_caches(&self) {
+        self.commit_cache.lock().unwrap().clear();
+        self.tree_cache.lock().unwrap().clear();
     }
 }

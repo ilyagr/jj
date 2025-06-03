@@ -22,7 +22,9 @@ use std::hash::Hash;
 use std::hash::Hasher;
 use std::sync::Arc;
 
+use futures::future::try_join_all;
 use itertools::Itertools as _;
+use pollster::FutureExt as _;
 
 use crate::backend;
 use crate::backend::BackendResult;
@@ -100,8 +102,22 @@ impl Commit {
         self.data.parents.iter().map(|id| self.store.get_commit(id))
     }
 
+    pub async fn parents_async(&self) -> BackendResult<Vec<Commit>> {
+        try_join_all(
+            self.data
+                .parents
+                .iter()
+                .map(|id| self.store.get_commit_async(id)),
+        )
+        .await
+    }
+
     pub fn tree(&self) -> BackendResult<MergedTree> {
-        self.store.get_root_tree(&self.data.root_tree)
+        self.tree_async().block_on()
+    }
+
+    pub async fn tree_async(&self) -> BackendResult<MergedTree> {
+        self.store.get_root_tree_async(&self.data.root_tree).await
     }
 
     pub fn tree_id(&self) -> &MergedTreeId {
@@ -112,7 +128,7 @@ impl Commit {
     /// parents.
     pub fn parent_tree(&self, repo: &dyn Repo) -> BackendResult<MergedTree> {
         let parents: Vec<_> = self.parents().try_collect()?;
-        merge_commit_trees(repo, &parents)
+        merge_commit_trees(repo, &parents).block_on()
     }
 
     /// Returns whether commit's content is empty. Commit description is not
@@ -189,7 +205,7 @@ pub(crate) fn is_backend_commit_empty(
         .iter()
         .map(|id| store.get_commit(id))
         .try_collect()?;
-    let parent_tree = merge_commit_trees(repo, &parents)?;
+    let parent_tree = merge_commit_trees(repo, &parents).block_on()?;
     Ok(commit.root_tree == parent_tree.id())
 }
 

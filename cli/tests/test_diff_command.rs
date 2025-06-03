@@ -3041,9 +3041,12 @@ fn test_diff_external_tool() {
     // nonzero exit codes should print a warning
     std::fs::write(&edit_script, "fail").unwrap();
     let output = work_dir.run_jj(["diff", "--config=ui.diff-formatter=fake-diff-editor"]);
-    let mut insta_settings = insta::Settings::clone_current();
-    insta_settings.add_filter("exit (status|code)", "<exit status>");
-    insta_settings.bind(|| {
+    let insta_portable_exit_status = {
+        let mut settings = insta::Settings::clone_current();
+        settings.add_filter("exit (status|code)", "<exit status>");
+        settings
+    };
+    insta_portable_exit_status.bind(|| {
         insta::assert_snapshot!(output, @r"
         ------- stderr -------
         Warning: Tool exited with <exit status>: 1 (run with --debug to see the exact invocation)
@@ -3076,6 +3079,31 @@ fn test_diff_external_tool() {
     file3
     [EOF]
     ");
+
+    // diff with unset edit-args
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=fake-diff-editor",
+        "--config=merge-tools.fake-diff-editor.edit-args=[]",
+    ]), @r"
+    file1
+    file2
+    --
+    file2
+    file3
+    [EOF]
+    ");
+
+    // diff with explicitly unset edit-args and diff-args
+    insta_portable_exit_status.bind(|| {
+        insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=fake-diff-editor",
+        "--config=merge-tools.fake-diff-editor.edit-args=[]",
+        "--config=merge-tools.fake-diff-editor.diff-args=[]",
+    ]), @r"
+        ------- stderr -------
+        Error: The tool `fake-diff-editor` cannot be used for diff formatting
+        [EOF]
+        [<exit status>: 2]
+        ");
+    });
 
     // diff with file patterns
     insta::assert_snapshot!(work_dir.run_jj(["diff", "--tool=fake-diff-editor", "file1"]), @r"
@@ -3553,82 +3581,86 @@ fn test_diff_stat_long_name_or_stat() {
     };
 
     insta::assert_snapshot!(get_stat(&work_dir, 1, 1), @r"
-    1   | 1 +
-    一  | 1 +
+    1  | 1 +
+    一 | 1 +
     2 files changed, 2 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 1, 10), @r"
-    1   | 10 ++++++++++
-    一  | 10 ++++++++++
+    1  | 10 ++++++++++
+    一 | 10 ++++++++++
     2 files changed, 20 insertions(+), 0 deletions(-)
     [EOF]
     ");
+    // 30 column display width means right edge is
+    //                ... here ->|
     insta::assert_snapshot!(get_stat(&work_dir, 1, 100), @r"
-    1   | 100 +++++++++++++++++
-    一  | 100 +++++++++++++++++
+    1  | 100 +++++++++++++++++++++
+    一 | 100 +++++++++++++++++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 10, 1), @r"
-    1234567890      | 1 +
-    ...五六七八九十 | 1 +
+    1234567890        | 1 +
+    ...四五六七八九十 | 1 +
     2 files changed, 2 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 10, 10), @r"
-    1234567890     | 10 +++++++
-    ...六七八九十  | 10 +++++++
+    1234567890       | 10 ++++++++
+    ...五六七八九十  | 10 ++++++++
     2 files changed, 20 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 10, 100), @r"
-    1234567890     | 100 ++++++
-    ...六七八九十  | 100 ++++++
+    1234567890       | 100 +++++++
+    ...五六七八九十  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 50, 1), @r"
-    ...901234567890 | 1 +
-    ...五六七八九十 | 1 +
+    ...78901234567890 | 1 +
+    ...四五六七八九十 | 1 +
     2 files changed, 2 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 50, 10), @r"
-    ...01234567890 | 10 +++++++
-    ...六七八九十  | 10 +++++++
+    ...8901234567890 | 10 ++++++++
+    ...五六七八九十  | 10 ++++++++
     2 files changed, 20 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 50, 100), @r"
-    ...01234567890 | 100 ++++++
-    ...六七八九十  | 100 ++++++
+    ...8901234567890 | 100 +++++++
+    ...五六七八九十  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
 
     // Lengths around where we introduce the ellipsis
+    // 30 column display width means right edge is
+    //                ... here ->|
     insta::assert_snapshot!(get_stat(&work_dir, 13, 100), @r"
-    1234567890123  | 100 ++++++
-    ...九十一二三  | 100 ++++++
+    1234567890123    | 100 +++++++
+    ...八九十一二三  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 14, 100), @r"
-    12345678901234 | 100 ++++++
-    ...十一二三四  | 100 ++++++
+    12345678901234   | 100 +++++++
+    ...九十一二三四  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 15, 100), @r"
-    ...56789012345 | 100 ++++++
-    ...一二三四五  | 100 ++++++
+    123456789012345  | 100 +++++++
+    ...十一二三四五  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 16, 100), @r"
-    ...67890123456 | 100 ++++++
-    ...二三四五六  | 100 ++++++
+    1234567890123456 | 100 +++++++
+    ...一二三四五六  | 100 +++++++
     2 files changed, 200 insertions(+), 0 deletions(-)
     [EOF]
     ");
@@ -3657,9 +3689,47 @@ fn test_diff_stat_long_name_or_stat() {
     [EOF]
     ");
     insta::assert_snapshot!(get_stat(&work_dir, 1, 10), @r"
-    1   | 10 ++
-    一  | 10 ++
+    1  | 10 +++
+    一 | 10 +++
     2 files changed, 20 insertions(+), 0 deletions(-)
+    [EOF]
+    ");
+}
+
+/// Verify that diff --stat always shows at least one `+` or `-` even when the
+/// file is mostly the other.
+#[test]
+fn test_diff_stat_rounding() {
+    let mut test_env = TestEnvironment::default();
+    test_env.add_env_var("COLUMNS", "40");
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    work_dir.write_file("mostly_adds.txt", b"x\n");
+    work_dir.write_file("mostly_removes.txt", b"x\n".repeat(300));
+    work_dir.run_jj(["new"]).success();
+    work_dir.write_file("mostly_adds.txt", b"y\n".repeat(100));
+    work_dir.write_file("mostly_removes.txt", b"y\n");
+    work_dir.write_file("only_adds.txt", b"y\n".repeat(10));
+
+    let output = work_dir.run_jj(["diff", "--stat"]);
+    insta::assert_snapshot!(output, @r"
+    mostly_adds.txt    | 101 ++++-
+    mostly_removes.txt | 301 +--------------
+    only_adds.txt      |  10 +
+    3 files changed, 111 insertions(+), 301 deletions(-)
+    [EOF]
+    ");
+
+    // very narrow terminal, with both adds and deletes
+    test_env.add_env_var("COLUMNS", "3");
+    let work_dir = test_env.work_dir("repo");
+    let output = work_dir.run_jj(["diff", "--stat"]);
+    insta::assert_snapshot!(output, @r"
+    ... | 101 +-
+    ... | 301 +-
+    ... |  10 +
+    3 files changed, 111 insertions(+), 301 deletions(-)
     [EOF]
     ");
 }
@@ -3670,55 +3740,64 @@ fn test_diff_binary() {
     test_env.run_jj_in(".", ["git", "init", "repo"]).success();
     let work_dir = test_env.work_dir("repo");
 
-    work_dir.write_file("file1.png", b"\x89PNG\r\n\x1a\nabcdefg\0");
-    work_dir.write_file("file2.png", b"\x89PNG\r\n\x1a\n0123456\0");
+    work_dir.write_file("binary_removed.png", b"\x89PNG\r\n\x1a\nabcdefg\0");
+    work_dir.write_file("binary_modified.png", b"\x89PNG\r\n\x1a\n0123456\0");
+    work_dir.write_file("binary_modified_to_text.png", b"\x89PNG\r\n\x1a\n0123456\0");
     work_dir.run_jj(["new"]).success();
-    work_dir.remove_file("file1.png");
-    work_dir.write_file("file2.png", "foo\nbar\n");
-    work_dir.write_file("file3.png", b"\x89PNG\r\n\x1a\nxyz\0");
+    work_dir.remove_file("binary_removed.png");
+    work_dir.write_file("binary_modified.png", "foo\nbar\n\0");
+    // this file's contents became a valid text file
+    work_dir.write_file("binary_modified_to_text.png", "foo\nbar\n");
+    work_dir.write_file("binary_added.png", b"\x89PNG\r\n\x1a\nxyz\0");
     // try a file that's valid UTF-8 but contains control characters
-    work_dir.write_file("file4.png", b"\0\0\0");
+    work_dir.write_file("binary_valid_utf8.png", b"\0\0\0");
 
     let output = work_dir.run_jj(["diff"]);
     insta::assert_snapshot!(output, @r"
-    Removed regular file file1.png:
+    Added regular file binary_added.png:
         (binary)
-    Modified regular file file2.png:
+    Modified regular file binary_modified.png:
         (binary)
-    Added regular file file3.png:
+    Modified regular file binary_modified_to_text.png:
         (binary)
-    Added regular file file4.png:
+    Removed regular file binary_removed.png:
+        (binary)
+    Added regular file binary_valid_utf8.png:
         (binary)
     [EOF]
     ");
 
     let output = work_dir.run_jj(["diff", "--git"]);
     insta::assert_snapshot!(output, @r"
-    diff --git a/file1.png b/file1.png
-    deleted file mode 100644
-    index 2b65b23c22..0000000000
-    Binary files a/file1.png and /dev/null differ
-    diff --git a/file2.png b/file2.png
-    index 7f036ce788..3bd1f0e297 100644
-    Binary files a/file2.png and b/file2.png differ
-    diff --git a/file3.png b/file3.png
+    diff --git a/binary_added.png b/binary_added.png
     new file mode 100644
     index 0000000000..deacfbc286
-    Binary files /dev/null and b/file3.png differ
-    diff --git a/file4.png b/file4.png
+    Binary files /dev/null and b/binary_added.png differ
+    diff --git a/binary_modified.png b/binary_modified.png
+    index 7f036ce788..8d4f840f34 100644
+    Binary files a/binary_modified.png and b/binary_modified.png differ
+    diff --git a/binary_modified_to_text.png b/binary_modified_to_text.png
+    index 7f036ce788..3bd1f0e297 100644
+    Binary files a/binary_modified_to_text.png and b/binary_modified_to_text.png differ
+    diff --git a/binary_removed.png b/binary_removed.png
+    deleted file mode 100644
+    index 2b65b23c22..0000000000
+    Binary files a/binary_removed.png and /dev/null differ
+    diff --git a/binary_valid_utf8.png b/binary_valid_utf8.png
     new file mode 100644
     index 0000000000..4227ca4e87
-    Binary files /dev/null and b/file4.png differ
+    Binary files /dev/null and b/binary_valid_utf8.png differ
     [EOF]
     ");
 
     let output = work_dir.run_jj(["diff", "--stat"]);
     insta::assert_snapshot!(output, @r"
-    file1.png | 3 ---
-    file2.png | 5 ++---
-    file3.png | 3 +++
-    file4.png | 1 +
-    4 files changed, 6 insertions(+), 6 deletions(-)
+    binary_added.png            | 3 +++
+    binary_modified.png         | 6 +++---
+    binary_modified_to_text.png | 5 ++---
+    binary_removed.png          | 3 ---
+    binary_valid_utf8.png       | 1 +
+    5 files changed, 9 insertions(+), 9 deletions(-)
     [EOF]
     ");
 }
@@ -3760,6 +3839,13 @@ fn test_diff_revisions() {
     [EOF]
     ");
 
+    // Can diff 0 revisions
+    insta::assert_snapshot!(diff_revisions("none()"), @r"
+    ------- stderr -------
+    Warning: The diff revset expanded to 0 revisions. There is no diff to show.
+    [EOF]
+    ");
+
     // A gap in the range is not allowed (yet at least)
     insta::assert_snapshot!(diff_revisions("A|C"), @r"
     ------- stderr -------
@@ -3792,6 +3878,9 @@ fn test_diff_revisions() {
     D
     E
     [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
     ");
 
     // Can diff a set with multiple heads
@@ -3800,12 +3889,91 @@ fn test_diff_revisions() {
     C
     D
     [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
     ");
 
     // Can diff a set with multiple root and multiple heads
     insta::assert_snapshot!(diff_revisions("B|C"), @r"
     B
     C
+    [EOF]
+    ------- stderr -------
+    Warning: Showing combined diff of unrelated revisions. The revset expanded to multiple revisions and is not of the form `a::b` or `a..b`.
+    [EOF]
+    ");
+
+    // If the user has multiple `-r` arguments, they probably expect to be diffing
+    // multiple revisions. No warning is shown.
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--name-only", "-r=B", "-r=C"]), @r"
+    B
+    C
+    [EOF]
+    ");
+}
+
+// Demo the situation when we're diffing across a merge commit but not all the
+// parents of that merge commit are in the revset.
+#[test]
+fn test_diff_revisions_across_merge() {
+    let test_env = TestEnvironment::default();
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    //
+    // D
+    // |
+    // C
+    // |\
+    // B X
+    // | |
+    // A /
+    // |/
+    // root()
+    create_commit(&work_dir, "X", &[]);
+    create_commit(&work_dir, "A", &[]);
+    create_commit(&work_dir, "B", &["A"]);
+    create_commit(&work_dir, "C", &["B", "X"]);
+    create_commit(&work_dir, "D", &["C"]);
+
+    // The diff we're trying to get
+    insta::assert_snapshot!(work_dir.run_jj(["diff", "--name-only", "--from=A", "--to=D"]), @r"
+    B
+    C
+    D
+    X
+    [EOF]
+    ");
+    let diff_revisions = |expression: &str| -> CommandOutput {
+        work_dir.run_jj(["diff", "--name-only", "-r", expression])
+    };
+    // This actually demoes a bug, this should not include X since X is not part
+    // of the revset. However, users might still expect `jj diff -r B::D` to
+    // show the diff between A and D; once the bug is fixed, we should warn them
+    // this is not always the case.
+    insta::assert_snapshot!(diff_revisions("B::D"), @r"
+    B
+    C
+    D
+    X
+    [EOF]
+    ");
+
+    // The answer is correct, though currently that is because the bug described
+    // above is overridden by the A-B+A=A rule.
+    insta::assert_snapshot!(diff_revisions("A..D"), @r"
+    B
+    C
+    D
+    X
+    [EOF]
+    ");
+
+    // Show the difference between the two revsets used above
+    let output = work_dir.run_jj(["log", "-r=(A..D) ~ (B::D)", "-Tdescription", "--no-graph"]);
+    insta::assert_snapshot!(output, @r"
+    X
     [EOF]
     ");
 }

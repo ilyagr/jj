@@ -156,7 +156,7 @@ pub struct MaterializedFileValue {
     pub id: FileId,
     pub executable: bool,
     pub copy_id: CopyId,
-    pub reader: Pin<Box<dyn AsyncRead>>,
+    pub reader: Pin<Box<dyn AsyncRead + Send>>,
 }
 
 impl MaterializedFileValue {
@@ -724,18 +724,16 @@ pub fn materialized_diff_stream<'a>(
     tree_diff: BoxStream<'a, CopiesTreeDiffEntry>,
 ) -> impl Stream<Item = MaterializedTreeDiffEntry> + use<'a> {
     tree_diff
-        .map(|CopiesTreeDiffEntry { path, values }| async {
-            match values {
-                Err(err) => MaterializedTreeDiffEntry {
-                    path,
-                    values: Err(err),
-                },
-                Ok((before, after)) => {
-                    let before_future = materialize_tree_value(store, path.source(), before);
-                    let after_future = materialize_tree_value(store, path.target(), after);
-                    let values = try_join!(before_future, after_future);
-                    MaterializedTreeDiffEntry { path, values }
-                }
+        .map(async |CopiesTreeDiffEntry { path, values }| match values {
+            Err(err) => MaterializedTreeDiffEntry {
+                path,
+                values: Err(err),
+            },
+            Ok((before, after)) => {
+                let before_future = materialize_tree_value(store, path.source(), before);
+                let after_future = materialize_tree_value(store, path.target(), after);
+                let values = try_join!(before_future, after_future);
+                MaterializedTreeDiffEntry { path, values }
             }
         })
         .buffered((store.concurrency() / 2).max(1))

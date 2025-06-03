@@ -19,10 +19,14 @@ use std::collections::HashSet;
 use std::slice;
 use std::sync::Arc;
 
+use futures::future::try_join_all;
+use futures::try_join;
 use futures::StreamExt as _;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use itertools::Itertools as _;
+use pollster::FutureExt as _;
+use thiserror::Error;
 use tracing::instrument;
 
 use crate::backend::BackendError;
@@ -48,39 +52,44 @@ use crate::store::Store;
 
 /// Merges `commits` and tries to resolve any conflicts recursively.
 #[instrument(skip(repo))]
-pub fn merge_commit_trees(repo: &dyn Repo, commits: &[Commit]) -> BackendResult<MergedTree> {
+pub async fn merge_commit_trees(repo: &dyn Repo, commits: &[Commit]) -> BackendResult<MergedTree> {
     if let [commit] = commits {
-        commit.tree()
+        commit.tree_async().await
     } else {
-        merge_commit_trees_no_resolve_without_repo(repo.store(), repo.index(), commits)?.resolve()
+        merge_commit_trees_no_resolve_without_repo(repo.store(), repo.index(), commits)
+            .await?
+            .resolve()
+            .await
     }
 }
 
 /// Merges `commits` without attempting to resolve file conflicts.
 #[instrument(skip(index))]
-pub fn merge_commit_trees_no_resolve_without_repo(
+pub async fn merge_commit_trees_no_resolve_without_repo(
     store: &Arc<Store>,
     index: &dyn Index,
     commits: &[Commit],
 ) -> BackendResult<MergedTree> {
     if commits.is_empty() {
-        Ok(store.get_root_tree(&store.empty_merged_tree_id())?)
+        Ok(store
+            .get_root_tree_async(&store.empty_merged_tree_id())
+            .await?)
     } else {
-        let mut new_tree = commits[0].tree()?;
+        let mut new_tree = commits[0].tree_async().await?;
         let commit_ids = commits
             .iter()
             .map(|commit| commit.id().clone())
             .collect_vec();
         for (i, other_commit) in commits.iter().enumerate().skip(1) {
             let ancestor_ids = index.common_ancestors(&commit_ids[0..i], &commit_ids[i..][..1]);
-            let ancestors: Vec<_> = ancestor_ids
-                .iter()
-                .map(|id| store.get_commit(id))
-                .try_collect()?;
-            let ancestor_tree =
-                merge_commit_trees_no_resolve_without_repo(store, index, &ancestors)?;
-            let other_tree = other_commit.tree()?;
-            new_tree = new_tree.merge_no_resolve(&ancestor_tree, &other_tree);
+            let ancestors: Vec<_> =
+                try_join_all(ancestor_ids.iter().map(|id| store.get_commit_async(id))).await?;
+            let ancestor_tree = Box::pin(merge_commit_trees_no_resolve_without_repo(
+                store, index, &ancestors,
+            ))
+            .await?;
+            let other_tree = other_commit.tree_async().await?;
+            new_tree = new_tree.merge_no_resolve(ancestor_tree, other_tree);
         }
         Ok(new_tree)
     }
@@ -216,20 +225,21 @@ impl<'repo> CommitRewriter<'repo> {
 
     /// Rebase the old commit onto the new parents. Returns a `CommitBuilder`
     /// for the new commit. Returns `None` if the commit was abandoned.
-    pub fn rebase_with_empty_behavior(
+    pub async fn rebase_with_empty_behavior(
         self,
         empty: EmptyBehaviour,
     ) -> BackendResult<Option<CommitBuilder<'repo>>> {
-        let old_parents: Vec<_> = self.old_commit.parents().try_collect()?;
+        let old_parents_fut = self.old_commit.parents_async();
+        let new_parents_fut = try_join_all(
+            self.new_parents
+                .iter()
+                .map(|new_parent_id| self.mut_repo.store().get_commit_async(new_parent_id)),
+        );
+        let (old_parents, new_parents) = try_join!(old_parents_fut, new_parents_fut)?;
         let old_parent_trees = old_parents
             .iter()
             .map(|parent| parent.tree_id().clone())
             .collect_vec();
-        let new_parents: Vec<_> = self
-            .new_parents
-            .iter()
-            .map(|new_parent_id| self.mut_repo.store().get_commit(new_parent_id))
-            .try_collect()?;
         let new_parent_trees = new_parents
             .iter()
             .map(|parent| parent.tree_id().clone())
@@ -244,12 +254,14 @@ impl<'repo> CommitRewriter<'repo> {
                 self.old_commit.tree_id().clone(),
             )
         } else {
-            let old_base_tree = merge_commit_trees(self.mut_repo, &old_parents)?;
-            let new_base_tree = merge_commit_trees(self.mut_repo, &new_parents)?;
-            let old_tree = self.old_commit.tree()?;
+            let old_base_tree_fut = merge_commit_trees(self.mut_repo, &old_parents);
+            let new_base_tree_fut = merge_commit_trees(self.mut_repo, &new_parents);
+            let old_tree_fut = self.old_commit.tree_async();
+            let (old_base_tree, new_base_tree, old_tree) =
+                try_join!(old_base_tree_fut, new_base_tree_fut, old_tree_fut)?;
             (
                 old_base_tree.id() == *self.old_commit.tree_id(),
-                new_base_tree.merge(&old_base_tree, &old_tree)?.id(),
+                new_base_tree.merge(old_base_tree, old_tree).await?.id(),
             )
         };
         // Ensure we don't abandon commits with multiple parents (merge commits), even
@@ -277,7 +289,9 @@ impl<'repo> CommitRewriter<'repo> {
     /// Rebase the old commit onto the new parents. Returns a `CommitBuilder`
     /// for the new commit.
     pub fn rebase(self) -> BackendResult<CommitBuilder<'repo>> {
-        let builder = self.rebase_with_empty_behavior(EmptyBehaviour::Keep)?;
+        let builder = self
+            .rebase_with_empty_behavior(EmptyBehaviour::Keep)
+            .block_on()?;
         Ok(builder.unwrap())
     }
 
@@ -313,7 +327,10 @@ pub fn rebase_commit_with_options(
         _ => None,
     };
     let new_parents_len = rewriter.new_parents.len();
-    if let Some(builder) = rewriter.rebase_with_empty_behavior(options.empty)? {
+    if let Some(builder) = rewriter
+        .rebase_with_empty_behavior(options.empty)
+        .block_on()?
+    {
         let new_commit = builder.write()?;
         Ok(RebasedCommit::Rewritten(new_commit))
     } else {
@@ -340,7 +357,9 @@ pub fn rebase_to_dest_parent(
         |destination_tree, source| {
             let source_parent_tree = source.parent_tree(repo)?;
             let source_tree = source.tree()?;
-            destination_tree.merge(&source_parent_tree, &source_tree)
+            destination_tree
+                .merge(source_parent_tree, source_tree)
+                .block_on()
         },
     )
 }
@@ -1105,6 +1124,45 @@ pub struct SquashedCommit<'repo> {
     pub abandoned_commits: Vec<Commit>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SquashOptions {
+    pub keep_emptied: bool,
+    pub restore_descendants: bool,
+}
+
+#[derive(Debug, Error)]
+pub enum SquashCommitsError {
+    #[error(transparent)]
+    BackendError(#[from] BackendError),
+    #[error(
+        "Not allowed to partially squash a commit {:.12} into a non-immediate ancestor {:.12} \
+         (immediate parent would be OK) with `--restore-descendants`",
+        from,
+        to
+    )]
+    RestoreDescendantsPartialGrandparentSquash { from: CommitId, to: CommitId },
+    #[error(
+        "Unimplemented: partially squashing a commit {:.12} into parent {:.12} together with \
+         other `--from` commits and with `--restore-descendants` is not implemented",
+        from,
+        to
+    )]
+    RestoreDescendantsMultipleParentSquashUnimplemented { from: CommitId, to: CommitId },
+}
+
+impl SquashCommitsError {
+    pub const HINT_RESTORE_DESCENDANTS_UNSUPPORTED_SQUASH_WORKAROUND: &str =
+        "Full squash (without --keep-emptied, paths specifiers, etc.) is allowed. Split followed \
+         by `squash --restore-descendants` is an option, but note that the order of the split may \
+         matter.";
+    // Defined here to keep the explanation near the relevant code and comments (in
+    // the `squash_commits` function).
+    pub const HINT_RESTORE_DESCENDANTS_PARTIAL_GRADNPARENT_SQUASH_REASON: &str =
+        "The reason for this restriction is that, when squashing into an ancestor, one expects \
+         the diff of the source commit to change, but the snapshot of it to stay the same. In \
+         this situation, these two expectations contradict each other.";
+}
+
 /// Squash `sources` into `destination` and return a [`SquashedCommit`] for the
 /// resulting commit. Caller is responsible for setting the description and
 /// finishing the commit.
@@ -1112,8 +1170,11 @@ pub fn squash_commits<'repo>(
     repo: &'repo mut MutableRepo,
     sources: &[CommitWithSelection],
     destination: &Commit,
-    keep_emptied: bool,
-) -> BackendResult<Option<SquashedCommit<'repo>>> {
+    SquashOptions {
+        keep_emptied,
+        restore_descendants,
+    }: SquashOptions,
+) -> Result<Option<SquashedCommit<'repo>>, SquashCommitsError> {
     struct SourceCommit<'a> {
         commit: &'a CommitWithSelection,
         abandon: bool,
@@ -1145,14 +1206,130 @@ pub fn squash_commits<'repo>(
         if source.abandon {
             repo.record_abandoned_commit(&source.commit.commit);
             abandoned_commits.push(source.commit.commit.clone());
-        } else {
+        } else if !restore_descendants
+            || !repo
+                .index()
+                .is_ancestor(destination.id(), source.commit.commit.id())
+        {
             let source_tree = source.commit.commit.tree()?;
             // Apply the reverse of the selected changes onto the source
-            let new_source_tree =
-                source_tree.merge(&source.commit.selected_tree, &source.commit.parent_tree)?;
+            let new_source_tree = source_tree
+                .merge(
+                    source.commit.selected_tree.clone(),
+                    source.commit.parent_tree.clone(),
+                )
+                .block_on()?;
             repo.rewrite_commit(&source.commit.commit)
                 .set_tree_id(new_source_tree.id().clone())
                 .write()?;
+        } else {
+            // We are partially squashing a commit into an ancestor with
+            // `--restore-descendants`. (Or we are using `--keep-emptied`, which
+            // we'll also consider a "partial squash" for the purpose of this
+            // discussion, since the source commit survives in some form)
+            //
+            // TLDR: There are several possible behaviors. They differ in what
+            // the snapshot of the source commit will look like after the
+            // operation completes. We choose the most useful behavior in the
+            // case we expect to be common. Luckily, most of the possible
+            // behaviors also seem to coincide in that case. We forbid all other
+            // cases.
+            //
+            // Details: The possible behaviors for `jj squash --from x --into
+            // ancestor_of_x specific_path --restore-descendants --keep-emptied`
+            // (`--keep-emptied` is only necessary if it makes a difference)
+            // are:
+            //
+            // I: First `jj split -r x --before x specific_path`, then `jj
+            //   squash --from result_of_split --into ancestor_of_x
+            //   --restore-descendants`. Repeat this for each `--from` commit.
+            //
+            //   With behavior I, the *snapshot* of `x` will remain the same no
+            //   matter what else might happen.
+            //
+            //   Note: this definition is not recursive; the squash inside it
+            //   squashes the full commit without --keep-emptied. So, that
+            //   squash is not "partial", and makes sense independently of
+            //   whether or how this special case is implemented.
+            //
+            // II: Follow I, but replace the first command with `jj split -r x
+            //   --after x specific_path`.
+            //
+            // III: First squash without `--restore-descendants` (but with
+            //   `--keep-emptied`, whenever that makes a difference), then
+            //   restore all descendants of source and target (excluding the
+            //   source commits themselves) to their previous state. During the
+            //   restore part of the operation, preserve the *diff* of `x` (like
+            //   `jj restore` without `--restore-descendants`).
+            //
+            // IV: Follow III, but preserve the *snapshot* of `x` during the
+            //   final restore part of the operation.
+            //
+            // TLDR for the following comments: if we had to choose one of these
+            // behaviors to implement in every case, we'd probably choose I or
+            // IV. However, it seems better to forbid squashing in cases where
+            // the user might reasonably expect one of the other behaviors.
+            if source.commit.commit.parent_ids().contains(destination.id())
+                && source_commits.len() == 1
+            {
+                // This is the case we support: we are partially squashing a
+                // single commit into a parent.
+                //
+                // This case is likely to be encountered because it happens if
+                // you `jj new A`, make some edits, and then want to squash some
+                // of them into `A` without affecting any other descendants of
+                // `A`.
+                //
+                // The behaviors I, III, and IV from the above comment actually
+                // all coincide in this case, while the behavior II is
+                // different. To compare them, it's easiest to think of `jj
+                // squash --from x --into x- --restore-descendants
+                // --keep-emptied`. Of these two behaviors, I/III/IV has
+                // the property that `x` will have an empty diff after this
+                // operation and the same snapshot as it had before. So, we
+                // choose it. While II still makes some sense, a user in the
+                // most common use-case would be surprised by it. (Less
+                // importantly, the name `--keep-emptied` would also no longer
+                // make sense, since the commit it would keep would end up
+                // non-empty).
+                //
+                // To implement behavior I, there is actually nothing to do
+                // here. The source's *snapshot* should remain the same. This
+                // will indeed be the case, since the source will only be
+                // reparented (as opposed to rebased) after this point.
+            } else if source_commits.len() > 1 {
+                // Behaviors III and IV still coincide here, as long as every
+                // source that's a descendant of the target commit is a direct
+                // child (that is, we are not in the next case). Behavior I
+                // differs, and is probably less intuitive (?).
+                //
+                // It's probably not worth the complexity to implement IV here.
+                return Err(
+                    SquashCommitsError::RestoreDescendantsMultipleParentSquashUnimplemented {
+                        from: source.commit.commit.id().clone(),
+                        to: destination.id().clone(),
+                    },
+                );
+            } else {
+                // This is the case of squashing into a non-immediate ancestor, e.g. a
+                // grandparent commit.
+                //
+                // Here, I and IV coincide, while II and III differ from
+                // them. (II and III might coincide). Confusingly, now II has
+                // the property that `jj squash --from x --into x--
+                // --restore-descendants --keep-emptied` leaves an empty commit,
+                // while I no longer has this property (as it did in the case of
+                // squashing into a direct parent). So, potentially I/IV would
+                // be more immediately confusing to new users than II in this
+                // case. I/IV might still be the more consistent option (?), but
+                // implementing that might cause as much confusion as help.
+                return Err(
+                    SquashCommitsError::RestoreDescendantsPartialGrandparentSquash {
+                        from: source.commit.commit.id().clone(),
+                        to: destination.id().clone(),
+                    },
+                );
+            }
         }
     }
 
@@ -1165,22 +1342,35 @@ pub fn squash_commits<'repo>(
         // rewritten sources. Otherwise it will likely already have the content
         // changes we're moving, so applying them will have no effect and the
         // changes will disappear.
-        let options = RebaseOptions::default();
-        repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
-            if old_commit.id() != destination.id() {
-                return;
-            }
-            rewritten_destination = match rebased_commit {
-                RebasedCommit::Rewritten(commit) => commit,
-                RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
-            };
-        })?;
+        if restore_descendants {
+            repo.reparent_descendants_with_progress(|old_commit, rebased_commit| {
+                if old_commit.id() != destination.id() {
+                    return;
+                }
+                rewritten_destination = rebased_commit;
+            })?;
+        } else {
+            let options = RebaseOptions::default();
+            repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
+                if old_commit.id() != destination.id() {
+                    return;
+                }
+                rewritten_destination = match rebased_commit {
+                    RebasedCommit::Rewritten(commit) => commit,
+                    RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
+                };
+            })?;
+        }
     }
     // Apply the selected changes onto the destination
     let mut destination_tree = rewritten_destination.tree()?;
     for source in &source_commits {
-        destination_tree =
-            destination_tree.merge(&source.commit.parent_tree, &source.commit.selected_tree)?;
+        destination_tree = destination_tree
+            .merge(
+                source.commit.parent_tree.clone(),
+                source.commit.selected_tree.clone(),
+            )
+            .block_on()?;
     }
     let mut predecessors = vec![destination.id().clone()];
     predecessors.extend(

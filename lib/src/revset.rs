@@ -23,9 +23,9 @@ use std::ops::ControlFlow;
 use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use itertools::Itertools as _;
-use once_cell::sync::Lazy;
 use thiserror::Error;
 
 use crate::backend::BackendError;
@@ -42,6 +42,7 @@ use crate::id_prefix::IdPrefixContext;
 use crate::id_prefix::IdPrefixIndex;
 use crate::object_id::HexPrefix;
 use crate::object_id::PrefixResolution;
+use crate::op_store::RefTarget;
 use crate::op_store::RemoteRefState;
 use crate::op_walk;
 use crate::ref_name::RemoteRefSymbol;
@@ -86,6 +87,17 @@ pub enum RevsetResolutionError {
     AmbiguousCommitIdPrefix(String),
     #[error("Change ID prefix `{0}` is ambiguous")]
     AmbiguousChangeIdPrefix(String),
+    #[error("Change ID `{symbol}` is divergent")]
+    DivergentChangeId {
+        symbol: String,
+        targets: Vec<CommitId>,
+    },
+    #[error("Name `{symbol}` is conflicted")]
+    ConflictedRef {
+        kind: &'static str,
+        symbol: String,
+        targets: Vec<CommitId>,
+    },
     #[error("Unexpected error from commit backend")]
     Backend(#[source] BackendError),
     #[error(transparent)]
@@ -689,10 +701,10 @@ pub type RevsetFunction = fn(
     &LoweringContext,
 ) -> Result<Rc<UserRevsetExpression>, RevsetParseError>;
 
-static BUILTIN_FUNCTION_MAP: Lazy<HashMap<&'static str, RevsetFunction>> = Lazy::new(|| {
+static BUILTIN_FUNCTION_MAP: LazyLock<HashMap<&str, RevsetFunction>> = LazyLock::new(|| {
     // Not using maplit::hashmap!{} or custom declarative macro here because
     // code completion inside macro is quite restricted.
-    let mut map: HashMap<&'static str, RevsetFunction> = HashMap::new();
+    let mut map: HashMap<&str, RevsetFunction> = HashMap::new();
     map.insert("parents", |diagnostics, function, context| {
         let ([arg], [depth_opt_arg]) = function.expect_arguments()?;
         let expression = lower_expression(diagnostics, arg, context)?;
@@ -789,7 +801,7 @@ static BUILTIN_FUNCTION_MAP: Lazy<HashMap<&'static str, RevsetFunction>> = Lazy:
         let [arg] = function.expect_exact_arguments()?;
         let prefix = revset_parser::catch_aliases(diagnostics, arg, |_diagnostics, arg| {
             let value = revset_parser::expect_string_literal("commit ID prefix", arg)?;
-            HexPrefix::new(value)
+            HexPrefix::try_from_hex(value)
                 .ok_or_else(|| RevsetParseError::expression("Invalid commit ID prefix", arg.span))
         })?;
         Ok(RevsetExpression::commit_id_prefix(prefix))
@@ -1201,7 +1213,13 @@ pub fn parse_with_modifier(
     revset_parser::catch_aliases(diagnostics, &node, |diagnostics, node| match &node.kind {
         ExpressionKind::Modifier(modifier) => {
             let parsed_modifier = match modifier.name {
-                "all" => RevsetModifier::All,
+                "all" => {
+                    diagnostics.add_warning(RevsetParseError::expression(
+                        "Multiple revisions are allowed by default; `all:` is planned for removal",
+                        modifier.name_span,
+                    ));
+                    RevsetModifier::All
+                }
                 _ => {
                     return Err(RevsetParseError::with_span(
                         RevsetParseErrorKind::NoSuchModifier(modifier.name.to_owned()),
@@ -2276,11 +2294,29 @@ fn reload_repo_at_operation(
     })
 }
 
-fn resolve_remote_bookmark(repo: &dyn Repo, symbol: RemoteRefSymbol<'_>) -> Option<Vec<CommitId>> {
+fn resolve_remote_bookmark(
+    repo: &dyn Repo,
+    symbol: RemoteRefSymbol<'_>,
+) -> Result<CommitId, RevsetResolutionError> {
     let target = &repo.view().get_remote_bookmark(symbol).target;
-    target
-        .is_present()
-        .then(|| target.added_ids().cloned().collect())
+    to_resolved_ref("remote_bookmark", symbol, target)?
+        .ok_or_else(|| make_no_such_symbol_error(repo, symbol.to_string()))
+}
+
+fn to_resolved_ref(
+    kind: &'static str,
+    symbol: impl ToString,
+    target: &RefTarget,
+) -> Result<Option<CommitId>, RevsetResolutionError> {
+    match target.as_resolved() {
+        Some(Some(id)) => Ok(Some(id.clone())),
+        Some(None) => Ok(None),
+        None => Err(RevsetResolutionError::ConflictedRef {
+            kind,
+            symbol: symbol.to_string(),
+            targets: target.added_ids().cloned().collect(),
+        }),
+    }
 }
 
 fn all_formatted_bookmark_symbols(
@@ -2321,7 +2357,7 @@ pub trait PartialSymbolResolver {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError>;
+    ) -> Result<Option<CommitId>, RevsetResolutionError>;
 }
 
 struct TagResolver;
@@ -2331,11 +2367,9 @@ impl PartialSymbolResolver for TagResolver {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError> {
+    ) -> Result<Option<CommitId>, RevsetResolutionError> {
         let target = repo.view().get_tag(symbol.as_ref());
-        Ok(target
-            .is_present()
-            .then(|| target.added_ids().cloned().collect()))
+        to_resolved_ref("tag", symbol, target)
     }
 }
 
@@ -2346,11 +2380,9 @@ impl PartialSymbolResolver for BookmarkResolver {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError> {
+    ) -> Result<Option<CommitId>, RevsetResolutionError> {
         let target = repo.view().get_local_bookmark(symbol.as_ref());
-        Ok(target
-            .is_present()
-            .then(|| target.added_ids().cloned().collect()))
+        to_resolved_ref("bookmark", symbol, target)
     }
 }
 
@@ -2361,20 +2393,19 @@ impl PartialSymbolResolver for GitRefResolver {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError> {
+    ) -> Result<Option<CommitId>, RevsetResolutionError> {
         let view = repo.view();
         for git_ref_prefix in &["", "refs/"] {
             let target = view.get_git_ref([git_ref_prefix, symbol].concat().as_ref());
-            if target.is_present() {
-                return Ok(Some(target.added_ids().cloned().collect()));
+            if let Some(id) = to_resolved_ref("git_ref", symbol, target)? {
+                return Ok(Some(id));
             }
         }
-
         Ok(None)
     }
 }
 
-const DEFAULT_RESOLVERS: &[&'static dyn PartialSymbolResolver] =
+const DEFAULT_RESOLVERS: &[&dyn PartialSymbolResolver] =
     &[&TagResolver, &BookmarkResolver, &GitRefResolver];
 
 struct CommitPrefixResolver<'a> {
@@ -2409,9 +2440,9 @@ impl PartialSymbolResolver for CommitPrefixResolver<'_> {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError> {
-        if let Some(prefix) = HexPrefix::new(symbol) {
-            Ok(self.try_resolve(repo, &prefix)?.map(|id| vec![id]))
+    ) -> Result<Option<CommitId>, RevsetResolutionError> {
+        if let Some(prefix) = HexPrefix::try_from_hex(symbol) {
+            self.try_resolve(repo, &prefix)
         } else {
             Ok(None)
         }
@@ -2450,9 +2481,16 @@ impl PartialSymbolResolver for ChangePrefixResolver<'_> {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Option<Vec<CommitId>>, RevsetResolutionError> {
+    ) -> Result<Option<CommitId>, RevsetResolutionError> {
         if let Some(prefix) = HexPrefix::try_from_reverse_hex(symbol) {
-            self.try_resolve(repo, &prefix)
+            match self.try_resolve(repo, &prefix)? {
+                Some(targets) if targets.len() == 1 => Ok(targets.into_iter().next()),
+                Some(targets) => Err(RevsetResolutionError::DivergentChangeId {
+                    symbol: symbol.to_owned(),
+                    targets,
+                }),
+                None => Ok(None),
+            }
         } else {
             Ok(None)
         }
@@ -2528,14 +2566,14 @@ impl<'a> SymbolResolver<'a> {
         &self,
         repo: &dyn Repo,
         symbol: &str,
-    ) -> Result<Vec<CommitId>, RevsetResolutionError> {
+    ) -> Result<CommitId, RevsetResolutionError> {
         if symbol.is_empty() {
             return Err(RevsetResolutionError::EmptyString);
         }
 
         for partial_resolver in self.partial_resolvers() {
-            if let Some(ids) = partial_resolver.resolve_symbol(repo, symbol)? {
-                return Ok(ids);
+            if let Some(id) = partial_resolver.resolve_symbol(repo, symbol)? {
+                return Ok(id);
             }
         }
 
@@ -2549,9 +2587,14 @@ fn resolve_commit_ref(
     symbol_resolver: &SymbolResolver,
 ) -> Result<Vec<CommitId>, RevsetResolutionError> {
     match commit_ref {
-        RevsetCommitRef::Symbol(symbol) => symbol_resolver.resolve_symbol(repo, symbol),
-        RevsetCommitRef::RemoteSymbol(symbol) => resolve_remote_bookmark(repo, symbol.as_ref())
-            .ok_or_else(|| make_no_such_symbol_error(repo, symbol.to_string())),
+        RevsetCommitRef::Symbol(symbol) => {
+            let commit_id = symbol_resolver.resolve_symbol(repo, symbol)?;
+            Ok(vec![commit_id])
+        }
+        RevsetCommitRef::RemoteSymbol(symbol) => {
+            let commit_id = resolve_remote_bookmark(repo, symbol.as_ref())?;
+            Ok(vec![commit_id])
+        }
         RevsetCommitRef::WorkingCopy(name) => {
             if let Some(commit_id) = repo.view().get_wc_commit_id(name) {
                 Ok(vec![commit_id.clone()])
@@ -2661,6 +2704,8 @@ impl ExpressionStateFolder<UserExpressionState, ResolvedExpressionState>
                     RevsetResolutionError::EmptyString
                     | RevsetResolutionError::AmbiguousCommitIdPrefix(_)
                     | RevsetResolutionError::AmbiguousChangeIdPrefix(_)
+                    | RevsetResolutionError::DivergentChangeId { .. }
+                    | RevsetResolutionError::ConflictedRef { .. }
                     | RevsetResolutionError::Backend(_)
                     | RevsetResolutionError::Other(_) => Err(err),
                 })

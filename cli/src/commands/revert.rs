@@ -23,6 +23,7 @@ use jj_lib::backend::CommitId;
 use jj_lib::object_id::ObjectId as _;
 use jj_lib::repo::Repo as _;
 use jj_lib::rewrite::merge_commit_trees;
+use pollster::FutureExt as _;
 use tracing::instrument;
 
 use crate::cli_util::compute_commit_location;
@@ -133,7 +134,7 @@ pub(crate) fn cmd_revert(
         .iter()
         .map(|id| tx.repo().store().get_commit(id))
         .try_collect()?;
-    let mut new_base_tree = merge_commit_trees(tx.repo(), &new_parents)?;
+    let mut new_base_tree = merge_commit_trees(tx.repo(), &new_parents).block_on()?;
     let mut parent_ids = new_parent_ids;
 
     let mut reverted_commits = vec![];
@@ -142,7 +143,7 @@ pub(crate) fn cmd_revert(
     {
         let old_base_tree = commit_to_revert.parent_tree(tx.repo())?;
         let old_tree = commit_to_revert.tree()?;
-        let new_tree = new_base_tree.merge(&old_tree, &old_base_tree)?;
+        let new_tree = new_base_tree.merge(old_tree, old_base_tree).block_on()?;
         let new_parent_ids = parent_ids.clone();
         let new_commit = tx
             .repo_mut()

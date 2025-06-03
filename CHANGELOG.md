@@ -12,36 +12,112 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Breaking changes
 
-* Commit templates no longer normalize `description` by appending final newline
-  character. Use `description.trim_end() ++ "\n"` if needed.
+* In revsets, symbol expressions (such as change ID prefix) no longer resolve to
+  multiple revisions, and error out if resolved to more than one revisions. Use
+  `change_id(prefix)` or `bookmarks(exact:name)` to query divergent changes or
+  conflicted bookmarks. Commands like `jj rebase` no longer require `all:` to
+  specify multiple destination revisions.
+
+* `jj op abandon` now discards previous versions of a change (or predecessors)
+  if they become unreachable from the operation history. The evolution history
+  is truncated accordingly.
+
+  Once `jj op abandon` and `jj util gc` are run in a repository, old versions of
+  `jj` might get "commit not found" error on `jj evolog`.
+
+* `commit.working_copies()` template method now returns `List<WorkspaceRef>`
+
+* The previously predefined `amend` alias has been removed. You can restore it
+  by setting the config `aliases.amend = ["squash"]`.
+
+### Deprecations
+
+* The `all:` revset modifier and `ui.always-allow-large-revsets` setting is
+  planned to be removed in a future release.
+  [#6016](https://github.com/jj-vcs/jj/issues/6016)
+
+* Rename the `core.fsmonitor` and `core.watchman` settings to
+  `fsmonitor.backend`, and `fsmonitor.watchman` respectively.
+
+### New features
+
+* `jj workspace list` now accepts `-T`/`--template` option to customize its output via templates.
+
+* Added `templates.workspace_list` template to customize the output of `jj workspace list`.
+
+* `jj fix` now buffers the standard error stream from subprocesses and emits
+  the output from each all at once. The file name is printed before the output.
+
+* `jj status` now collapses fully untracked directories into one line.
+  It still fully traverses them while snapshotting but they won't clutter up
+  the output with all of their contents.
+
+* Add the `working-copy.eol-conversion` config which is similar to the git
+  `core.autocrlf` config. A heuristics is used to detect if a file is a binary
+  file to prevent the EOL conversion from changing binary files unexpectedly.
+
+* Add a `.parents()` method to the
+  [`Operation`](docs/templates.md#operation-type) type in the templating
+  language.
+
+* Merge tools config can now explicitly forbid using them as diff editors or
+  diff formatters. Built-in tools that do not function well as diff editing
+  tools or as diff formatters will now report an error when used as such.
+
+* `jj squash` now has a `--restore-descendants` option to preserve the snapshots
+  of the children of the modified commits.
+
+* `jj diffedit` now accepts filesets to edit only the specified paths.
+
+* AnnotationLine objects in templates now have a `original_line_number() ->
+  Integer` method.
+
+* Glob patterns now support `{foo,bar}` syntax. There may be subtle behavior
+  changes as we use the [globset](https://crates.io/crates/globset) library now.
+
+### Fixed bugs
+
+### Packaging changes
+
+
+## [0.31.0] - 2025-07-02
+
+### Breaking changes
 
 * Revset expressions like `hidden_id | description(x)` now [search the specified
   hidden revision and its ancestors](docs/revsets.md#hidden-revisions) as well
   as all visible revisions.
 
+* Commit templates no longer normalize `description` by appending final newline
+  character. Use `description.trim_end() ++ "\n"` if needed.
+
 ### Deprecations
+
+* The `git.push-bookmark-prefix` setting is deprecated in favor of
+  `templates.git_push_bookmark`, which supports templating. The old setting can
+  be expressed in template as `"<prefix>" ++ change_id.short()`.
 
 ### New features
 
-* `jj diff` now accepts `-T`/`--template` option to customize summary output.
+* New `change_id(prefix)`/`commit_id(prefix)` revset functions to explicitly
+  query commits by change/commit ID prefix.
+
+* The `parents()` and `children()` revset functions now accept an optional
+  `depth` argument. For instance, `parents(x, 3)` is equivalent to `x---`, and
+  `children(x, 3)` is equivalent to `x+++`.
 
 * `jj evolog` can now follow changes from multiple revisions such as divergent
   revisions.
+
+* `jj diff` now accepts `-T`/`--template` option to customize summary output.
+
+* Log node templates are now specified in toml rather than hardcoded.
 
 * Templates now support `json(x)` function to serialize values in JSON format.
 
 * The ANSI 256-color palette can be used when configuring colors. For example,
   `colors."diff removed token" = { bg = "ansi-color-52", underline = false }`
   will apply a dark red background on removed words in diffs.
-
-* Log node templates are now specified in toml rather than hardcoded.
-
-* The `parents()` and `children()` revset functions now accept an optional
-  `depth` argument. For instance, `parents(x, 3)` is equivalent to `x---`, and
-  `children(x, 3)` is equivalent to `x+++`.
-
-* New `change_id(prefix)`/`commit_id(prefix)` revset functions to explicitly
-  query commits by change/commit ID prefix.
 
 ### Fixed bugs
 
@@ -61,6 +137,35 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Packaging changes
 
 * `aarch64-windows` builds (release binaries and `main` snapshots) are now provided.
+
+### Contributors
+
+Thanks to the people who made this release happen!
+
+* Anton Älgmyr (@algmyr)
+* Austin Seipp (@thoughtpolice)
+* Benjamin Brittain (@benbrittain)
+* Cyril Plisko (@imp)
+* Daniel Luz (@mernen)
+* Gaëtan Lehmann (@glehmann)
+* Gilad Woloch (@giladwo)
+* Greg Morenz (@gmorenz)
+* Igor Velkov (@iav)
+* Ilya Grigoriev (@ilyagr)
+* Jade Lovelace (@lf-)
+* Jonas Greitemann (@jgreitemann)
+* Josh Steadmon (@steadmon)
+* juemrami (@juemrami)
+* Kaiyi Li (@06393993)
+* Lars Francke (@lfrancke)
+* Martin von Zweigbergk (@martinvonz)
+* Osama Qarem (@osamaqarem)
+* Philip Metzger (@PhilipMetzger)
+* raylu (@raylu)
+* Scott Taylor (@scott2000)
+* Vincent Ging Ho Yim (@cenviity)
+* Yuya Nishihara (@yuja)
+
 
 ## [0.30.0] - 2025-06-04
 
@@ -115,6 +220,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   opt out of this by setting `merge-tools.<tool>.diff-do-chdir = false`,
   but this will likely be removed in a future release. Please report any
   issues you run into.
+
+* The minimum supported Rust version (MSRV) is now 1.85.0.
 
 ### Deprecations
 
@@ -814,7 +921,7 @@ Thanks to the people who made this release happen!
 * The Jujutsu documentation site now publishes a schema for the official
   configuration file, which can be integrated into your editor for autocomplete,
   inline errors, and more.
-  Please [see the documentation](/docs/config.md#json-schema-support) for more
+  Please [see the documentation](docs/config.md#json-schema-support) for more
   on this.
 
 ### Fixed bugs
@@ -906,7 +1013,7 @@ changes. Two select improvements:
 * `jj config list` now prints inline tables `{ key = value, .. }` literally.
   Inner items of inline tables are no longer merged across configuration files.
   See [the table syntax
-  documentation](docs/config.md#dotted-style-headings-and-inline-tables) for
+  documentation](docs/config.md#dotted-style-and-headings) for
   details.
 
 * `jj config edit --user` now opens a file even if `$JJ_CONFIG` points to a
@@ -2438,7 +2545,7 @@ Thanks to the people who made this release happen!
   If the deduced tracking flags are wrong, use `jj branch track`/`untrack`
   commands to fix them up.
 
-  See [automatic local branch creation](docs/config.md#automatic-local-branch-creation)
+  See [automatic local branch creation](docs/config.md#automatic-local-bookmark-creation)
   for details.
 
 * Non-tracking remote branches aren't listed by default. Use `jj branch list
@@ -2516,7 +2623,7 @@ Thanks to the people who made this release happen!
 * A default revset-alias function `trunk()` now exists. If you previously
   defined
   your own `trunk()` alias it will continue to overwrite the built-in one.
-  Check [revsets.toml](cli/src/config/revsets.toml)
+  Check [revsets.toml](docs/revsets.toml)
   and [revsets.md](docs/revsets.md)
   to understand how the function can be adapted.
 

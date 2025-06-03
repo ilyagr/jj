@@ -130,6 +130,8 @@ pub enum MergeToolConfigError {
     Config(#[from] ConfigGetError),
     #[error("The tool `{tool_name}` cannot be used as a merge tool with `jj resolve`")]
     MergeArgsNotConfigured { tool_name: String },
+    #[error("The tool `{tool_name}` cannot be used as a diff editor")]
+    EditArgsNotConfigured { tool_name: String },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -162,15 +164,15 @@ impl MergeTool {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum DiffTool {
+pub enum DiffEditTool {
     Builtin,
     // Boxed because ExternalMergeTool is big compared to the Builtin variant.
     External(Box<ExternalMergeTool>),
 }
 
-impl DiffTool {
+impl DiffEditTool {
     fn external(tool: ExternalMergeTool) -> Self {
-        DiffTool::External(Box::new(tool))
+        DiffEditTool::External(Box::new(tool))
     }
 
     /// Resolves builtin merge tool name or loads external tool options from
@@ -180,8 +182,8 @@ impl DiffTool {
         name: &str,
     ) -> Result<Option<Self>, MergeToolConfigError> {
         match name {
-            BUILTIN_EDITOR_NAME => Ok(Some(DiffTool::Builtin)),
-            _ => Ok(get_external_tool_config(settings, name)?.map(DiffTool::external)),
+            BUILTIN_EDITOR_NAME => Ok(Some(DiffEditTool::Builtin)),
+            _ => Ok(get_external_tool_config(settings, name)?.map(DiffEditTool::external)),
         }
     }
 }
@@ -208,6 +210,11 @@ fn editor_args_from_settings(
     }
 }
 
+/// List configured merge tools (diff editors, diff tools, merge editors)
+pub fn configured_merge_tools(settings: &UserSettings) -> impl Iterator<Item = &str> {
+    settings.table_keys("merge-tools")
+}
+
 /// Loads external diff/merge tool options from `[merge-tools.<name>]`.
 pub fn get_external_tool_config(
     settings: &UserSettings,
@@ -226,7 +233,7 @@ pub fn get_external_tool_config(
 /// Configured diff editor.
 #[derive(Clone, Debug)]
 pub struct DiffEditor {
-    tool: DiffTool,
+    tool: DiffEditTool,
     base_ignores: Arc<GitIgnoreFile>,
     use_instructions: bool,
     conflict_marker_style: ConflictMarkerStyle,
@@ -241,9 +248,9 @@ impl DiffEditor {
         base_ignores: Arc<GitIgnoreFile>,
         conflict_marker_style: ConflictMarkerStyle,
     ) -> Result<Self, MergeToolConfigError> {
-        let tool = DiffTool::get_tool_config(settings, name)?
-            .unwrap_or_else(|| DiffTool::external(ExternalMergeTool::with_program(name)));
-        Self::new_inner(tool, settings, base_ignores, conflict_marker_style)
+        let tool = DiffEditTool::get_tool_config(settings, name)?
+            .unwrap_or_else(|| DiffEditTool::external(ExternalMergeTool::with_program(name)));
+        Self::new_inner(name, tool, settings, base_ignores, conflict_marker_style)
     }
 
     /// Loads the default diff editor from the settings.
@@ -255,20 +262,26 @@ impl DiffEditor {
     ) -> Result<Self, MergeToolConfigError> {
         let args = editor_args_from_settings(ui, settings, "ui.diff-editor")?;
         let tool = if let Some(name) = args.as_str() {
-            DiffTool::get_tool_config(settings, name)?
+            DiffEditTool::get_tool_config(settings, name)?
         } else {
             None
         }
-        .unwrap_or_else(|| DiffTool::external(ExternalMergeTool::with_edit_args(&args)));
-        Self::new_inner(tool, settings, base_ignores, conflict_marker_style)
+        .unwrap_or_else(|| DiffEditTool::external(ExternalMergeTool::with_edit_args(&args)));
+        Self::new_inner(&args, tool, settings, base_ignores, conflict_marker_style)
     }
 
     fn new_inner(
-        tool: DiffTool,
+        name: impl ToString,
+        tool: DiffEditTool,
         settings: &UserSettings,
         base_ignores: Arc<GitIgnoreFile>,
         conflict_marker_style: ConflictMarkerStyle,
     ) -> Result<Self, MergeToolConfigError> {
+        if matches!(&tool, DiffEditTool::External(mergetool) if mergetool.edit_args.is_empty()) {
+            return Err(MergeToolConfigError::EditArgsNotConfigured {
+                tool_name: name.to_string(),
+            });
+        }
         Ok(DiffEditor {
             tool,
             base_ignores,
@@ -278,13 +291,6 @@ impl DiffEditor {
     }
 
     /// Starts a diff editor on the two directories.
-    // FIXME: edit_diff_builtin() applies diff on left_tree to create new tree,
-    // whereas edit_diff_external() updates the right_tree. This means that the
-    // matcher argument is interpreted quite differently. For the builtin tool,
-    // it specifies the maximum set of files to be copied from the right tree.
-    // For the external tool, it specifies the files to be modified in the right
-    // tree. If we adopt the interpretation of the builtin tool,
-    // DiffSelector::select() should also be updated.
     pub fn edit(
         &self,
         left_tree: &MergedTree,
@@ -293,13 +299,13 @@ impl DiffEditor {
         format_instructions: impl FnOnce() -> String,
     ) -> Result<MergedTreeId, DiffEditError> {
         match &self.tool {
-            DiffTool::Builtin => {
+            DiffEditTool::Builtin => {
                 Ok(
                     edit_diff_builtin(left_tree, right_tree, matcher, self.conflict_marker_style)
                         .map_err(Box::new)?,
                 )
             }
-            DiffTool::External(editor) => {
+            DiffEditTool::External(editor) => {
                 let instructions = self.use_instructions.then(format_instructions);
                 edit_diff_external(
                     editor,
@@ -674,15 +680,13 @@ mod tests {
         ui.diff-editor = "foo bar"
         [merge-tools."foo bar"]
         edit-args = ["--edit", "args", "$left", "$right"]
+        diff-args = []  # Should not cause an error, since we're getting the diff *editor*
         "#,
         ).unwrap(), @r#"
         External(
             ExternalMergeTool {
                 program: "foo bar",
-                diff_args: [
-                    "$left",
-                    "$right",
-                ],
+                diff_args: [],
                 diff_expected_exit_codes: [
                     0,
                 ],
@@ -762,6 +766,22 @@ mod tests {
 
         // Invalid type
         assert!(get(r#"ui.diff-editor.k = 0"#).is_err());
+
+        // Explicitly empty edit-args cause an error
+        insta::assert_debug_snapshot!(get(
+        r#"
+        ui.diff-editor = "my-diff"
+        [merge-tools.my-diff]
+        program = "MyDiff"
+        edit-args = []
+        "#,
+        ), @r#"
+        Err(
+            EditArgsNotConfigured {
+                tool_name: "my-diff",
+            },
+        )
+        "#);
     }
 
     #[test]

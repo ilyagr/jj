@@ -41,6 +41,7 @@ use gix::bstr::BString;
 use gix::objs::CommitRefIter;
 use gix::objs::WriteTo as _;
 use itertools::Itertools as _;
+use once_cell::sync::OnceCell as OnceLock;
 use pollster::FutureExt as _;
 use prost::Message as _;
 use smallvec::SmallVec;
@@ -79,6 +80,7 @@ use crate::file_util;
 use crate::file_util::BadPathEncoding;
 use crate::file_util::IoResultExt as _;
 use crate::file_util::PathError;
+use crate::hex_util;
 use crate::index::Index;
 use crate::lock::FileLock;
 use crate::merge::Merge;
@@ -175,6 +177,7 @@ pub struct GitBackend {
     root_commit_id: CommitId,
     root_change_id: ChangeId,
     empty_tree_id: TreeId,
+    shallow_root_ids: OnceLock<Vec<CommitId>>,
     extra_metadata_store: TableStore,
     cached_extra_metadata: Mutex<Option<Arc<ReadonlyTable>>>,
     git_executable: PathBuf,
@@ -201,6 +204,7 @@ impl GitBackend {
             root_commit_id,
             root_change_id,
             empty_tree_id,
+            shallow_root_ids: OnceLock::new(),
             extra_metadata_store,
             cached_extra_metadata: Mutex::new(None),
             git_executable: git_settings.executable_path,
@@ -354,6 +358,25 @@ impl GitBackend {
         self.base_repo.work_dir()
     }
 
+    fn shallow_root_ids(&self, git_repo: &gix::Repository) -> BackendResult<&[CommitId]> {
+        // The list of shallow roots is cached by gix, but it's still expensive
+        // to stat file on every read_object() call. Refreshing shallow roots is
+        // also bad for consistency reasons.
+        self.shallow_root_ids
+            .get_or_try_init(|| {
+                let maybe_oids = git_repo
+                    .shallow_commits()
+                    .map_err(|err| BackendError::Other(err.into()))?;
+                let commit_ids = maybe_oids.map_or(vec![], |oids| {
+                    oids.iter()
+                        .map(|oid| CommitId::from_bytes(oid.as_bytes()))
+                        .collect()
+                });
+                Ok(commit_ids)
+            })
+            .map(AsRef::as_ref)
+    }
+
     fn cached_extra_metadata_table(&self) -> BackendResult<Arc<ReadonlyTable>> {
         let mut locked_head = self.cached_extra_metadata.lock().unwrap();
         match locked_head.as_ref() {
@@ -429,6 +452,7 @@ impl GitBackend {
             &mut mut_table,
             &table_lock,
             &head_ids,
+            self.shallow_root_ids(&locked_repo)?,
         )?;
         self.save_extra_metadata_table(mut_table, &table_lock)
     }
@@ -523,8 +547,8 @@ fn gix_open_opts_from_settings(settings: &UserSettings) -> gix::open::Options {
 /// Parses the `jj:trees` header value.
 fn root_tree_from_git_extra_header(value: &BStr) -> Result<MergedTreeId, ()> {
     let mut tree_ids = SmallVec::new();
-    for hex in str::from_utf8(value.as_ref()).or(Err(()))?.split(' ') {
-        let tree_id = TreeId::try_from_hex(hex).or(Err(()))?;
+    for hex in value.split(|b| *b == b' ') {
+        let tree_id = TreeId::try_from_hex(hex).ok_or(())?;
         if tree_id.as_bytes().len() != HASH_LENGTH {
             return Err(());
         }
@@ -909,11 +933,8 @@ fn import_extra_metadata_entries_from_heads(
     mut_table: &mut MutableTable,
     _table_lock: &FileLock,
     head_ids: &HashSet<&CommitId>,
+    shallow_roots: &[CommitId],
 ) -> BackendResult<()> {
-    let shallow_commits = git_repo
-        .shallow_commits()
-        .map_err(|e| BackendError::Other(Box::new(e)))?;
-
     let mut work_ids = head_ids
         .iter()
         .filter(|&id| mut_table.get_value(id.as_bytes()).is_none())
@@ -923,9 +944,7 @@ fn import_extra_metadata_entries_from_heads(
         let git_object = git_repo
             .find_object(validate_git_object_id(&id)?)
             .map_err(|err| map_not_found_err(err, &id))?;
-        let is_shallow = shallow_commits
-            .as_ref()
-            .is_some_and(|shallow| shallow.contains(&git_object.id));
+        let is_shallow = shallow_roots.contains(&id);
         // TODO(#1624): Should we read the root tree here and check if it has a
         // `.jjconflict-...` entries? That could happen if the user used `git` to e.g.
         // change the description of a commit with tree-level conflicts.
@@ -1064,57 +1083,64 @@ impl Backend for GitBackend {
             .map_err(|err| map_not_found_err(err, id))?
             .try_into_tree()
             .map_err(|err| to_read_object_err(err, id))?;
-        let mut tree = Tree::default();
-        for entry in git_tree.iter() {
-            let entry = entry.map_err(|err| to_read_object_err(err, id))?;
-            let name =
-                str::from_utf8(entry.filename()).map_err(|err| to_invalid_utf8_err(err, id))?;
-            let (name, value) = match entry.mode().kind() {
-                gix::object::tree::EntryKind::Tree => {
-                    let id = TreeId::from_bytes(entry.oid().as_bytes());
-                    (name, TreeValue::Tree(id))
-                }
-                gix::object::tree::EntryKind::Blob => {
-                    let id = FileId::from_bytes(entry.oid().as_bytes());
-                    if let Some(basename) = name.strip_suffix(CONFLICT_SUFFIX) {
-                        (
-                            basename,
-                            TreeValue::Conflict(ConflictId::from_bytes(entry.oid().as_bytes())),
-                        )
-                    } else {
+        let mut entries: Vec<_> = git_tree
+            .iter()
+            .map(|entry| -> BackendResult<_> {
+                let entry = entry.map_err(|err| to_read_object_err(err, id))?;
+                let name =
+                    str::from_utf8(entry.filename()).map_err(|err| to_invalid_utf8_err(err, id))?;
+                let (name, value) = match entry.mode().kind() {
+                    gix::object::tree::EntryKind::Tree => {
+                        let id = TreeId::from_bytes(entry.oid().as_bytes());
+                        (name, TreeValue::Tree(id))
+                    }
+                    gix::object::tree::EntryKind::Blob => {
+                        let id = FileId::from_bytes(entry.oid().as_bytes());
+                        if let Some(basename) = name.strip_suffix(CONFLICT_SUFFIX) {
+                            (
+                                basename,
+                                TreeValue::Conflict(ConflictId::from_bytes(entry.oid().as_bytes())),
+                            )
+                        } else {
+                            (
+                                name,
+                                TreeValue::File {
+                                    id,
+                                    executable: false,
+                                    copy_id: CopyId::placeholder(),
+                                },
+                            )
+                        }
+                    }
+                    gix::object::tree::EntryKind::BlobExecutable => {
+                        let id = FileId::from_bytes(entry.oid().as_bytes());
                         (
                             name,
                             TreeValue::File {
                                 id,
-                                executable: false,
+                                executable: true,
                                 copy_id: CopyId::placeholder(),
                             },
                         )
                     }
-                }
-                gix::object::tree::EntryKind::BlobExecutable => {
-                    let id = FileId::from_bytes(entry.oid().as_bytes());
-                    (
-                        name,
-                        TreeValue::File {
-                            id,
-                            executable: true,
-                            copy_id: CopyId::placeholder(),
-                        },
-                    )
-                }
-                gix::object::tree::EntryKind::Link => {
-                    let id = SymlinkId::from_bytes(entry.oid().as_bytes());
-                    (name, TreeValue::Symlink(id))
-                }
-                gix::object::tree::EntryKind::Commit => {
-                    let id = CommitId::from_bytes(entry.oid().as_bytes());
-                    (name, TreeValue::GitSubmodule(id))
-                }
-            };
-            tree.set(RepoPathComponentBuf::new(name).unwrap(), value);
+                    gix::object::tree::EntryKind::Link => {
+                        let id = SymlinkId::from_bytes(entry.oid().as_bytes());
+                        (name, TreeValue::Symlink(id))
+                    }
+                    gix::object::tree::EntryKind::Commit => {
+                        let id = CommitId::from_bytes(entry.oid().as_bytes());
+                        (name, TreeValue::GitSubmodule(id))
+                    }
+                };
+                Ok((RepoPathComponentBuf::new(name).unwrap(), value))
+            })
+            .try_collect()?;
+        // While Git tree entries are sorted, the rule is slightly different.
+        // Directory names are sorted as if they had trailing "/".
+        if !entries.is_sorted_by_key(|(name, _)| name) {
+            entries.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
         }
-        Ok(tree)
+        Ok(Tree::from_sorted_entries(entries))
     }
 
     async fn write_tree(&self, _path: &RepoPath, contents: &Tree) -> BackendResult<TreeId> {
@@ -1218,11 +1244,7 @@ impl Backend for GitBackend {
             let git_object = locked_repo
                 .find_object(git_commit_id)
                 .map_err(|err| map_not_found_err(err, id))?;
-            let is_shallow = locked_repo
-                .shallow_commits()
-                .ok()
-                .flatten()
-                .is_some_and(|shallow| shallow.contains(&git_object.id));
+            let is_shallow = self.shallow_root_ids(&locked_repo)?.contains(id);
             commit_from_git_without_root_parent(id, &git_object, false, is_shallow)?
         };
         if commit.parents.is_empty() {
@@ -1614,14 +1636,13 @@ fn tree_value_from_json(json: &serde_json::Value) -> TreeValue {
 }
 
 fn bytes_vec_from_json(value: &serde_json::Value) -> Vec<u8> {
-    hex::decode(value.as_str().unwrap()).unwrap()
+    hex_util::decode_hex(value.as_str().unwrap()).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
     use gix::date::parse::TimeBuf;
-    use hex::ToHex as _;
     use pollster::FutureExt as _;
 
     use super::*;
@@ -2346,7 +2367,7 @@ mod tests {
         };
 
         let mut signer = |data: &_| {
-            let hash: String = blake2b_hash(data).encode_hex();
+            let hash: String = hex_util::encode_hex(&blake2b_hash(data));
             Ok(format!("test sig\nhash={hash}\n").into_bytes())
         };
 

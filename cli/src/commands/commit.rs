@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use clap_complete::ArgValueCandidates;
 use clap_complete::ArgValueCompleter;
 use indoc::writedoc;
 use jj_lib::backend::Signature;
@@ -30,14 +31,31 @@ use crate::description_util::join_message_paragraphs;
 use crate::text_util::parse_author;
 use crate::ui::Ui;
 
-/// Update the description and create a new change on top.
+/// Update the description and create a new change on top [default alias: ci]
+///
+/// This command is very similar to `jj split`. Differences include:
+///
+/// * `jj commit` is not interactive by default (it selects all changes).
+///
+/// * `jj commit` doesn't have a `-r` option. It always acts on the working-copy
+///   commit (@).
+///
+/// * `jj split` (without `-d/-A/-B`) will move bookmarks forward from the old
+///   change to the child change. `jj commit` doesn't move bookmarks forward.
+///
+/// * `jj split` allows you to move the selected changes to a different
+///   destination with `-d/-A/-B`.
 #[derive(clap::Args, Clone, Debug)]
 pub(crate) struct CommitArgs {
     /// Interactively choose which changes to include in the first commit
     #[arg(short, long)]
     interactive: bool,
     /// Specify diff editor to be used (implies --interactive)
-    #[arg(long, value_name = "NAME")]
+    #[arg(
+        long,
+        value_name = "NAME",
+        add = ArgValueCandidates::new(complete::diff_editors),
+    )]
     tool: Option<String>,
     /// The change description to use (don't open editor)
     #[arg(long = "message", short, value_name = "MESSAGE")]

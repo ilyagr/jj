@@ -210,7 +210,7 @@ pub struct TracingSubscription {
 }
 
 impl TracingSubscription {
-    const ENV_VAR_NAME: &'static str = "JJ_LOG";
+    const ENV_VAR_NAME: &str = "JJ_LOG";
 
     /// Initializes tracing with the default configuration. This should be
     /// called as early as possible.
@@ -761,13 +761,13 @@ impl AdvanceBookmarksSettings {
         if self
             .disabled_bookmarks
             .iter()
-            .any(|d| d.matches(bookmark_name.as_str()))
+            .any(|d| d.is_match(bookmark_name.as_str()))
         {
             return false;
         }
         self.enabled_bookmarks
             .iter()
-            .any(|e| e.matches(bookmark_name.as_str()))
+            .any(|e| e.is_match(bookmark_name.as_str()))
     }
 
     /// Returns true if the config includes at least one "enabled-branches"
@@ -1563,20 +1563,13 @@ to the current parents may contain changes from multiple commits.
         revision_arg: &RevisionArg,
     ) -> Result<Commit, CommandError> {
         let expression = self.parse_revset(ui, revision_arg)?;
-        let should_hint_about_all_prefix = false;
-        revset_util::evaluate_revset_to_single_commit(
-            revision_arg.as_ref(),
-            &expression,
-            || self.commit_summary_template(),
-            should_hint_about_all_prefix,
-        )
+        revset_util::evaluate_revset_to_single_commit(revision_arg.as_ref(), &expression, || {
+            self.commit_summary_template()
+        })
     }
 
     /// Evaluates revset expressions to non-empty set of commit IDs. The
     /// returned set preserves the order of the input expressions.
-    ///
-    /// If an input expression is prefixed with `all:`, it may be evaluated to
-    /// any number of revisions (including 0.)
     pub fn resolve_some_revsets_default_single(
         &self,
         ui: &Ui,
@@ -1594,12 +1587,10 @@ to the current parents may contain changes from multiple commits.
                     all_commits.insert(commit_id?);
                 }
             } else {
-                let should_hint_about_all_prefix = true;
                 let commit = revset_util::evaluate_revset_to_single_commit(
                     revision_arg.as_ref(),
                     &expression,
                     || self.commit_summary_template(),
-                    should_hint_about_all_prefix,
                 )?;
                 if !all_commits.insert(commit.id().clone()) {
                     let commit_hash = short_commit_hash(commit.id());
@@ -3999,23 +3990,31 @@ impl<'a> CliRunner<'a> {
 
 fn map_clap_cli_error(err: clap::Error, ui: &Ui, config: &StackedConfig) -> CommandError {
     if let Some(ContextValue::String(cmd)) = err.get(ContextKind::InvalidSubcommand) {
+        let remove_useless_error_context = |mut err: clap::Error| {
+            // Clap suggests unhelpful subcommands, e.g. `config` for `clone`.
+            // We don't want suggestions when we know this isn't a misspelling.
+            err.remove(ContextKind::SuggestedSubcommand);
+            err.remove(ContextKind::Suggested); // Remove an empty line
+            err.remove(ContextKind::Usage); // Also unhelpful for these errors.
+            err
+        };
         match cmd.as_str() {
             // git commands that a brand-new user might type during their first
             // experiments with `jj`
             "clone" | "init" => {
                 let cmd = cmd.clone();
-                let mut err = err;
-                // Clap suggests an unhelpful subcommand, e.g. `config` for `clone`.
-                err.remove(ContextKind::SuggestedSubcommand);
-                err.remove(ContextKind::Suggested); // Remove an empty line
-                err.remove(ContextKind::Usage);
-                return CommandError::from(err)
+                return CommandError::from(remove_useless_error_context(err))
                     .hinted(format!(
                         "You probably want `jj git {cmd}`. See also `jj help git`."
                     ))
                     .hinted(format!(
                         r#"You can configure `aliases.{cmd} = ["git", "{cmd}"]` if you want `jj {cmd}` to work and always use the Git backend."#
                     ));
+            }
+            "amend" => {
+                return CommandError::from(remove_useless_error_context(err))
+                    .hinted(
+                        r#"You probably want `jj squash`. You can configure `aliases.amend = ["squash"]` if you want `jj amend` to work."#);
             }
             _ => {}
         }

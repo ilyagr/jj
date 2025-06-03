@@ -24,6 +24,7 @@ use jj_lib::ref_name::WorkspaceNameBuf;
 use jj_lib::repo::Repo as _;
 use jj_lib::rewrite::RebaseOptions;
 use maplit::hashset;
+use pollster::FutureExt as _;
 use testutils::assert_rebased_onto;
 use testutils::create_random_commit;
 use testutils::create_random_tree;
@@ -148,7 +149,8 @@ fn test_edit_previous_empty_merge() {
     let old_parent_tree = old_parent1
         .tree()
         .unwrap()
-        .merge(&empty_tree, &old_parent2.tree().unwrap())
+        .merge(empty_tree, old_parent2.tree().unwrap())
+        .block_on()
         .unwrap();
     let old_wc_commit = mut_repo
         .new_commit(

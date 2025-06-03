@@ -14,6 +14,7 @@
 use std::collections::HashMap;
 use std::io::Write as _;
 
+use clap_complete::ArgValueCandidates;
 use clap_complete::ArgValueCompleter;
 use jj_lib::backend::CommitId;
 use jj_lib::commit::Commit;
@@ -28,6 +29,7 @@ use jj_lib::rewrite::MoveCommitsTarget;
 use jj_lib::rewrite::RebaseOptions;
 use jj_lib::rewrite::RebasedCommit;
 use jj_lib::rewrite::RewriteRefsOptions;
+use pollster::FutureExt as _;
 use tracing::instrument;
 
 use crate::cli_util::compute_commit_location;
@@ -71,7 +73,11 @@ pub(crate) struct SplitArgs {
     #[arg(long, short)]
     interactive: bool,
     /// Specify diff editor to be used (implies --interactive)
-    #[arg(long, value_name = "NAME")]
+    #[arg(
+        long,
+        value_name = "NAME",
+        add = ArgValueCandidates::new(complete::diff_editors),
+    )]
     tool: Option<String>,
     /// The revision to split
     #[arg(
@@ -81,8 +87,8 @@ pub(crate) struct SplitArgs {
         add = ArgValueCompleter::new(complete::revset_expression_mutable),
     )]
     revision: RevisionArg,
-    /// The revision(s) to rebase onto (can be repeated to create a merge
-    /// commit)
+    /// The revision(s) to base the new revision onto (can be repeated to create
+    /// a merge commit)
     #[arg(
         long,
         short,
@@ -261,7 +267,9 @@ pub(crate) fn cmd_split(
             // Merge the original commit tree with its parent using the tree
             // containing the user selected changes as the base for the merge.
             // This results in a tree with the changes the user didn't select.
-            target_tree.merge(&target.selected_tree, &target.parent_tree)?
+            target_tree
+                .merge(target.selected_tree.clone(), target.parent_tree.clone())
+                .block_on()?
         } else {
             target_tree
         };
