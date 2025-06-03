@@ -20,6 +20,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::io;
 use std::io::Write as _;
+use std::iter;
 use std::ops::Bound;
 use std::path::Path;
 use std::sync::Arc;
@@ -41,6 +42,7 @@ use super::entry::LocalPosition;
 use super::entry::SmallIndexPositionsVec;
 use super::entry::SmallLocalPositionsVec;
 use super::readonly::DefaultReadonlyIndex;
+use super::readonly::FieldLengths;
 use super::readonly::ReadonlyIndexSegment;
 use super::readonly::INDEX_SEGMENT_FILE_FORMAT_VERSION;
 use super::readonly::OVERFLOW_FLAG;
@@ -48,6 +50,7 @@ use crate::backend::ChangeId;
 use crate::backend::CommitId;
 use crate::commit::Commit;
 use crate::file_util::persist_content_addressed_temp_file;
+use crate::hex_util;
 use crate::index::AllHeadsForGcUnsupported;
 use crate::index::ChangeIdIndex;
 use crate::index::Index;
@@ -73,20 +76,18 @@ struct MutableGraphEntry {
 pub(super) struct MutableIndexSegment {
     parent_file: Option<Arc<ReadonlyIndexSegment>>,
     num_parent_commits: u32,
-    commit_id_length: usize,
-    change_id_length: usize,
+    field_lengths: FieldLengths,
     graph: Vec<MutableGraphEntry>,
     commit_lookup: BTreeMap<CommitId, LocalPosition>,
     change_lookup: BTreeMap<ChangeId, SmallLocalPositionsVec>,
 }
 
 impl MutableIndexSegment {
-    pub(super) fn full(commit_id_length: usize, change_id_length: usize) -> Self {
+    pub(super) fn full(field_lengths: FieldLengths) -> Self {
         Self {
             parent_file: None,
             num_parent_commits: 0,
-            commit_id_length,
-            change_id_length,
+            field_lengths,
             graph: vec![],
             commit_lookup: BTreeMap::new(),
             change_lookup: BTreeMap::new(),
@@ -95,13 +96,11 @@ impl MutableIndexSegment {
 
     pub(super) fn incremental(parent_file: Arc<ReadonlyIndexSegment>) -> Self {
         let num_parent_commits = parent_file.as_composite().num_commits();
-        let commit_id_length = parent_file.commit_id_length();
-        let change_id_length = parent_file.change_id_length();
+        let field_lengths = parent_file.field_lengths();
         Self {
             parent_file: Some(parent_file),
             num_parent_commits,
-            commit_id_length,
-            change_id_length,
+            field_lengths,
             graph: vec![],
             commit_lookup: BTreeMap::new(),
             change_lookup: BTreeMap::new(),
@@ -110,14 +109,6 @@ impl MutableIndexSegment {
 
     pub(super) fn as_composite(&self) -> &CompositeIndex {
         CompositeIndex::new(self)
-    }
-
-    pub(super) fn add_commit(&mut self, commit: &Commit) {
-        self.add_commit_data(
-            commit.id().clone(),
-            commit.change_id().clone(),
-            commit.parent_ids(),
-        );
     }
 
     pub(super) fn add_commit_data(
@@ -166,35 +157,27 @@ impl MutableIndexSegment {
         }
     }
 
-    pub(super) fn merge_in(&mut self, other: Arc<ReadonlyIndexSegment>) {
-        let mut maybe_own_ancestor = self.parent_file.clone();
-        let mut maybe_other_ancestor = Some(other);
-        let mut files_to_add = vec![];
-        loop {
-            if maybe_other_ancestor.is_none() {
-                break;
-            }
-            let other_ancestor = maybe_other_ancestor.as_ref().unwrap();
-            if maybe_own_ancestor.is_none() {
-                files_to_add.push(other_ancestor.clone());
-                maybe_other_ancestor = other_ancestor.parent_file().cloned();
-                continue;
-            }
-            let own_ancestor = maybe_own_ancestor.as_ref().unwrap();
-            if own_ancestor.name() == other_ancestor.name() {
-                break;
-            }
-            if own_ancestor.as_composite().num_commits()
-                < other_ancestor.as_composite().num_commits()
-            {
-                files_to_add.push(other_ancestor.clone());
-                maybe_other_ancestor = other_ancestor.parent_file().cloned();
-            } else {
-                maybe_own_ancestor = own_ancestor.parent_file().cloned();
-            }
-        }
+    pub(super) fn merge_in(&mut self, other: &Arc<ReadonlyIndexSegment>) {
+        // Collect other segments down to the common ancestor segment
+        let files_to_add = itertools::merge_join_by(
+            self.as_composite().ancestor_files_without_local(),
+            iter::once(other).chain(other.as_composite().ancestor_files_without_local()),
+            |own, other| {
+                let own_num_commits = own.as_composite().num_commits();
+                let other_num_commits = other.as_composite().num_commits();
+                own_num_commits.cmp(&other_num_commits).reverse()
+            },
+        )
+        .take_while(|own_other| {
+            own_other
+                .as_ref()
+                .both()
+                .is_none_or(|(own, other)| own.name() != other.name())
+        })
+        .filter_map(|own_other| own_other.right())
+        .collect_vec();
 
-        for file in files_to_add.iter().rev() {
+        for &file in files_to_add.iter().rev() {
             self.add_commits_from(file.as_ref());
         }
     }
@@ -270,7 +253,10 @@ impl MutableIndexSegment {
 
             buf.extend(change_id_pos_map[&entry.change_id].to_le_bytes());
 
-            assert_eq!(entry.commit_id.as_bytes().len(), self.commit_id_length);
+            assert_eq!(
+                entry.commit_id.as_bytes().len(),
+                self.field_lengths.commit_id
+            );
             buf.extend_from_slice(entry.commit_id.as_bytes());
         }
 
@@ -279,7 +265,7 @@ impl MutableIndexSegment {
         }
 
         for change_id in self.change_lookup.keys() {
-            assert_eq!(change_id.as_bytes().len(), self.change_id_length);
+            assert_eq!(change_id.as_bytes().len(), self.field_lengths.change_id);
             buf.extend_from_slice(change_id.as_bytes());
         }
 
@@ -339,7 +325,7 @@ impl MutableIndexSegment {
         let mut squashed = if let Some(parent_file) = base_parent_file {
             MutableIndexSegment::incremental(parent_file)
         } else {
-            MutableIndexSegment::full(self.commit_id_length, self.change_id_length)
+            MutableIndexSegment::full(self.field_lengths)
         };
         for parent_file in files_to_squash.iter().rev() {
             squashed.add_commits_from(parent_file.as_ref());
@@ -360,7 +346,7 @@ impl MutableIndexSegment {
         self.serialize_local_entries(&mut buf);
         let mut hasher = Blake2b512::new();
         hasher.update(&buf);
-        let index_file_id_hex = hex::encode(hasher.finalize());
+        let index_file_id_hex = hex_util::encode_hex(&hasher.finalize());
         let index_file_path = dir.join(&index_file_id_hex);
 
         let mut temp_file = NamedTempFile::new_in(dir)?;
@@ -372,8 +358,7 @@ impl MutableIndexSegment {
             &mut &buf[local_entries_offset..],
             index_file_id_hex,
             self.parent_file,
-            self.commit_id_length,
-            self.change_id_length,
+            self.field_lengths,
         )
         .expect("in-memory index data should be valid and readable"))
     }
@@ -459,8 +444,8 @@ impl IndexSegment for MutableIndexSegment {
 pub struct DefaultMutableIndex(MutableIndexSegment);
 
 impl DefaultMutableIndex {
-    pub(crate) fn full(commit_id_length: usize, change_id_length: usize) -> Self {
-        let mutable_segment = MutableIndexSegment::full(commit_id_length, change_id_length);
+    pub(super) fn full(lengths: FieldLengths) -> Self {
+        let mutable_segment = MutableIndexSegment::full(lengths);
         DefaultMutableIndex(mutable_segment)
     }
 
@@ -469,8 +454,12 @@ impl DefaultMutableIndex {
         DefaultMutableIndex(mutable_segment)
     }
 
-    #[cfg(test)]
-    pub(crate) fn add_commit_data(
+    /// Returns the number of all indexed commits.
+    pub fn num_commits(&self) -> u32 {
+        self.0.as_composite().num_commits()
+    }
+
+    pub(super) fn add_commit_data(
         &mut self,
         commit_id: CommitId,
         change_id: ChangeId,
@@ -525,11 +514,11 @@ impl Index for DefaultMutableIndex {
         self.as_composite().heads(candidates)
     }
 
-    fn evaluate_revset<'index>(
-        &'index self,
+    fn evaluate_revset(
+        &self,
         expression: &ResolvedExpression,
         store: &Arc<Store>,
-    ) -> Result<Box<dyn Revset + 'index>, RevsetEvaluationError> {
+    ) -> Result<Box<dyn Revset + '_>, RevsetEvaluationError> {
         self.as_composite().evaluate_revset(expression, store)
     }
 }
@@ -555,7 +544,11 @@ impl MutableIndex for DefaultMutableIndex {
     }
 
     fn add_commit(&mut self, commit: &Commit) {
-        self.0.add_commit(commit);
+        self.add_commit_data(
+            commit.id().clone(),
+            commit.change_id().clone(),
+            commit.parent_ids(),
+        );
     }
 
     fn merge_in(&mut self, other: &dyn ReadonlyIndex) {
@@ -563,7 +556,7 @@ impl MutableIndex for DefaultMutableIndex {
             .as_any()
             .downcast_ref::<DefaultReadonlyIndex>()
             .expect("index to merge in must be a DefaultReadonlyIndex");
-        self.0.merge_in(other.as_segment().clone());
+        self.0.merge_in(other.as_segment());
     }
 }
 

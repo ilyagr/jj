@@ -43,6 +43,7 @@ use jj_lib::repo::Repo as _;
 use jj_lib::repo_path::RepoPath;
 use jj_lib::repo_path::RepoPathBuf;
 use jj_lib::secret_backend::SecretBackend;
+use jj_lib::tree_builder::TreeBuilder;
 use jj_lib::working_copy::CheckoutError;
 use jj_lib::working_copy::CheckoutOptions;
 use jj_lib::working_copy::CheckoutStats;
@@ -577,7 +578,7 @@ fn test_tree_builder_file_directory_transition() {
     let child_path = repo_path("foo/bar/baz");
 
     // Add file at parent_path
-    let mut tree_builder = store.tree_builder(store.empty_tree_id().clone());
+    let mut tree_builder = TreeBuilder::new(store.clone(), store.empty_tree_id().clone());
     tree_builder.set(
         parent_path.to_owned(),
         TreeValue::File {
@@ -592,7 +593,7 @@ fn test_tree_builder_file_directory_transition() {
     assert!(!child_path.to_fs_path_unchecked(&workspace_root).exists());
 
     // Turn parent_path into directory, add file at child_path
-    let mut tree_builder = store.tree_builder(tree_id);
+    let mut tree_builder = TreeBuilder::new(store.clone(), tree_id);
     tree_builder.remove(parent_path.to_owned());
     tree_builder.set(
         child_path.to_owned(),
@@ -608,7 +609,7 @@ fn test_tree_builder_file_directory_transition() {
     assert!(child_path.to_fs_path_unchecked(&workspace_root).is_file());
 
     // Turn parent_path back to file
-    let mut tree_builder = store.tree_builder(tree_id);
+    let mut tree_builder = TreeBuilder::new(store.clone(), tree_id);
     tree_builder.remove(child_path.to_owned());
     tree_builder.set(
         parent_path.to_owned(),
@@ -807,8 +808,13 @@ fn test_checkout_discard() {
     // The change should be reflected in the working copy but not saved
     assert!(!file1_path.to_fs_path_unchecked(&workspace_root).is_file());
     assert!(file2_path.to_fs_path_unchecked(&workspace_root).is_file());
-    let reloaded_wc =
-        LocalWorkingCopy::load(store.clone(), workspace_root.clone(), state_path.clone());
+    let reloaded_wc = LocalWorkingCopy::load(
+        store.clone(),
+        workspace_root.clone(),
+        state_path.clone(),
+        repo.settings(),
+    )
+    .unwrap();
     assert!(reloaded_wc.file_states().unwrap().contains_path(file1_path));
     assert!(!reloaded_wc.file_states().unwrap().contains_path(file2_path));
     drop(locked_ws);
@@ -819,7 +825,8 @@ fn test_checkout_discard() {
     assert!(!wc.file_states().unwrap().contains_path(file2_path));
     assert!(!file1_path.to_fs_path_unchecked(&workspace_root).is_file());
     assert!(file2_path.to_fs_path_unchecked(&workspace_root).is_file());
-    let reloaded_wc = LocalWorkingCopy::load(store.clone(), workspace_root, state_path);
+    let reloaded_wc =
+        LocalWorkingCopy::load(store.clone(), workspace_root, state_path, repo.settings()).unwrap();
     assert!(reloaded_wc.file_states().unwrap().contains_path(file1_path));
     assert!(!reloaded_wc.file_states().unwrap().contains_path(file2_path));
 }

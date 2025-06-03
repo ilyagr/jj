@@ -19,10 +19,12 @@ use std::collections::HashSet;
 use std::slice;
 use std::sync::Arc;
 
+use futures::future::try_join_all;
 use futures::StreamExt as _;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 use itertools::Itertools as _;
+use pollster::FutureExt as _;
 use tracing::instrument;
 
 use crate::backend::BackendError;
@@ -52,34 +54,38 @@ pub fn merge_commit_trees(repo: &dyn Repo, commits: &[Commit]) -> BackendResult<
     if let [commit] = commits {
         commit.tree()
     } else {
-        merge_commit_trees_no_resolve_without_repo(repo.store(), repo.index(), commits)?.resolve()
+        merge_commit_trees_no_resolve_without_repo(repo.store(), repo.index(), commits)
+            .block_on()?
+            .resolve()
     }
 }
 
 /// Merges `commits` without attempting to resolve file conflicts.
 #[instrument(skip(index))]
-pub fn merge_commit_trees_no_resolve_without_repo(
+pub async fn merge_commit_trees_no_resolve_without_repo(
     store: &Arc<Store>,
     index: &dyn Index,
     commits: &[Commit],
 ) -> BackendResult<MergedTree> {
     if commits.is_empty() {
-        Ok(store.get_root_tree(&store.empty_merged_tree_id())?)
+        Ok(store
+            .get_root_tree_async(&store.empty_merged_tree_id())
+            .await?)
     } else {
-        let mut new_tree = commits[0].tree()?;
+        let mut new_tree = commits[0].tree_async().await?;
         let commit_ids = commits
             .iter()
             .map(|commit| commit.id().clone())
             .collect_vec();
         for (i, other_commit) in commits.iter().enumerate().skip(1) {
             let ancestor_ids = index.common_ancestors(&commit_ids[0..i], &commit_ids[i..][..1]);
-            let ancestors: Vec<_> = ancestor_ids
-                .iter()
-                .map(|id| store.get_commit(id))
-                .try_collect()?;
-            let ancestor_tree =
-                merge_commit_trees_no_resolve_without_repo(store, index, &ancestors)?;
-            let other_tree = other_commit.tree()?;
+            let ancestors: Vec<_> =
+                try_join_all(ancestor_ids.iter().map(|id| store.get_commit_async(id))).await?;
+            let ancestor_tree = Box::pin(merge_commit_trees_no_resolve_without_repo(
+                store, index, &ancestors,
+            ))
+            .await?;
+            let other_tree = other_commit.tree_async().await?;
             new_tree = new_tree.merge_no_resolve(&ancestor_tree, &other_tree);
         }
         Ok(new_tree)
@@ -1105,6 +1111,12 @@ pub struct SquashedCommit<'repo> {
     pub abandoned_commits: Vec<Commit>,
 }
 
+#[derive(Clone, Debug)]
+pub struct SquashOptions {
+    pub keep_emptied: bool,
+    pub restore_descendants: bool,
+}
+
 /// Squash `sources` into `destination` and return a [`SquashedCommit`] for the
 /// resulting commit. Caller is responsible for setting the description and
 /// finishing the commit.
@@ -1112,7 +1124,10 @@ pub fn squash_commits<'repo>(
     repo: &'repo mut MutableRepo,
     sources: &[CommitWithSelection],
     destination: &Commit,
-    keep_emptied: bool,
+    SquashOptions {
+        keep_emptied,
+        restore_descendants,
+    }: SquashOptions,
 ) -> BackendResult<Option<SquashedCommit<'repo>>> {
     struct SourceCommit<'a> {
         commit: &'a CommitWithSelection,
@@ -1145,7 +1160,12 @@ pub fn squash_commits<'repo>(
         if source.abandon {
             repo.record_abandoned_commit(&source.commit.commit);
             abandoned_commits.push(source.commit.commit.clone());
-        } else {
+        } else if !restore_descendants
+            || !repo // This feels wrong. Might be better to explicitly rebase descendants that are also
+                // sources
+                .index()
+                .is_ancestor(destination.id(), source.commit.commit.id())
+        {
             let source_tree = source.commit.commit.tree()?;
             // Apply the reverse of the selected changes onto the source
             let new_source_tree =
@@ -1165,16 +1185,25 @@ pub fn squash_commits<'repo>(
         // rewritten sources. Otherwise it will likely already have the content
         // changes we're moving, so applying them will have no effect and the
         // changes will disappear.
-        let options = RebaseOptions::default();
-        repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
-            if old_commit.id() != destination.id() {
-                return;
-            }
-            rewritten_destination = match rebased_commit {
-                RebasedCommit::Rewritten(commit) => commit,
-                RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
-            };
-        })?;
+        if restore_descendants {
+            repo.reparent_descendants_with_progress(|old_commit, rebased_commit| {
+                if old_commit.id() != destination.id() {
+                    return;
+                }
+                rewritten_destination = rebased_commit;
+            })?;
+        } else {
+            let options = RebaseOptions::default();
+            repo.rebase_descendants_with_options(&options, |old_commit, rebased_commit| {
+                if old_commit.id() != destination.id() {
+                    return;
+                }
+                rewritten_destination = match rebased_commit {
+                    RebasedCommit::Rewritten(commit) => commit,
+                    RebasedCommit::Abandoned { .. } => panic!("all commits should be kept"),
+                };
+            })?;
+        }
     }
     // Apply the selected changes onto the destination
     let mut destination_tree = rewritten_destination.tree()?;

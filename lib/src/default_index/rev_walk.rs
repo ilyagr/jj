@@ -718,6 +718,13 @@ mod tests {
     use super::*;
     use crate::backend::ChangeId;
     use crate::backend::CommitId;
+    use crate::default_index::readonly::FieldLengths;
+
+    const TEST_FIELD_LENGTHS: FieldLengths = FieldLengths {
+        // TODO: align with commit_id_generator()?
+        commit_id: 3,
+        change_id: 16,
+    };
 
     /// Generator of unique 16-byte CommitId excluding root id
     fn commit_id_generator() -> impl FnMut() -> CommitId {
@@ -787,7 +794,7 @@ mod tests {
     #[test]
     fn test_walk_ancestors() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 | 3
@@ -869,7 +876,7 @@ mod tests {
     #[test]
     fn test_walk_ancestors_until_roots() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         //   7
         // 6 |
         // 5 |
@@ -926,7 +933,7 @@ mod tests {
     #[test]
     fn test_walk_ancestors_filtered_by_generation() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 8 6
         // | |
         // 7 5
@@ -1017,10 +1024,10 @@ mod tests {
     #[expect(clippy::redundant_clone)] // allow id_n.clone()
     fn test_walk_ancestors_filtered_by_generation_range_merging() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // Long linear history with some short branches
         let ids = (0..11)
-            .map(|n| CommitId::try_from_hex(&format!("{n:06x}")).unwrap())
+            .map(|n| CommitId::try_from_hex(format!("{n:06x}")).unwrap())
             .collect_vec();
         index.add_commit_data(ids[0].clone(), new_change_id(), &[]);
         for i in 1..ids.len() {
@@ -1073,7 +1080,7 @@ mod tests {
     #[test]
     fn test_walk_descendants_filtered_by_generation() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 8 6
         // | |
         // 7 5
@@ -1181,7 +1188,10 @@ mod tests {
     fn test_ancestors_bit_set() {
         let mut new_commit_id = commit_id_generator();
         let mut new_change_id = change_id_generator();
-        let mut mutable_index = DefaultMutableIndex::full(16, 16);
+        let mut mutable_index = DefaultMutableIndex::full(FieldLengths {
+            commit_id: 16,
+            change_id: 16,
+        });
 
         // F      F = 256
         // |\     E = 193,194,195,..,254
@@ -1193,7 +1203,7 @@ mod tests {
         let id_a0 = new_commit_id();
         mutable_index.add_commit_data(id_a0.clone(), new_change_id(), &[]);
         let id_a64 = (1..=64).fold(id_a0.clone(), |parent_id, i| {
-            assert_eq!(mutable_index.as_composite().num_commits(), i);
+            assert_eq!(mutable_index.num_commits(), i);
             let id = new_commit_id();
             mutable_index.add_commit_data(id.clone(), new_change_id(), &[parent_id]);
             id
@@ -1201,7 +1211,7 @@ mod tests {
         let (id_b189, id_c190) = (65..=190).step_by(2).fold(
             (id_a64.clone(), id_a64.clone()),
             |(parent_id_b, parent_id_c), i| {
-                assert_eq!(mutable_index.as_composite().num_commits(), i);
+                assert_eq!(mutable_index.num_commits(), i);
                 let id_b = new_commit_id();
                 let id_c = new_commit_id();
                 mutable_index.add_commit_data(id_b.clone(), new_change_id(), &[parent_id_b]);
@@ -1214,7 +1224,7 @@ mod tests {
         let id_d192 = new_commit_id();
         mutable_index.add_commit_data(id_d192.clone(), new_change_id(), &[id_c190.clone()]);
         let id_e254 = (193..=254).fold(id_b191.clone(), |parent_id, i| {
-            assert_eq!(mutable_index.as_composite().num_commits(), i);
+            assert_eq!(mutable_index.num_commits(), i);
             let id = new_commit_id();
             mutable_index.add_commit_data(id.clone(), new_change_id(), &[parent_id]);
             id
@@ -1227,7 +1237,7 @@ mod tests {
             new_change_id(),
             &[id_c190.clone(), id_e254.clone()],
         );
-        assert_eq!(mutable_index.as_composite().num_commits(), 257);
+        assert_eq!(mutable_index.num_commits(), 257);
 
         let index = mutable_index.as_composite();
         let to_pos = |id: &CommitId| index.commit_id_to_pos(id).unwrap();

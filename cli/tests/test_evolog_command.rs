@@ -195,6 +195,52 @@ fn test_evolog_with_or_without_diff() {
     -- operation e0f8e58b3800 (2001-02-03 08:05:08) new empty commit
     [EOF]
     ");
+
+    // With `--diff-snapshots`, the rebase does show a diff
+    // TODO: Bug, not implemented yet with --no-graph
+    let output = work_dir.run_jj(["evolog", "--no-graph", "--git", "--diff-snapshots"]);
+    insta::assert_snapshot!(output, @r"
+    rlvkpnrz test.user@example.com 2001-02-03 08:05:10 33c10ace
+    my description
+    -- operation 3499115d3831 (2001-02-03 08:05:10) snapshot working copy
+    diff --git a/file1 b/file1
+    index 0000000000..2ab19ae607 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,7 +1,1 @@
+    -<<<<<<< Conflict 1 of 1
+    -%%%%%%% Changes from base to side #1
+    --foo
+    -+++++++ Contents of side #2
+    -foo
+    -bar
+    ->>>>>>> Conflict 1 of 1 ends
+    +resolved
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 7f56b2a0 conflict
+    my description
+    -- operation eb87ec366530 (2001-02-03 08:05:09) rebase commit 51e08f95160c897080d035d330aead3ee6ed5588
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:09 51e08f95
+    my description
+    -- operation 18a971ce330a (2001-02-03 08:05:09) snapshot working copy
+    diff --git a/file1 b/file1
+    index 257cc5642c..3bd1f0e297 100644
+    --- a/file1
+    +++ b/file1
+    @@ -1,1 +1,2 @@
+     foo
+    +bar
+    diff --git a/file2 b/file2
+    new file mode 100644
+    index 0000000000..257cc5642c
+    --- /dev/null
+    +++ b/file2
+    @@ -0,0 +1,1 @@
+    +foo
+    rlvkpnrz hidden test.user@example.com 2001-02-03 08:05:08 b955b72e
+    (empty) my description
+    -- operation e0f8e58b3800 (2001-02-03 08:05:08) new empty commit
+    [EOF]
+    ");
 }
 
 #[test]
@@ -405,6 +451,55 @@ fn test_evolog_squash() {
     ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:07 e8849ae1
        (empty) (no description set)
        -- operation 8f47435a3990 (2001-02-03 08:05:07) add workspace 'default'
+    [EOF]
+    ");
+}
+
+#[test]
+fn test_evolog_abandoned_op() {
+    let test_env = TestEnvironment::default();
+    test_env.run_jj_in(".", ["git", "init", "repo"]).success();
+    let work_dir = test_env.work_dir("repo");
+
+    work_dir.write_file("file1", "");
+    work_dir.run_jj(["describe", "-mfile1"]).success();
+    work_dir.write_file("file2", "");
+    work_dir.run_jj(["describe", "-mfile2"]).success();
+
+    insta::assert_snapshot!(work_dir.run_jj(["evolog", "--summary"]), @r"
+    @  qpvuntsm test.user@example.com 2001-02-03 08:05:09 e1869e5d
+    │  file2
+    │  -- operation 043c31d6dd84 (2001-02-03 08:05:09) describe commit 32cabcfa05c604a36074d74ae59964e4e5eb18e9
+    ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:09 32cabcfa
+    │  file1
+    │  -- operation baef907e5b55 (2001-02-03 08:05:09) snapshot working copy
+    │  A file2
+    ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:08 cb5ebdc6
+    │  file1
+    │  -- operation c4cf439c43a8 (2001-02-03 08:05:08) describe commit 093c3c9624b6cfe22b310586f5638792aa80e6d7
+    ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:08 093c3c96
+    │  (no description set)
+    │  -- operation f41b80dc73b6 (2001-02-03 08:05:08) snapshot working copy
+    │  A file1
+    ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:07 e8849ae1
+       (empty) (no description set)
+       -- operation 8f47435a3990 (2001-02-03 08:05:07) add workspace 'default'
+    [EOF]
+    ");
+
+    // Truncate up to the last "describe -mfile2" operation
+    work_dir.run_jj(["op", "abandon", "..@-"]).success();
+
+    // Unreachable predecessors are omitted, therefore the bottom commit shows
+    // diffs from the empty tree.
+    insta::assert_snapshot!(work_dir.run_jj(["evolog", "--summary"]), @r"
+    @  qpvuntsm test.user@example.com 2001-02-03 08:05:09 e1869e5d
+    │  file2
+    │  -- operation ab2192a635be (2001-02-03 08:05:09) describe commit 32cabcfa05c604a36074d74ae59964e4e5eb18e9
+    ○  qpvuntsm hidden test.user@example.com 2001-02-03 08:05:09 32cabcfa
+       file1
+       A file1
+       A file2
     [EOF]
     ");
 }

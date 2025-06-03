@@ -39,6 +39,7 @@ use jj_lib::merged_tree::TreeDiffStreamImpl;
 use jj_lib::repo::Repo as _;
 use jj_lib::repo_path::RepoPath;
 use jj_lib::repo_path::RepoPathBuf;
+use jj_lib::tree_builder::TreeBuilder;
 use pollster::FutureExt as _;
 use pretty_assertions::assert_eq;
 use testutils::create_single_tree;
@@ -68,6 +69,7 @@ fn diff_stream_equals_iter(tree1: &MergedTree, tree2: &MergedTree, matcher: &dyn
         .map(|diff| (diff.path, diff.values.unwrap()))
         .collect();
     let max_concurrent_reads = 10;
+    tree1.store().clear_caches();
     let stream_diff: Vec<_> =
         TreeDiffStreamImpl::new(trees1, trees2, matcher, max_concurrent_reads)
             .map(|diff| (diff.path, diff.values.unwrap()))
@@ -82,7 +84,7 @@ fn test_from_legacy_tree() {
     let repo = &test_repo.repo;
     let store = repo.store();
 
-    let mut tree_builder = store.tree_builder(repo.store().empty_tree_id().clone());
+    let mut tree_builder = TreeBuilder::new(store.clone(), repo.store().empty_tree_id().clone());
 
     // file1: regular file without conflicts
     let file1_path = repo_path("no_conflict");
@@ -396,10 +398,12 @@ fn test_path_value_and_entries() {
         ),
     );
     // Get file inside file/dir conflict
-    // There is a conflict in the parent directory, but this file is still resolved
+    // There is a conflict in the parent directory, so it is considered to not be a
+    // directory in the merged tree, making the file hidden until the directory
+    // conflict has been resolved.
     assert_eq!(
         merged_tree.path_value(file_dir_conflict_sub_path).unwrap(),
-        Merge::resolved(tree3.path_value(file_dir_conflict_sub_path).unwrap()),
+        Merge::absent(),
     );
 
     // Test entries()
@@ -1238,17 +1242,17 @@ fn test_diff_dir_file() {
                 (Merge::absent(), right_value(&path4.join(file))),
             ),
             // path5: directory1 -> file1+(file2-absent)
+            (path5.to_owned(), (Merge::absent(), right_value(path5))),
             (
                 path5.join(file),
                 (left_value(&path5.join(file)), Merge::absent()),
             ),
-            (path5.to_owned(), (Merge::absent(), right_value(path5))),
             // path6: directory1 -> file1+(directory1-absent)
+            (path6.to_owned(), (Merge::absent(), right_value(path6))),
             (
                 path6.join(file),
                 (left_value(&path6.join(file)), Merge::absent()),
             ),
-            (path6.to_owned(), (Merge::absent(), right_value(path6))),
         ];
         assert_eq!(actual_diff, expected_diff);
         diff_stream_equals_iter(&left_merged, &right_merged, &EverythingMatcher);
@@ -1263,25 +1267,25 @@ fn test_diff_dir_file() {
             .block_on();
         let expected_diff = vec![
             // path1: file1 -> directory1
+            (path1.to_owned(), (Merge::absent(), left_value(path1))),
             (
                 path1.join(file),
                 (right_value(&path1.join(file)), Merge::absent()),
             ),
-            (path1.to_owned(), (Merge::absent(), left_value(path1))),
             // path2: file1 -> directory1+(directory2-absent)
+            (path2.to_owned(), (Merge::absent(), left_value(path2))),
             (
                 path2.join(file),
                 (right_value(&path2.join(file)), Merge::absent()),
             ),
-            (path2.to_owned(), (Merge::absent(), left_value(path2))),
             // path3: file1 -> directory1+(file1-absent)
             (path3.to_owned(), (right_value(path3), left_value(path3))),
             // path4: file1+(file2-file3) -> directory1+(directory2-directory3)
+            (path4.to_owned(), (Merge::absent(), left_value(path4))),
             (
                 path4.join(file),
                 (right_value(&path4.join(file)), Merge::absent()),
             ),
-            (path4.to_owned(), (Merge::absent(), left_value(path4))),
             // path5: directory1 -> file1+(file2-absent)
             (path5.to_owned(), (right_value(path5), Merge::absent())),
             (

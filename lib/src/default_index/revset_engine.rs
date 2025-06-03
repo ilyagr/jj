@@ -32,6 +32,9 @@ use futures::StreamExt as _;
 use itertools::Itertools as _;
 use pollster::FutureExt as _;
 
+use super::composite::AsCompositeIndex;
+use super::composite::CompositeIndex;
+use super::entry::IndexPosition;
 use super::rev_walk::EagerRevWalk;
 use super::rev_walk::PeekableRevWalk;
 use super::rev_walk::RevWalk;
@@ -44,9 +47,6 @@ use crate::backend::MillisSinceEpoch;
 use crate::commit::Commit;
 use crate::conflicts::materialize_tree_value;
 use crate::conflicts::MaterializedTreeValue;
-use crate::default_index::AsCompositeIndex;
-use crate::default_index::CompositeIndex;
-use crate::default_index::IndexPosition;
 use crate::diff::Diff;
 use crate::diff::DiffHunkKind;
 use crate::files;
@@ -119,7 +119,7 @@ impl<T: InternalRevset + ?Sized> InternalRevset for Box<T> {
     }
 }
 
-pub struct RevsetImpl<I> {
+pub(super) struct RevsetImpl<I> {
     inner: Box<dyn InternalRevset>,
     index: I,
 }
@@ -765,7 +765,7 @@ where
     }
 }
 
-pub fn evaluate<I: AsCompositeIndex + Clone>(
+pub(super) fn evaluate<I: AsCompositeIndex + Clone>(
     expression: &ResolvedExpression,
     store: &Arc<Store>,
     index: I,
@@ -1321,8 +1321,9 @@ async fn has_diff_from_parent(
     }
 
     // Conflict resolution is expensive, try that only for matched files.
-    let from_tree = rewrite::merge_commit_trees_no_resolve_without_repo(store, &index, &parents)?;
-    let to_tree = commit.tree()?;
+    let from_tree =
+        rewrite::merge_commit_trees_no_resolve_without_repo(store, &index, &parents).await?;
+    let to_tree = commit.tree_async().await?;
     // TODO: handle copy tracking
     let mut tree_diff = from_tree.diff_stream(&to_tree, matcher);
     // TODO: Resolve values concurrently
@@ -1346,8 +1347,9 @@ async fn matches_diff_from_parent(
 ) -> BackendResult<bool> {
     let parents: Vec<_> = commit.parents().try_collect()?;
     // Conflict resolution is expensive, try that only for matched files.
-    let from_tree = rewrite::merge_commit_trees_no_resolve_without_repo(store, &index, &parents)?;
-    let to_tree = commit.tree()?;
+    let from_tree =
+        rewrite::merge_commit_trees_no_resolve_without_repo(store, &index, &parents).await?;
+    let to_tree = commit.tree_async().await?;
     // TODO: handle copy tracking
     let mut tree_diff = from_tree.diff_stream(&to_tree, files_matcher);
     // TODO: Resolve values concurrently
@@ -1435,7 +1437,13 @@ mod tests {
     use indoc::indoc;
 
     use super::*;
+    use crate::default_index::readonly::FieldLengths;
     use crate::default_index::DefaultMutableIndex;
+
+    const TEST_FIELD_LENGTHS: FieldLengths = FieldLengths {
+        commit_id: 3,
+        change_id: 16,
+    };
 
     /// Generator of unique 16-byte ChangeId excluding root id
     fn change_id_generator() -> impl FnMut() -> ChangeId {
@@ -1450,7 +1458,7 @@ mod tests {
     #[test]
     fn test_revset_combinator() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         let id_0 = CommitId::from_hex("000000");
         let id_1 = CommitId::from_hex("111111");
         let id_2 = CommitId::from_hex("222222");
@@ -1565,7 +1573,7 @@ mod tests {
     #[test]
     fn test_revset_combinator_error_propagation() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         let id_0 = CommitId::from_hex("000000");
         let id_1 = CommitId::from_hex("111111");
         let id_2 = CommitId::from_hex("222222");
@@ -1699,7 +1707,7 @@ mod tests {
     #[test]
     fn test_positions_accumulator() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         let id_0 = CommitId::from_hex("000000");
         let id_1 = CommitId::from_hex("111111");
         let id_2 = CommitId::from_hex("222222");

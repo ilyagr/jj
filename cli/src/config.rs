@@ -21,6 +21,7 @@ use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::LazyLock;
 
 use etcetera::BaseStrategy as _;
 use itertools::Itertools as _;
@@ -741,6 +742,16 @@ pub fn default_config_migrations() -> Vec<ConfigMigrationRule> {
                 Ok(format!(":{value}").into())
             },
         ),
+        // TODO: Delete in jj 0.37+
+        ConfigMigrationRule::rename_update_value(
+            "git.push-bookmark-prefix",
+            "templates.git_push_bookmark",
+            |old_value| {
+                let value = old_value.as_str().ok_or("expected a string")?;
+                let escaped = dsl_util::escape_string(value);
+                Ok(format!(r#""{escaped}" ++ change_id.short()"#).into())
+            },
+        ),
     ]
 }
 
@@ -839,8 +850,7 @@ impl fmt::Display for CommandNameAndArgs {
 }
 
 // Not interested in $UPPER_CASE_VARIABLES
-static VARIABLE_REGEX: once_cell::sync::Lazy<Regex> =
-    once_cell::sync::Lazy::new(|| Regex::new(r"\$([a-z0-9_]+)\b").unwrap());
+static VARIABLE_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\$([a-z0-9_]+)\b").unwrap());
 
 pub fn interpolate_variables<V: AsRef<str>>(
     args: &[String],

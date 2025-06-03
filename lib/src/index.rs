@@ -109,10 +109,9 @@ pub trait Index: Send + Sync {
 
     /// Heads among all indexed commits at the associated operation.
     ///
-    /// Suppose the index contains all the historical heads and their
-    /// ancestors/predecessors reachable from the associated operation, this
-    /// function returns the heads that should be preserved on garbage
-    /// collection.
+    /// Suppose the index contains all the historical heads and their ancestors
+    /// reachable from the associated operation, this function returns the heads
+    /// that should be preserved on garbage collection.
     ///
     /// The iteration order is unspecified.
     fn all_heads_for_gc(
@@ -129,11 +128,11 @@ pub trait Index: Send + Sync {
 
     /// Resolves the revset `expression` against the index and corresponding
     /// `store`.
-    fn evaluate_revset<'index>(
-        &'index self,
+    fn evaluate_revset(
+        &self,
         expression: &ResolvedExpression,
         store: &Arc<Store>,
-    ) -> Result<Box<dyn Revset + 'index>, RevsetEvaluationError>;
+    ) -> Result<Box<dyn Revset + '_>, RevsetEvaluationError>;
 }
 
 #[expect(missing_docs)]

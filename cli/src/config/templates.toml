@@ -43,6 +43,8 @@ file_list = '''
 path.display() ++ "\n"
 '''
 
+git_push_bookmark = '"push-" ++ change_id.short()'
+
 log = 'builtin_log_compact'
 op_log = 'builtin_op_log_compact'
 show = 'builtin_log_detailed'
@@ -57,6 +59,10 @@ concat(
 
 tag_list = '''
 label("tag", name) ++ format_ref_targets(self) ++ "\n"
+'''
+
+workspace_list = '''
+name ++ ": " ++ format_commit_summary_with_refs(target, target.bookmarks()) ++ "\n"
 '''
 
 op_summary = '''

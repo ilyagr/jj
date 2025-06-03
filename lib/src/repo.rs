@@ -58,7 +58,6 @@ use crate::index::ReadonlyIndex;
 use crate::merge::trivial_merge;
 use crate::merge::MergeBuilder;
 use crate::object_id::HexPrefix;
-use crate::object_id::ObjectId as _;
 use crate::object_id::PrefixResolution;
 use crate::op_heads_store;
 use crate::op_heads_store::OpHeadResolutionError;
@@ -125,7 +124,7 @@ pub trait Repo {
 
     fn resolve_change_id(&self, change_id: &ChangeId) -> Option<Vec<CommitId>> {
         // Replace this if we added more efficient lookup method.
-        let prefix = HexPrefix::from_bytes(change_id.as_bytes());
+        let prefix = HexPrefix::from_id(change_id);
         match self.resolve_change_id_prefix(&prefix) {
             PrefixResolution::NoMatch => None,
             PrefixResolution::SingleMatch(entries) => Some(entries),
@@ -1415,18 +1414,33 @@ impl MutableRepo {
     /// The content of those descendants will remain untouched.
     /// Returns the number of reparented descendants.
     pub fn reparent_descendants(&mut self) -> BackendResult<usize> {
-        let roots = self.parent_mapping.keys().cloned().collect_vec();
         let mut num_reparented = 0;
+        self.reparent_descendants_with_progress(|_, _| {
+            num_reparented += 1;
+        })?;
+        Ok(num_reparented)
+    }
+
+    /// Reparent descendants, and call the provided function for each moved
+    /// commit
+    ///
+    /// The function takes the old commit and the reparented commit.
+    pub fn reparent_descendants_with_progress(
+        &mut self,
+        mut progress: impl FnMut(Commit, Commit),
+    ) -> BackendResult<()> {
+        let roots = self.parent_mapping.keys().cloned().collect_vec();
         self.transform_descendants(roots, |rewriter| {
             if rewriter.parents_changed() {
+                let old_commit = rewriter.old_commit().clone();
                 let builder = rewriter.reparent();
-                builder.write()?;
-                num_reparented += 1;
+                let reparented_commit = builder.write()?;
+                progress(old_commit, reparented_commit);
             }
             Ok(())
         })?;
         self.parent_mapping.clear();
-        Ok(num_reparented)
+        Ok(())
     }
 
     pub fn set_wc_commit(

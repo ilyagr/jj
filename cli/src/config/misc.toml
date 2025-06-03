@@ -4,6 +4,8 @@
 amend = ["squash"]
 b = ["bookmark"]
 ci = ["commit"]
+desc = ["describe"]
+st = ["status"]
 
 [diff.color-words]
 conflict = "materialize"
@@ -15,13 +17,12 @@ context = 3
 
 [git]
 private-commits = "none()"
-push-bookmark-prefix = "push-"
 push-new-bookmarks = false
 sign-on-push = false
 track-default-bookmark-on-clone = true
 
 [ui]
-always-allow-large-revsets = false
+always-allow-large-revsets = true
 color = "auto"
 diff-formatter = ":color-words"
 diff-instructions = true

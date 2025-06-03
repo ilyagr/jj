@@ -27,18 +27,15 @@ mod mutable;
 mod readonly;
 mod rev_walk;
 mod rev_walk_queue;
-pub mod revset_engine;
+mod revset_engine;
 mod revset_graph_iterator;
 mod store;
 
-pub use self::composite::AsCompositeIndex;
-pub use self::composite::CompositeIndex;
 pub use self::composite::IndexLevelStats;
 pub use self::composite::IndexStats;
-pub use self::entry::IndexEntry;
-pub use self::entry::IndexPosition;
 pub use self::mutable::DefaultMutableIndex;
 pub use self::readonly::DefaultReadonlyIndex;
+pub use self::readonly::DefaultReadonlyIndexRevset;
 pub use self::readonly::ReadonlyIndexLoadError;
 pub use self::store::DefaultIndexStore;
 pub use self::store::DefaultIndexStoreError;
@@ -58,8 +55,11 @@ mod tests {
     use smallvec::smallvec_inline;
     use test_case::test_case;
 
+    use super::composite::AsCompositeIndex as _;
+    use super::composite::CompositeIndex;
     use super::composite::DynIndexSegment;
     use super::composite::IndexSegment as _;
+    use super::entry::IndexPosition;
     use super::entry::SmallIndexPositionsVec;
     use super::mutable::MutableIndexSegment;
     use super::*;
@@ -67,11 +67,17 @@ mod tests {
     use crate::backend::CommitId;
     use crate::default_index::entry::LocalPosition;
     use crate::default_index::entry::SmallLocalPositionsVec;
+    use crate::default_index::readonly::FieldLengths;
     use crate::index::Index as _;
     use crate::object_id::HexPrefix;
-    use crate::object_id::ObjectId as _;
     use crate::object_id::PrefixResolution;
     use crate::tests::new_temp_dir;
+
+    const TEST_FIELD_LENGTHS: FieldLengths = FieldLengths {
+        // TODO: align with commit_id_generator()?
+        commit_id: 3,
+        change_id: 16,
+    };
 
     /// Generator of unique 16-byte CommitId excluding root id
     fn commit_id_generator() -> impl FnMut() -> CommitId {
@@ -89,7 +95,7 @@ mod tests {
     #[test_case(true; "file")]
     fn index_empty(on_disk: bool) {
         let temp_dir = new_temp_dir();
-        let mutable_segment = MutableIndexSegment::full(3, 16);
+        let mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
         let index_segment: Box<DynIndexSegment> = if on_disk {
             let saved_index = mutable_segment.save_in(temp_dir.path()).unwrap();
             Box::new(Arc::try_unwrap(saved_index).unwrap())
@@ -117,7 +123,7 @@ mod tests {
     fn index_root_commit(on_disk: bool) {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
         let id_0 = CommitId::from_hex("000000");
         let change_id0 = new_change_id();
         mutable_segment.add_commit_data(id_0.clone(), change_id0.clone(), &[]);
@@ -156,7 +162,7 @@ mod tests {
     #[should_panic(expected = "parent commit is not indexed")]
     fn index_missing_parent_commit() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         let id_0 = CommitId::from_hex("000000");
         let id_1 = CommitId::from_hex("111111");
         index.add_commit_data(id_1, new_change_id(), &[id_0]);
@@ -169,7 +175,7 @@ mod tests {
     fn index_multiple_commits(incremental: bool, on_disk: bool) {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 | 3
@@ -287,7 +293,7 @@ mod tests {
     fn index_many_parents(on_disk: bool) {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
         //     6
         //    /|\
         //   / | \
@@ -351,7 +357,7 @@ mod tests {
     fn resolve_commit_id_prefix() {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
 
         // Create some commits with different various common prefixes.
         let id_0 = CommitId::from_hex("000000");
@@ -376,44 +382,44 @@ mod tests {
 
         // Can find commits given the full hex number
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new(&id_0.hex()).unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::from_id(&id_0)),
             PrefixResolution::SingleMatch(id_0)
         );
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new(&id_1.hex()).unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::from_id(&id_1)),
             PrefixResolution::SingleMatch(id_1)
         );
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new(&id_2.hex()).unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::from_id(&id_2)),
             PrefixResolution::SingleMatch(id_2)
         );
         // Test nonexistent commits
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("ffffff").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("ffffff").unwrap()),
             PrefixResolution::NoMatch
         );
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("000001").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("000001").unwrap()),
             PrefixResolution::NoMatch
         );
         // Test ambiguous prefix
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("0").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("0").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
         // Test a globally unique prefix in initial part
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("009").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("009").unwrap()),
             PrefixResolution::SingleMatch(CommitId::from_hex("009999"))
         );
         // Test a globally unique prefix in incremental part
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("03").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("03").unwrap()),
             PrefixResolution::SingleMatch(CommitId::from_hex("033333"))
         );
         // Test a locally unique but globally ambiguous prefix
         assert_eq!(
-            index.resolve_commit_id_prefix(&HexPrefix::new("0554").unwrap()),
+            index.resolve_commit_id_prefix(&HexPrefix::try_from_hex("0554").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
     }
@@ -423,7 +429,7 @@ mod tests {
     fn neighbor_commit_ids() {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
 
         // Create some commits with different various common prefixes.
         let id_0 = CommitId::from_hex("000001");
@@ -551,7 +557,7 @@ mod tests {
     fn shortest_unique_commit_id_prefix() {
         let temp_dir = new_temp_dir();
         let mut new_change_id = change_id_generator();
-        let mut mutable_segment = MutableIndexSegment::full(3, 16);
+        let mut mutable_segment = MutableIndexSegment::full(TEST_FIELD_LENGTHS);
 
         // Create some commits with different various common prefixes.
         let id_0 = CommitId::from_hex("000001");
@@ -620,7 +626,10 @@ mod tests {
         let id_5 = ChangeId::from_hex("05555333");
 
         // Create some commits with different various common prefixes.
-        let mut mutable_segment = MutableIndexSegment::full(16, 4);
+        let mut mutable_segment = MutableIndexSegment::full(FieldLengths {
+            commit_id: 16,
+            change_id: 4,
+        });
         mutable_segment.add_commit_data(new_commit_id(), id_0.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_1.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_2.clone(), &[]);
@@ -640,63 +649,63 @@ mod tests {
 
         // Local lookup in readonly index with the full hex digits
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new(&id_0.hex()).unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::from_id(&id_0)),
             PrefixResolution::SingleMatch((id_0.clone(), local_positions_vec(&[0])))
         );
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new(&id_1.hex()).unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::from_id(&id_1)),
             PrefixResolution::SingleMatch((id_1.clone(), local_positions_vec(&[1, 3])))
         );
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new(&id_2.hex()).unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::from_id(&id_2)),
             PrefixResolution::SingleMatch((id_2.clone(), local_positions_vec(&[2, 4, 5])))
         );
 
         // Local lookup in mutable index with the full hex digits
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new(&id_1.hex()).unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::from_id(&id_1)),
             PrefixResolution::SingleMatch((id_1.clone(), local_positions_vec(&[3])))
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new(&id_3.hex()).unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::from_id(&id_3)),
             PrefixResolution::SingleMatch((id_3.clone(), local_positions_vec(&[0, 1])))
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new(&id_4.hex()).unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::from_id(&id_4)),
             PrefixResolution::SingleMatch((id_4.clone(), local_positions_vec(&[2])))
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new(&id_5.hex()).unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::from_id(&id_5)),
             PrefixResolution::SingleMatch((id_5.clone(), local_positions_vec(&[4])))
         );
 
         // Local lookup with locally unknown prefix
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new("0555").unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::try_from_hex("0555").unwrap()),
             PrefixResolution::NoMatch
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new("000").unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::try_from_hex("000").unwrap()),
             PrefixResolution::NoMatch
         );
 
         // Local lookup with locally unique prefix
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new("0554").unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::try_from_hex("0554").unwrap()),
             PrefixResolution::SingleMatch((id_2.clone(), local_positions_vec(&[2, 4, 5])))
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new("0554").unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::try_from_hex("0554").unwrap()),
             PrefixResolution::SingleMatch((id_3.clone(), local_positions_vec(&[0, 1])))
         );
 
         // Local lookup with locally ambiguous prefix
         assert_eq!(
-            initial_file.resolve_change_id_prefix(&HexPrefix::new("00").unwrap()),
+            initial_file.resolve_change_id_prefix(&HexPrefix::try_from_hex("00").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
         assert_eq!(
-            mutable_segment.resolve_change_id_prefix(&HexPrefix::new("05555").unwrap()),
+            mutable_segment.resolve_change_id_prefix(&HexPrefix::try_from_hex("05555").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
 
@@ -704,69 +713,69 @@ mod tests {
 
         // Global lookup with the full hex digits
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_0.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_0)),
             PrefixResolution::SingleMatch((id_0.clone(), index_positions_vec(&[0])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_1.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_1)),
             PrefixResolution::SingleMatch((id_1.clone(), index_positions_vec(&[1, 3, 9])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_2.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_2)),
             PrefixResolution::SingleMatch((id_2.clone(), index_positions_vec(&[2, 4, 5])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_3.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_3)),
             PrefixResolution::SingleMatch((id_3.clone(), index_positions_vec(&[6, 7])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_4.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_4)),
             PrefixResolution::SingleMatch((id_4.clone(), index_positions_vec(&[8])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new(&id_5.hex()).unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::from_id(&id_5)),
             PrefixResolution::SingleMatch((id_5.clone(), index_positions_vec(&[10])))
         );
 
         // Global lookup with unknown prefix
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("ffffffff").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("ffffffff").unwrap()),
             PrefixResolution::NoMatch
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("00000002").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("00000002").unwrap()),
             PrefixResolution::NoMatch
         );
 
         // Global lookup with globally unique prefix
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("000").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("000").unwrap()),
             PrefixResolution::SingleMatch((id_0.clone(), index_positions_vec(&[0])))
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("055553").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("055553").unwrap()),
             PrefixResolution::SingleMatch((id_5.clone(), index_positions_vec(&[10])))
         );
 
         // Global lookup with globally unique prefix stored in both parts
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("009").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("009").unwrap()),
             PrefixResolution::SingleMatch((id_1.clone(), index_positions_vec(&[1, 3, 9])))
         );
 
         // Global lookup with locally ambiguous prefix
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("00").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("00").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("05555").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("05555").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
 
         // Global lookup with locally unique but globally ambiguous prefix
         assert_eq!(
-            index.resolve_change_id_prefix(&HexPrefix::new("0554").unwrap()),
+            index.resolve_change_id_prefix(&HexPrefix::try_from_hex("0554").unwrap()),
             PrefixResolution::AmbiguousMatch
         );
     }
@@ -784,7 +793,10 @@ mod tests {
         let id_5 = ChangeId::from_hex("05555333");
 
         // Create some commits with different various common prefixes.
-        let mut mutable_segment = MutableIndexSegment::full(16, 4);
+        let mut mutable_segment = MutableIndexSegment::full(FieldLengths {
+            commit_id: 16,
+            change_id: 4,
+        });
         mutable_segment.add_commit_data(new_commit_id(), id_0.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_1.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_2.clone(), &[]);
@@ -930,7 +942,10 @@ mod tests {
         let id_5 = ChangeId::from_hex("05555333");
 
         // Create some commits with different various common prefixes.
-        let mut mutable_segment = MutableIndexSegment::full(16, 4);
+        let mut mutable_segment = MutableIndexSegment::full(FieldLengths {
+            commit_id: 16,
+            change_id: 4,
+        });
         mutable_segment.add_commit_data(new_commit_id(), id_0.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_1.clone(), &[]);
         mutable_segment.add_commit_data(new_commit_id(), id_2.clone(), &[]);
@@ -980,7 +995,7 @@ mod tests {
     #[test]
     fn test_is_ancestor() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 | 3
@@ -1017,7 +1032,7 @@ mod tests {
     #[test]
     fn test_common_ancestors() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 |
@@ -1111,7 +1126,7 @@ mod tests {
     #[test]
     fn test_common_ancestors_criss_cross() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 3 4
         // |X|
         // 1 2
@@ -1136,7 +1151,7 @@ mod tests {
     #[test]
     fn test_common_ancestors_merge_with_ancestor() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 4   5
         // |\ /|
         // 1 2 3
@@ -1163,7 +1178,7 @@ mod tests {
     #[test]
     fn test_heads() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 | 3
@@ -1237,7 +1252,7 @@ mod tests {
     #[test]
     fn test_heads_range_with_filter() {
         let mut new_change_id = change_id_generator();
-        let mut index = DefaultMutableIndex::full(3, 16);
+        let mut index = DefaultMutableIndex::full(TEST_FIELD_LENGTHS);
         // 5
         // |\
         // 4 | 3

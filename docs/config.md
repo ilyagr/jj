@@ -372,6 +372,12 @@ diff-args = ["--color=always", "$left", "$right"]
 - `$left` and `$right` are replaced with the paths to the left and right
   directories to diff respectively.
 
+- If `diff-args` is not specified, `["$left", "$right"]` will be used by default.
+
+- If `diff-args = []`, `jj` will refuse to use this tool for diff formatting.
+  This is a way to explicitly state that a certain tool (e.g. `mergiraf`) does
+  not work for viewing diffs.
+
 By default `jj` will invoke external tools with a directory containing the left
 and right sides.  The `diff-invocation-mode` config can change this to file by file
 invocations as follows:
@@ -679,24 +685,6 @@ show-cryptographic-signatures = true
 '''
 ```
 
-## Allow "large" revsets by default
-
-Certain commands (such as `jj rebase`) can take multiple revset arguments, but
-default to requiring each of those revsets to expand to a *single* revision.
-This restriction can be overridden by prefixing a revset that the user wants to
-be able to expand to more than one revision with the [`all:`
-modifier](revsets.md#the-all-modifier).
-
-Another way you can override this check is by setting
-`ui.always-allow-large-revsets` to `true`. Then, `jj` will allow every one of
-the revset arguments of such commands to expand to any number of revisions.
-
-```toml
-[ui]
-# Assume `all:` prefix before revsets whenever it would make a difference
-always-allow-large-revsets = true
-```
-
 ## Pager
 
 The default pager is can be set via `ui.pager` or the `PAGER` environment
@@ -945,6 +933,8 @@ edit-args = ["--newtab", "$left", "$right"]
 
 - If no `edit-args` are specified, `["$left", "$right"]` are set by default.
 
+- If `edit-args = []`, `jj` will refuse to use this tool for diff editing. This is a way to explicitly state that a certain tool (e.g. `mergiraf`) does not work for diff editing.
+
 Finally, `ui.diff-editor` can be a list that specifies a command and its arguments.
 
 Some examples:
@@ -1136,6 +1126,10 @@ merge-tool-edits-conflict-markers = true    # See below for an explanation
   should be used for the file. This can be useful if the merge tool parses
   and/or generates conflict markers. Usually, `jj` uses conflict markers of
   length 7, but they can be longer if necessary to make parsing unambiguous.
+
+Unlike `diff-args` or `edit-args`, there is no default value for `merge-args`.
+If `merge-args` are not specified, the tool cannot be used for conflict
+resolution.
 
 ### Editing conflict markers with a tool or a text editor
 
@@ -1499,16 +1493,19 @@ abandon-unreachable-commits = false
 
 [reachable]: https://git-scm.com/docs/gitglossary/#Documentation/gitglossary.txt-aiddefreachableareachable
 
-### Prefix for generated bookmarks on push
+### Generated bookmark names on push
 
 `jj git push --change` generates bookmark names with a prefix of "push-" by
-default. You can pick a different prefix by setting `git.push-bookmark-prefix`. For
-example:
+default. You can pick a different prefix and formatting by setting the
+`templates.git_push_bookmark` template. For example:
 
 ```toml
-[git]
-push-bookmark-prefix = "martinvonz/push-"
+[templates]
+git_push_bookmark = '"martinvonz/push-" ++ change_id.short()'
 ```
+
+This template should include expressions like `change_id` to generate unique and
+stable bookmark.
 
 ### Set of private commits
 
@@ -1603,6 +1600,39 @@ raw integer literal, the value is interpreted as if it were specified in bytes.
 Files that already exist in the working copy are not subject to this limit.
 
 Setting this value to zero will disable the limit entirely.
+
+## Working copy settings
+
+### EOL conversion settings
+
+This settings serves the same purpose as the [`core.autocrlf`][git-autocrlf] git
+config.
+
+The line endings conversion won't be applied to files detected as binary files
+via a heuristics[^1] regardless of the settings. This is similar to git.
+
+```toml
+[working-copy]
+# No EOL conversion. Similar to core.autocrlf = false.
+eol-conversion = "none"
+# Apply CRLF to LF EOL conversion when we check files in the backend store from
+# the local file system but not apply EOL conversion when we check out the code
+# from the backend store to the local file system. Similar to core.autocrlf =
+# input.
+eol-conversion = "input"
+# Setting this to "input-output" if you want to have CRLF line endings in your
+# working directory and the repository has LF line endings. Similar to
+# core.autocrlf = true.
+eol-conversion = "input-output"
+```
+
+[git-autocrlf]: https://git-scm.com/book/en/v2/Customizing-Git-Git-Configuration#_core_autocrlf
+[^1]: To detect if a file is binary, Jujutsu currently checks if there is NULL
+      byte in the file which is different from the algorithm of
+      [`gitoxide`][gitoxide-is-binary] or [`git`][git-is-binary]. Jujutsu
+      doesn't plan to align the binary detection logic with git.
+[gitoxide-is-binary]: https://github.com/GitoxideLabs/gitoxide/blob/073487b38ed40bcd7eb45dc110ae1ce84f9275a9/gix-filter/src/eol/utils.rs#L98-L100
+[git-is-binary]: https://github.com/git/git/blob/f1ca98f609f9a730b9accf24e5558a10a0b41b6c/convert.c#L94-L103
 
 ## Ways to specify `jj` config: details
 

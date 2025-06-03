@@ -129,7 +129,7 @@ To get started, see the tutorial [`jj help -k tutorial`].
 * `bookmark` — Manage bookmarks [default alias: b]
 * `commit` — Update the description and create a new change on top
 * `config` — Manage config options
-* `describe` — Update the change description or other metadata
+* `describe` — Update the change description or other metadata [default alias: desc]
 * `diff` — Compare file contents between two revisions
 * `diffedit` — Touch up the content changes in a revision with a diff editor
 * `duplicate` — Create new changes with the same content as existing ones
@@ -157,7 +157,7 @@ To get started, see the tutorial [`jj help -k tutorial`].
 * `sparse` — Manage which paths from the working-copy commit are present in the working copy
 * `split` — Split a revision in two
 * `squash` — Move changes from a revision into another revision
-* `status` — Show high-level repo status
+* `status` — Show high-level repo status [default alias: st]
 * `tag` — Manage tags
 * `undo` — Undo an operation (shortcut for `jj op undo`)
 * `unsign` — Drop a cryptographic signature
@@ -711,13 +711,11 @@ Update a config file to unset the given option
 
 ## `jj describe`
 
-Update the change description or other metadata
+Update the change description or other metadata [default alias: desc]
 
 Starts an editor to let you edit the description of changes. The editor will be $EDITOR, or `pico` if that's not defined (`Notepad` on Windows).
 
 **Usage:** `jj describe [OPTIONS] [REVSETS]...`
-
-**Command Alias:** `desc`
 
 ###### **Arguments:**
 
@@ -913,6 +911,15 @@ Lists the previous commits which a change has pointed to. The current commit of 
 * `-p`, `--patch` — Show patch compared to the previous version of this change
 
    If the previous version has different parents, it will be temporarily rebased to the parents of the new version, so the diff is not contaminated by unrelated changes.
+* `--diff-snapshots` — Changes the behavior of `--patch`, `--git`, etc to show diffs from rebases
+
+   Implies `--patch` if no other diff format is requested.
+
+   Normally, `jj evolog -p` shows a so-called "interdiff", temporarily rebasing the versions of a revision to the same parents, in order to omit differences in the file contents that are caused by rebases.
+
+   This option disables this behavior, and shows diffs between the contents of the different versions without modification (as snapshots).
+
+   Sometimes, `--diff-snapshots` can show fewer differences to be shown. For example, let's say the current revision is not empty and we perform `jj squash --keep-empty -r @` to make it empty. Then, `jj evolog -p --diff-snapshots` will not show any changes since the contents of the files in the current revision did not change. However, `jj evolog -p` will show a change, representing the fact that a non-empty revision became empty.
 * `-s`, `--summary` — For each path, show only whether it was modified, added, or deleted
 * `--stat` — Show a histogram of the changes
 * `--types` — For each path, show only its type before and after
@@ -1317,9 +1324,9 @@ Before the command actually moves, creates, or deletes a remote bookmark, it mak
 
    The set of private commits can be configured by the `git.private-commits` setting. The default is `none()`, meaning all commits are eligible to be pushed.
 * `-r`, `--revisions <REVSETS>` — Push bookmarks pointing to these commits (can be repeated)
-* `-c`, `--change <REVSETS>` — Push this commit by creating a bookmark based on its change ID (can be repeated)
+* `-c`, `--change <REVSETS>` — Push this commit by creating a bookmark (can be repeated)
 
-   The created bookmark will be tracked automatically. Use the `git.push-bookmark-prefix` setting to change the prefix for generated names.
+   The created bookmark will be tracked automatically. Use the `templates.git_push_bookmark` setting to customize the generated bookmark name. The default is `"push-" ++ change_id.short()`.
 * `--named <NAME=REVISION>` — Specify a new bookmark name and a revision to push under that name, e.g. '--named myfeature=@'
 
    Does not require --allow-new.
@@ -1709,7 +1716,7 @@ To discard old operation history, use `jj op abandon ..<operation ID>`. It will 
 
 To discard recent operations, use `jj op restore <operation ID>` followed by `jj op abandon <operation ID>..@-`.
 
-The abandoned operations, commits, and other unreachable objects can later be garbage collected by using `jj util gc` command.
+Previous versions of a change (or predecessors) are also discarded if they become unreachable from the operation history. The abandoned operations, commits, and other unreachable objects can later be garbage collected by using `jj util gc` command.
 
 **Usage:** `jj operation abandon <OPERATION>`
 
@@ -2040,9 +2047,8 @@ J           J
 ```
 
 Each revision passed to `-s` will become a direct child of the destination,
-so if you instead run `jj rebase -s M -s N -d O` (or
-`jj rebase -s 'all:M|N' -d O`) in the example above, then N' would instead
-be a direct child of O.
+so if you instead run `jj rebase -s M -s N -d O` (or `jj rebase -s 'M|N' -d
+O`) in the example above, then N' would instead be a direct child of O.
 
 With `--branch/-b`, the command rebases the whole "branch" containing the
 specified revision. A "branch" is the set of revisions that includes:
@@ -2531,12 +2537,17 @@ If a working-copy commit gets abandoned, it will be given a new, empty commit. T
 * `-i`, `--interactive` — Interactively choose which parts to squash
 * `--tool <NAME>` — Specify diff editor to be used (implies --interactive)
 * `-k`, `--keep-emptied` — The source revision will not be abandoned
+* `--restore-descendants` — Preserve the content (not the diff) when rebasing descendants of the source and target commits
+
+   Only the snapshots of the `--from` and the `--into` commits will be modified.
+
+   If you'd like to preserve the content of *only* the target's descendants (or *only* the source's), consider using `jj rebase -r` or `jj duplicate` before squashing.
 
 
 
 ## `jj status`
 
-Show high-level repo status
+Show high-level repo status [default alias: st]
 
 This includes:
 
@@ -2545,8 +2556,6 @@ This includes:
 [Conflicted bookmarks]: https://jj-vcs.github.io/jj/latest/bookmarks/#conflicts
 
 **Usage:** `jj status [FILESETS]...`
-
-**Command Alias:** `st`
 
 ###### **Arguments:**
 
@@ -2763,8 +2772,6 @@ Run backend-dependent garbage collection.
 
 To garbage-collect old operations and the commits/objects referenced by them, run `jj op abandon ..<some old operation>` before `jj util gc`.
 
-Previous versions of a change that are reachable via the evolution log are not garbage-collected.
-
 **Usage:** `jj util gc [OPTIONS]`
 
 ###### **Options:**
@@ -2883,7 +2890,17 @@ The workspace will not be touched on disk. It can be deleted from disk before or
 
 List workspaces
 
-**Usage:** `jj workspace list`
+**Usage:** `jj workspace list [OPTIONS]`
+
+###### **Options:**
+
+* `-T`, `--template <TEMPLATE>` — Render each workspace using the given template
+
+   All 0-argument methods of the [`WorkspaceRef` type] are available as keywords in the template expression. See [`jj help -k templates`] for more information.
+
+   [`WorkspaceRef` type]: https://jj-vcs.github.io/jj/latest/templates/#workspaceref-type
+
+   [`jj help -k templates`]: https://jj-vcs.github.io/jj/latest/templates/
 
 
 
