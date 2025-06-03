@@ -624,7 +624,7 @@ When using `--interactive` or path arguments, the selected changes stay in the c
 
 * `jj commit` doesn't have a `-r` option. It always acts on the working-copy commit (@).
 
-* `jj split` (without `-d`/`-A`/`-B`) will move bookmarks forward from the old change to the child change. `jj commit` doesn't move bookmarks forward.
+* `jj split` creates the new commit as a parent of the source commit, and doesn't move the working-copy. `jj commit` creates the new commit as a child of the working-copy, and sets the new commit as the working-copy.
 
 * `jj split` allows you to move the selected changes to a different destination with `-d`/`-A`/`-B`.
 
@@ -2896,60 +2896,6 @@ For example, if all you need is the `README.md` and the `lib/` directory, use `j
 
 Split a revision in two
 
-Starts a [diff editor] on the changes in the revision. Edit the right side
-of the diff until it has the content you want in the first commit. Once you
-close the editor, your revision will be split into two commits.
-
-[diff editor]:
-    https://docs.jj-vcs.dev/latest/config/#editing-diffs
-
-By default, the selected changes stay in the original commit, and the
-remaining changes go into a new child commit:
-
-```text
-L                 L'
-|                 |
-K (split)   =>    K" (remaining)
-|                 |
-J                 K' (selected)
-                  |
-                  J
-```
-
-With `--parallel/-p`, the two parts become sibling commits instead of
-parent and child:
-
-```text
-                  L'
-L                / \
-|               K'  |  (selected)
-K (split)  =>   |   K" (remaining)
-|                \ /
-J                 J
-```
-
-With `-o`, `-A`, or `-B`, the selected changes are extracted into a new
-commit at the specified location, while the remaining changes stay in place:
-
-```text
-M                 M'
-|                 |
-L                 L'
-|                 |
-K (split)   =>    K' (remaining, stays here)
-|                 |
-J                 J'
-                  |
-                  K" (selected, inserted before J with -B J)
-```
-
-If the change you split had a description, you will be asked to enter a
-change description for each commit. If the change did not have a
-description, the second commit will not get a description, and you will be
-asked for a description only for the first commit.
-
-Splitting an empty commit is not supported because the same effect can be
-achieved with `jj new`.
 
 **Usage:** `jj split [OPTIONS] [FILESETS]...`
 
