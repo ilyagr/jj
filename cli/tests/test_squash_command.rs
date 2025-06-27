@@ -1360,22 +1360,19 @@ fn test_squash_from_to_restore_descendants() {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
     Rebased 5 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon 6eadede0 f | (no description set)
+    Working copy  (@) now at: kpqxywon fd38d8de f | (no description set)
     Parent commit (@-)      : yostqsxw 97233b50 e | (no description set)
-    Parent commit (@-)      : mzvwutvl 5b2d6858 c | (no description set)
+    Parent commit (@-)      : mzvwutvl c367946f c | (no description set)
     [EOF]
     ");
-    // BUG! b should now be empty! This is fixed in the next commit, but I
-    // think it's worth keeping in the commit history.
+    // TODO: Add test from both b and d into a. From c into a.
     insta::assert_snapshot!(run_log(), @r"
-    @    6eadede086b1 f
+    @    fd38d8deb618 f
     ├─╮  A b
     │ │  A f
-    │ ○  5b2d685868b7 c
-    │ │  A b
+    │ ○  c367946f54e7 c
     │ │  A c
-    │ ○  904dac9cd09e b
-    │ │  D b
+    │ ○  8c5c8c76789c b (empty)
     ○ │  97233b506c11 e
     │ │  A e
     ○ │  8cbe1a629aed d
@@ -1390,6 +1387,7 @@ fn test_squash_from_to_restore_descendants() {
     let output = work_dir.run_jj(["file", "list", "-r=b"]);
     insta::assert_snapshot!(output, @r"
     a
+    b
     [EOF]
     ");
     let output = work_dir.run_jj(["file", "list", "-r=c"]);

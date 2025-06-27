@@ -1154,7 +1154,12 @@ pub fn squash_commits<'repo>(
         if source.abandon {
             repo.record_abandoned_commit(&source.commit.commit);
             abandoned_commits.push(source.commit.commit.clone());
-        } else {
+        } else if !restore_descendants
+            || !repo // This feels wrong. Might be better to explicitly rebase descendants that are also
+                // sources
+                .index()
+                .is_ancestor(destination.id(), source.commit.commit.id())
+        {
             let source_tree = source.commit.commit.tree()?;
             // Apply the reverse of the selected changes onto the source
             let new_source_tree =
