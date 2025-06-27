@@ -879,15 +879,12 @@ fn test_squash_working_copy_restore_descendants() {
     let run_log = || work_dir.run_jj(["log", "-r=::", "--summary", "-T", template]);
 
     // Verify the setup
-    insta::assert_snapshot!(run_log(), @r"
-    ○  3f45d7a3ae69 y
-    │  A y
-    @  5b4046443e64 x
-    │  A x
-    │ ○  b1e1eea2f666 b
-    ├─╯  A b
-    ○  7468364c89fc a
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    ○  3f45d7a3ae69 yA y
+    @  5b4046443e64 xA x
+    │ ○  b1e1eea2f666 bA b
+    ├─╯
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -924,15 +921,13 @@ fn test_squash_working_copy_restore_descendants() {
     Parent commit (@-)      : qpvuntsm 1c6a069e a x | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
+    insta::assert_snapshot!(run_log(), @"
     @  7ec5499d9141 (empty)
-    │ ○  ddfef0b279f8 y
-    ├─╯  A y
-    │ ○  640ba5e85507 b
-    ├─╯  A b
-    │    D x
-    ○  1c6a069ec7e3 a x
-    │  A a
+    │ ○  ddfef0b279f8 yA y
+    ├─╯
+    │ ○  640ba5e85507 bA b
+    ├─╯  D x
+    ○  1c6a069ec7e3 a xA a
     │  A x
     ◆  000000000000 (empty)
     [EOF]
@@ -1010,19 +1005,15 @@ fn test_squash_from_to_restore_descendants() {
 
     // ========== Part 1 =========
     // Verify the setup
-    insta::assert_snapshot!(run_log(), @r"
-    @    42acd0537c88 f
-    ├─╮  A f
-    │ ○  4fb9706b0f47 c
-    │ │  A c
-    │ ○  b1e1eea2f666 b
-    │ │  A b
-    ○ │  b4e3197108ba e
-    │ │  A e
-    ○ │  d707102f499f d
-    ├─╯  A d
-    ○  7468364c89fc a
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    42acd0537c88 fA f
+    ├─╮
+    │ ○  4fb9706b0f47 cA c
+    │ ○  b1e1eea2f666 bA b
+    ○ │  b4e3197108ba eA e
+    ○ │  d707102f499f dA d
+    ├─╯
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1042,18 +1033,14 @@ fn test_squash_from_to_restore_descendants() {
     Parent commit (@-)      : mzvwutvl 6cd5d5c1 c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    e462100ae7c3 f
-    ├─╮  A f
-    │ ○  6cd5d5c1daf7 c
-    │ │  A c
-    ○ │  6944fd03dc5d e
-    │ │  A e
-    ○ │  1befcf027d1b d
-    ├─╯  A b
-    │    A d
-    ○  7468364c89fc a b
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    e462100ae7c3 fA f
+    ├─╮
+    │ ○  6cd5d5c1daf7 cA c
+    ○ │  6944fd03dc5d eA e
+    ○ │  1befcf027d1b dA b
+    ├─╯  A d
+    ○  7468364c89fc a bA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1105,20 +1092,16 @@ fn test_squash_from_to_restore_descendants() {
     //  `d`` becomes the same as in the above example,
     // but `c` does not lose file `b` and `e` still does not contain file `b`
     // regardless of what happened to their parents.
-    insta::assert_snapshot!(run_log(), @r"
-    @    1d64ccbf4608 f
-    ├─╮  A f
-    │ ○  4e6702ae494c c
-    │ │  A b
+    insta::assert_snapshot!(run_log(), @"
+    @    1d64ccbf4608 fA f
+    ├─╮
+    │ ○  4e6702ae494c cA b
     │ │  A c
-    ○ │  cb90d75271b4 e
-    │ │  D b
+    ○ │  cb90d75271b4 eD b
     │ │  A e
-    ○ │  853ea07451aa d
-    ├─╯  A b
-    │    A d
-    ○  7468364c89fc a b
-    │  A a
+    ○ │  853ea07451aa dA b
+    ├─╯  A d
+    ○  7468364c89fc a bA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1177,21 +1160,17 @@ fn test_squash_from_to_restore_descendants() {
     //  `d`` becomes the same as in the above example,
     // but `c` does not lose file `b` and `e` still does not contain file `b`
     // regardless of what happened to their parents.
-    insta::assert_snapshot!(run_log(), @r"
-    @    3c13920f1e9a f
-    ├─╮  A f
-    │ ○  d323deaa04c2 c
-    │ │  A b
+    insta::assert_snapshot!(run_log(), @"
+    @    3c13920f1e9a fA f
+    ├─╮
+    │ ○  d323deaa04c2 cA b
     │ │  A c
     │ ○  a55451e8808f b (empty)
-    ○ │  aa73012df9cd e
-    │ │  D b
+    ○ │  aa73012df9cd eD b
     │ │  A e
-    ○ │  d00e73142243 d
-    ├─╯  A b
-    │    A d
-    ○  7468364c89fc a
-    │  A a
+    ○ │  d00e73142243 dA b
+    ├─╯  A d
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1223,19 +1202,15 @@ fn test_squash_from_to_restore_descendants() {
     work_dir
         .run_jj(["operation", "restore", &beginning])
         .success();
-    insta::assert_snapshot!(run_log(), @r"
-    @    42acd0537c88 f
-    ├─╮  A f
-    │ ○  4fb9706b0f47 c
-    │ │  A c
-    │ ○  b1e1eea2f666 b
-    │ │  A b
-    ○ │  b4e3197108ba e
-    │ │  A e
-    ○ │  d707102f499f d
-    ├─╯  A d
-    ○  7468364c89fc a
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    42acd0537c88 fA f
+    ├─╮
+    │ ○  4fb9706b0f47 cA c
+    │ ○  b1e1eea2f666 bA b
+    ○ │  b4e3197108ba eA e
+    ○ │  d707102f499f dA d
+    ├─╯
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1266,19 +1241,15 @@ fn test_squash_from_to_restore_descendants() {
     Parent commit (@-)      : mzvwutvl 86d2ecde c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    27d75f43e860 f
-    ├─╮  A f
-    │ ○  86d2ecdec2d7 c
-    │ │  A c
-    │ ○  7c3b32b0545d b
-    │ │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    27d75f43e860 fA f
+    ├─╮
+    │ ○  86d2ecdec2d7 cA c
+    │ ○  7c3b32b0545d bA a
     │ │  A b
-    ○ │  102e61065eb2 e
-    │ │  A e
-    ○ │  7b1493a2027e d
-    ├─╯  A a
-    │    A d
+    ○ │  102e61065eb2 eA e
+    ○ │  7b1493a2027e dA a
+    ├─╯  A d
     ◆  000000000000 a (empty)
     [EOF]
     ");
@@ -1315,19 +1286,14 @@ fn test_squash_from_to_restore_descendants() {
     Parent commit (@-)      : mzvwutvl 3c5e64c8 c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    84ae48a9284a f
-    ├─╮  A b
-    │ │  A f
-    │ ○  3c5e64c855d6 c
-    │ │  A c
-    ○ │  1694571e2c54 e
-    │ │  A e
-    ○ │  3d8fac8b412a d
-    ├─╯  D b
-    │    A d
-    ○  a2fbb6bd71cf a b
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    84ae48a9284a fA b
+    ├─╮  A f
+    │ ○  3c5e64c855d6 cA c
+    ○ │  1694571e2c54 eA e
+    ○ │  3d8fac8b412a dD b
+    ├─╯  A d
+    ○  a2fbb6bd71cf a bA a
     │  A b
     ◆  000000000000 (empty)
     [EOF]
@@ -1358,19 +1324,15 @@ fn test_squash_from_to_restore_descendants() {
     work_dir
         .run_jj(["operation", "restore", &beginning])
         .success();
-    insta::assert_snapshot!(run_log(), @r"
-    @    42acd0537c88 f
-    ├─╮  A f
-    │ ○  4fb9706b0f47 c
-    │ │  A c
-    │ ○  b1e1eea2f666 b
-    │ │  A b
-    ○ │  b4e3197108ba e
-    │ │  A e
-    ○ │  d707102f499f d
-    ├─╯  A d
-    ○  7468364c89fc a
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    42acd0537c88 fA f
+    ├─╮
+    │ ○  4fb9706b0f47 cA c
+    │ ○  b1e1eea2f666 bA b
+    ○ │  b4e3197108ba eA e
+    ○ │  d707102f499f dA d
+    ├─╯
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1404,20 +1366,15 @@ fn test_squash_from_to_restore_descendants() {
     Parent commit (@-)      : kkmpptxz ee689833 b c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    0f4f8d7e07c3 f
-    ├─╮  A c
-    │ │  A f
-    │ ○  ee689833aabe b c
-    │ │  A b
+    insta::assert_snapshot!(run_log(), @"
+    @    0f4f8d7e07c3 fA c
+    ├─╮  A f
+    │ ○  ee689833aabe b cA b
     │ │  D c
-    ○ │  73b74c936c84 e
-    │ │  A e
-    ○ │  c7eae606fc21 d
-    ├─╯  D c
-    │    A d
-    ○  10f2f3e67384 a
-    │  A a
+    ○ │  73b74c936c84 eA e
+    ○ │  c7eae606fc21 dD c
+    ├─╯  A d
+    ○  10f2f3e67384 aA a
     │  A c
     ◆  000000000000 (empty)
     [EOF]
@@ -1458,19 +1415,15 @@ fn test_squash_from_to_restore_descendants() {
     Parent commit (@-)      : mzvwutvl 2214436c c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    e92b3f0fb9fe f
-    ├─╮  A f
-    │ ○  2214436c3fa7 c
-    │ │  A c
-    │ ○  a469c893f362 b
-    │ │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    e92b3f0fb9fe fA f
+    ├─╮
+    │ ○  2214436c3fa7 cA c
+    │ ○  a469c893f362 bA a
     │ │  A b
-    ○ │  78651b37e114 e
-    │ │  A e
-    ○ │  93671eb30330 d
-    ├─╯  A a
-    │    A d
+    ○ │  78651b37e114 eA e
+    ○ │  93671eb30330 dA a
+    ├─╯  A d
     ◆  000000000000 a (empty)
     [EOF]
     ");
@@ -1507,19 +1460,15 @@ fn test_squash_from_to_restore_descendants() {
     work_dir
         .run_jj(["operation", "restore", &beginning])
         .success();
-    insta::assert_snapshot!(run_log(), @r"
-    @    42acd0537c88 f
-    ├─╮  A f
-    │ ○  4fb9706b0f47 c
-    │ │  A c
-    │ ○  b1e1eea2f666 b
-    │ │  A b
-    ○ │  b4e3197108ba e
-    │ │  A e
-    ○ │  d707102f499f d
-    ├─╯  A d
-    ○  7468364c89fc a
-    │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    42acd0537c88 fA f
+    ├─╮
+    │ ○  4fb9706b0f47 cA c
+    │ ○  b1e1eea2f666 bA b
+    ○ │  b4e3197108ba eA e
+    ○ │  d707102f499f dA d
+    ├─╯
+    ○  7468364c89fc aA a
     ◆  000000000000 (empty)
     [EOF]
     ");
@@ -1555,28 +1504,21 @@ fn test_squash_from_to_restore_descendants() {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
     Rebased 5 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon f25876e1 f | (no description set)
+    Working copy  (@) now at: kpqxywon 452e8669 f | (no description set)
     Parent commit (@-)      : yostqsxw bf3abc1c e | (no description set)
-    Parent commit (@-)      : mzvwutvl 4e3db108 c | (no description set)
+    Parent commit (@-)      : mzvwutvl 6a439c6c c | (no description set)
     [EOF]
     ");
-    // WILL CHANGE NEXT COMMIT: b should now be empty, but isn't.
-    insta::assert_snapshot!(run_log(), @r"
-    @    f25876e1c27b f
-    ├─╮  A b
-    │ │  A f
-    │ ○  4e3db108b4ab c
-    │ │  A b
-    │ │  A c
-    │ ○  c8a5db5d033d b
-    │ │  D b
-    ○ │  bf3abc1c878e e
-    │ │  A e
-    ○ │  f4921ae685ee d
-    ├─╯  D b
-    │    A d
-    ○  44bbbbbb064c a
-    │  A a
+    // b is now empty
+    insta::assert_snapshot!(run_log(), @"
+    @    452e86696ab5 fA b
+    ├─╮  A f
+    │ ○  6a439c6c3e93 cA c
+    │ ○  4a3f4ad6571d b (empty)
+    ○ │  bf3abc1c878e eA e
+    ○ │  f4921ae685ee dD b
+    ├─╯  A d
+    ○  44bbbbbb064c aA a
     │  A b
     ◆  000000000000 (empty)
     [EOF]
@@ -1584,6 +1526,7 @@ fn test_squash_from_to_restore_descendants() {
     let output = work_dir.run_jj(["file", "list", "-r=b"]);
     insta::assert_snapshot!(output, @r"
     a
+    b
     [EOF]
     ");
     let output = work_dir.run_jj(["file", "list", "-r=c"]);
@@ -1602,7 +1545,8 @@ fn test_squash_from_to_restore_descendants() {
 
     // Squashing from grandchild to grandparent with `--keep-emptied` also has
     // several different behaviors we could choose from. Instead of choosing,
-    // we forbid this behavior entirely.
+    // we forbid this behavior entirely. See comment in
+    // [`jj_lib::rewrite::squash_commits`].
     work_dir
         .run_jj(["operation", "restore", &beginning])
         .success();
@@ -1615,35 +1559,11 @@ fn test_squash_from_to_restore_descendants() {
     ]);
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Rebased 5 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon e68a1aeb f | (no description set)
-    Parent commit (@-)      : yostqsxw d748f816 e | (no description set)
-    Parent commit (@-)      : mzvwutvl 4cc7a349 c | (empty) (no description set)
+    Error: Not allowed to partially squash a commit 4fb9706b0f47 into a non-immediate ancestor 7468364c89fc (immediate parent would be OK) with `--restore-descendants`
+    Hint: Full squash (without --keep-emptied, paths specifiers, etc.) is allowed. Split followed by `squash --restore-descendants` is an option, but note that the order of the split may matter.
+    Hint: The reason for this restriction is that, when squashing into an ancestor, one expects the diff of the source commit to change, but the snapshot of it to stay the same. In this situation, these two expectations contradict each other.
     [EOF]
-    ");
-    // WILL CHANGE NEXT COMMIT: This is one of several possible behaviors here,
-    // perhaps a more reasonable one, but it is not consistent with what we consider
-    // the "reasonable" in the cases above and below. So, we will forbid
-    // squashing in this case entirely in the next commit, since any choice
-    // would have confusing aspects.
-    insta::assert_snapshot!(run_log(), @r"
-    @    e68a1aeb8dc5 f
-    ├─╮  A c
-    │ │  A f
-    │ ○  4cc7a3491d5f c (empty)
-    │ ○  5e52be79326a b
-    │ │  A b
-    │ │  D c
-    ○ │  d748f816e719 e
-    │ │  A e
-    ○ │  182d71be8f76 d
-    ├─╯  D c
-    │    A d
-    ○  14d719ec8da2 a
-    │  A a
-    │  A c
-    ◆  000000000000 (empty)
-    [EOF]
+    [exit status: 1]
     ");
 
     // squash into parent with `--keep-emptied` and two sources also has several
@@ -1661,38 +1581,10 @@ fn test_squash_from_to_restore_descendants() {
     ]);
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
-    Rebased 5 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon b7a0c1f5 f | (no description set)
-    Parent commit (@-)      : yostqsxw b26366b4 e | (no description set)
-    Parent commit (@-)      : mzvwutvl ec212e80 c | (no description set)
+    Error: Unimplemented: partially squashing a commit b1e1eea2f666 into parent 7468364c89fc together with other `--from` commits and with `--restore-descendants` is not implemented
+    Hint: Full squash (without --keep-emptied, paths specifiers, etc.) is allowed. Split followed by `squash --restore-descendants` is an option, but note that the order of the split may matter.
     [EOF]
-    ");
-    // WILL CHANGE NEXT COMMIT: This is one of several possible behaviors here.
-    // The user might expect `b` and `d` to have empty diffs, which is not the
-    // case. We will forbid squashing in this case in the next commit..
-    insta::assert_snapshot!(run_log(), @r"
-    @    b7a0c1f57f33 f
-    ├─╮  A b
-    │ │  A d
-    │ │  A f
-    │ ○  ec212e80dcd7 c
-    │ │  A b
-    │ │  A c
-    │ ○  6b7ecfcb7195 b
-    │ │  D b
-    │ │  D d
-    ○ │  b26366b44ef5 e
-    │ │  A d
-    │ │  A e
-    ○ │  11ce896ba6fa d
-    ├─╯  D b
-    │    D d
-    ○  a92a7b2bca0b a
-    │  A a
-    │  A b
-    │  A d
-    ◆  000000000000 (empty)
-    [EOF]
+    [exit status: 1]
     ");
 
     // Let's take a break from the confusing cases. `squash --restore-descendants
@@ -1710,25 +1602,21 @@ fn test_squash_from_to_restore_descendants() {
     insta::assert_snapshot!(output, @r"
     ------- stderr -------
     Rebased 5 descendant commits (while preserving their content)
-    Working copy  (@) now at: kpqxywon c6826494 f | (no description set)
-    Parent commit (@-)      : yostqsxw de0638e5 e | (no description set)
-    Parent commit (@-)      : mzvwutvl 042cb4e4 c | (no description set)
+    Working copy  (@) now at: kpqxywon cbbac1d7 f | (no description set)
+    Parent commit (@-)      : yostqsxw 300414fc e | (no description set)
+    Parent commit (@-)      : mzvwutvl 7e376226 c | (no description set)
     [EOF]
     ");
-    insta::assert_snapshot!(run_log(), @r"
-    @    c6826494e062 f
-    ├─╮  A f
-    │ ○  042cb4e43018 c
-    │ │  A c
-    │ ○  607835f81f49 b
-    │ │  A a
+    insta::assert_snapshot!(run_log(), @"
+    @    cbbac1d78547 fA f
+    ├─╮
+    │ ○  7e37622615e1 cA c
+    │ ○  7652b687923c bA a
     │ │  A b
-    ○ │  de0638e59243 e
-    │ │  A e
-    ○ │  4f58f74d8f6b d
-    ├─╯  A a
-    │    A d
-    ○  705b75c84a2f a (empty)
+    ○ │  300414fcc37e eA e
+    ○ │  6c5cc8583d6c dA a
+    ├─╯  A d
+    ○  8f4586fb90e3 a (empty)
     ◆  000000000000 (empty)
     [EOF]
     ");
