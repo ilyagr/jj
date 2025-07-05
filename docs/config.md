@@ -23,7 +23,7 @@ These are listed in the order they are loaded; the settings from earlier items
 in the list are overridden by the settings from later items if they disagree.
 Every type of config except for the built-in settings is optional.
 
-You can enable JSON Schema validation in your editor by adding a `$schema`
+You can enable JSON Schema validation in your editor by adding a `#:schema`
 reference at the top of your TOML config files. See [JSON Schema
 Support] for details.
 
@@ -1660,10 +1660,22 @@ JJ_CONFIG= jj log       # Ignores any settings specified in the config file.
 ### JSON Schema Support
 
 Many popular editors support TOML file syntax highlighting and validation. To
-enable schema validation in your editor, add this line at the top of your TOML
+enable schema validation in your editor, add these lines at the top of your TOML
 config files:
 
 ```toml
+#:schema https://jj-vcs.github.io/jj/latest/config-schema.json
+```
+
+In most cases, the following will also work. (We are not actively aware
+of situations where the above line does not work and the following one
+does, but they may exist)
+
+```toml
+# Does not work in [tombi]-based editor plugins as of this writing. See
+# also <https://github.com/tombi-toml/tombi/issues/647>.
+#
+# [tombi]: https://github.com/tombi-toml/tombi
 "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
 ```
 
@@ -1685,12 +1697,14 @@ Here are some popular editors with TOML schema validation support:
 - Helix
     - Install [taplo](https://github.com/tamasfe/taplo)
 
-- JetBrains IDEs (IntelliJ, PyCharm, etc)
-    - Install [TOML](https://plugins.jetbrains.com/plugin/8195-toml) plugin
-
 - Emacs
     - Install [lsp-mode](https://github.com/emacs-lsp/lsp-mode) and [toml-mode](https://github.com/dryman/toml-mode.el)
     - Configure [taplo](https://github.com/tamasfe/taplo) as the LSP server
+
+- JetBrains IDEs (IntelliJ, PyCharm, etc)
+    - Install [TOML](https://plugins.jetbrains.com/plugin/8195-toml) plugin
+    - You may need to specify the schema manually in the "JSON Schema Mappings" settings. As of this writing, schema
+      support appears to be limited to completion.
 
 ### Specifying config on the command-line
 
