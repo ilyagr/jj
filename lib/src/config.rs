@@ -559,13 +559,8 @@ impl ConfigFile {
             Err(ConfigLoadError::Read(PathError { path, error }))
                 if error.kind() == io::ErrorKind::NotFound =>
             {
-                let mut data = DocumentMut::new();
-                data.insert(
-                    "$schema",
-                    toml_edit::Item::Value(
-                        "https://jj-vcs.github.io/jj/latest/config-schema.json".into(),
-                    ),
-                );
+                let template = "#:schema https://jj-vcs.github.io/jj/latest/config-schema.json";
+                let data = template.parse::<DocumentMut>().unwrap();
                 let layer = ConfigLayer {
                     source,
                     path: Some(path),
