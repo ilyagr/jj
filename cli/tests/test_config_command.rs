@@ -602,6 +602,7 @@ fn test_config_set_for_user() {
     let user_config_toml = std::fs::read_to_string(&user_config_path)
         .unwrap_or_else(|_| panic!("Failed to read file {}", user_config_path.display()));
     insta::assert_snapshot!(user_config_toml, @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
     "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
     test-key = "test-val"
 
@@ -669,6 +670,7 @@ fn test_config_set_for_repo() {
     // Ensure test-key successfully written to user config.
     let repo_config_toml = work_dir.read_file(".jj/repo/config.toml");
     insta::assert_snapshot!(repo_config_toml, @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
     "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
     test-key = "test-val"
 
@@ -698,6 +700,7 @@ fn test_config_set_toml_types() {
     set_value("test-table.string", r#""foo""#);
     set_value("test-table.invalid", r"a + b");
     insta::assert_snapshot!(std::fs::read_to_string(&user_config_path).unwrap(), @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
     "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
 
     [test-table]
@@ -794,6 +797,7 @@ fn test_config_unset_inline_table_key() {
         .success();
     let user_config_toml = std::fs::read_to_string(&user_config_path).unwrap();
     insta::assert_snapshot!(user_config_toml, @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
     "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
     inline-table = {}
     "#);
@@ -869,6 +873,7 @@ fn test_config_unset_for_user() {
 
     let user_config_toml = std::fs::read_to_string(&user_config_path).unwrap();
     insta::assert_snapshot!(user_config_toml, @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
     "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
 
     [table]
@@ -889,7 +894,10 @@ fn test_config_unset_for_repo() {
         .success();
 
     let repo_config_toml = work_dir.read_file(".jj/repo/config.toml");
-    insta::assert_snapshot!(repo_config_toml, @r#""$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json""#);
+    insta::assert_snapshot!(repo_config_toml, @r#"
+    #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
+    "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
+    "#);
 }
 
 #[test]

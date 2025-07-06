@@ -27,6 +27,7 @@ use std::slice;
 use std::str::FromStr;
 use std::sync::Arc;
 
+use indoc::indoc;
 use itertools::Itertools as _;
 use once_cell::sync::Lazy;
 use serde::de::IntoDeserializer as _;
@@ -559,13 +560,11 @@ impl ConfigFile {
             Err(ConfigLoadError::Read(PathError { path, error }))
                 if error.kind() == io::ErrorKind::NotFound =>
             {
-                let mut data = DocumentMut::new();
-                data.insert(
-                    "$schema",
-                    toml_edit::Item::Value(
-                        "https://jj-vcs.github.io/jj/latest/config-schema.json".into(),
-                    ),
-                );
+                let template = indoc! {r#"
+                  #:schema https://jj-vcs.github.io/jj/latest/config-schema.json
+                  "$schema" = "https://jj-vcs.github.io/jj/latest/config-schema.json"
+                "#};
+                let data = template.parse::<DocumentMut>().unwrap();
                 let layer = ConfigLayer {
                     source,
                     path: Some(path),

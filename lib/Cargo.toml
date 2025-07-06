@@ -47,6 +47,7 @@ glob = { workspace = true }
 hashbrown = { workspace = true }
 ignore = { workspace = true }
 indexmap = { workspace = true }
+indoc = { workspace = true }
 interim = { workspace = true }
 itertools = { workspace = true }
 jj-lib-proc-macros = { workspace = true }
