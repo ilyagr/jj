@@ -14,6 +14,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### New features
 
+* `jj squash` now has a `--restore-descendants` option to preserve the snapshots
+  of the children of the modified commits.
+
 ### Fixed bugs
 
 ## [0.34.0] - 2025-10-01
