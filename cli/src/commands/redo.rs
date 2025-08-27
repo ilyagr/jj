@@ -27,13 +27,15 @@ use crate::ui::Ui;
 
 /// Redo the most recently undone operation
 ///
-/// This is the natural counterpart of `jj undo`. Repeated invocations of `jj
-/// undo` and `jj redo` act similarly to Undo/Redo commands in a text editor.
+/// This is the natural counterpart of `jj undo`.
 ///
-/// Use `jj op log` to visualize the log of past operations, including a
-/// detailed description of any past undo/redo operations. See also `jj op
-/// restore` to explicitly restore an older operation by its id (available in
-/// the operation log).
+/// Repeated invocations of `jj undo` and `jj redo` are meant to feel intuitive
+/// if you are used to the model of an "undo stack". However, the behavior is
+/// not completely identical in complicated cases. If interested in the details,
+/// experiment and compare the command output to `jj op log` output and/or see
+/// the comments in the source code.
+///
+/// See also `jj op restore` to explicitly restore an older operation by id.
 #[derive(clap::Args, Clone, Debug)]
 pub struct RedoArgs {}
 
