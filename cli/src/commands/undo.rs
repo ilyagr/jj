@@ -42,6 +42,18 @@ use crate::ui::Ui;
 /// detailed description of any past undo/redo operations. See also `jj op
 /// restore` to explicitly restore an older operation by its id (available in
 /// the operation log).
+///
+/// To be more precise, `jj undo` undoes the last operation by restoring to its
+/// parent operation, *as long as* the last operation was not itself an `undo`.
+///
+/// On the other hand, let's say the last operation was itself a `jj undo` that
+/// resulted in the repo being restored to operation `abc`. Then, a new `jj
+/// undo` will instead try to undo the operation `abc`, following the same rule.
+///
+/// To be even more precise, undoing a redo
+///
+/// What if we have U(Y) <- U(X) <- X <- Y <- U(Z) <- Z ?
+>>>>>>> Conflict 1 of 1 ends
 #[derive(clap::Args, Clone, Debug)]
 pub struct UndoArgs {
     /// (deprecated, use `jj op revert <operation>`)
