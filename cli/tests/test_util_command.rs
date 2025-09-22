@@ -24,14 +24,196 @@ fn test_util_config_schema() {
     insta::with_settings!({filters => vec![(r"(?m)(^        .*$\r?\n)+", "        [...]\n")]}, {
         assert_snapshot!(output, @r#"
         {
-            "$schema": "http://json-schema.org/draft-04/schema",
-            "$comment": "`taplo` and the corresponding VS Code plugins only support version draft-04 of JSON Schema, see <https://taplo.tamasfe.dev/configuration/developing-schemas.html>. draft-07 is mostly compatible with it, newer versions may not be.",
-            "title": "Jujutsu config",
-            "type": "object",
-            "description": "User configuration for Jujutsu VCS. See https://jj-vcs.github.io/jj/latest/config/ for details",
-            "properties": {
+          "$schema": "http://json-schema.org/draft-04/schema",
+          "$comment": "`taplo` and the corresponding VS Code plugins only support version draft-04 of JSON Schema, see <https://taplo.tamasfe.dev/configuration/developing-schemas.html>. draft-07 is mostly compatible with it, newer versions may not be.",
+          "title": "Jujutsu config",
+          "type": "object",
+          "description": "User configuration for Jujutsu VCS. See https://jj-vcs.github.io/jj/latest/config/ for details",
+          "properties": {
+            "user": {
+              "type": "object",
+              "description": "Settings about the user",
+              "properties": {
                 [...]
+              }
+            },
+            "operation": {
+              "type": "object",
+              "description": "Metadata to be attached to jj operations (shown in jj op log)",
+              "properties": {
+                [...]
+              }
+            },
+            "ui": {
+              "type": "object",
+              "description": "UI settings",
+              "definitions": {
+                [...]
+              },
+              "properties": {
+                [...]
+              }
+            },
+            "fsmonitor": {
+              "type": "object",
+              "description": "External filesystem monitor settings, useful for large repos",
+              "properties": {
+                [...]
+              }
+            },
+            "colors": {
+              "type": "object",
+              "description": "Mapping from jj formatter labels to colors",
+              "definitions": {
+                [...]
+              },
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "diff": {
+              "type": "object",
+              "description": "Builtin diff formats settings",
+              "properties": {
+                [...]
+              }
+            },
+            "git": {
+              "type": "object",
+              "description": "Settings for git behavior (when using git backend)",
+              "properties": {
+                [...]
+              }
+            },
+            "gerrit": {
+              "type": "object",
+              "description": "Settings for interacting with Gerrit",
+              "properties": {
+                [...]
+              }
+            },
+            "merge": {
+              "type": "object",
+              "description": "Merge settings",
+              "properties": {
+                [...]
+              }
+            },
+            "merge-tools": {
+              "type": "object",
+              "description": "Tables of custom options to pass to the given merge tool (selected in ui.merge-editor)",
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "revsets": {
+              "type": "object",
+              "description": "Revset expressions used by various commands",
+              "properties": {
+                [...]
+              },
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "revset-aliases": {
+              "type": "object",
+              "description": "Custom symbols/function aliases that can used in revset expressions",
+              "properties": {
+                [...]
+              },
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "template-aliases": {
+              "type": "object",
+              "description": "Custom symbols/function aliases that can used in templates",
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "aliases": {
+              "type": "object",
+              "description": "Custom subcommand aliases to be supported by the jj command",
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "snapshot": {
+              "type": "object",
+              "description": "Parameters governing automatic capture of files into the working copy commit",
+              "properties": {
+                [...]
+              }
+            },
+            "experimental-advance-branches": {
+              "type": "object",
+              "description": "Settings controlling the 'advance-branches' feature which moves bookmarks forward when new commits are created.",
+              "properties": {
+                [...]
+              }
+            },
+            "signing": {
+              "type": "object",
+              "description": "Settings for verifying and creating cryptographic commit signatures",
+              "properties": {
+                [...]
+              }
+            },
+            "fix": {
+              "type": "object",
+              "description": "Settings for jj fix",
+              "properties": {
+                [...]
+              }
+            },
+            "split": {
+              "type": "object",
+              "description": "Settings for jj split",
+              "properties": {
+                [...]
+              }
+            },
+            "hints": {
+              "type": "object",
+              "description": "Various hints in jj's UI that can be disabled",
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "templates": {
+              "type": "object",
+              "description": "Definitions for the templates that various jj commands use",
+              "properties": {
+                [...]
+              },
+              "additionalProperties": {
+                [...]
+              }
+            },
+            "working-copy": {
+              "type": "object",
+              "description": "Working copy settings",
+              "properties": {
+                [...]
+              }
+            },
+            "--when": {
+              "type": "object",
+              "description": "Conditions restriction the application of the configuration",
+              "properties": {
+                [...]
+              }
+            },
+            "--scope": {
+              "type": "array",
+              "description": "Scoped tables for conditional configuration",
+              "items": {
+                [...]
+              }
             }
+          }
         }
         [EOF]
         "#);
