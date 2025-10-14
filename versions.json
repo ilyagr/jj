@@ -1,10 +1,15 @@
 [
   {
-    "version": "test-tar",
-    "title": "test-tar",
+    "version": "test-tar2",
+    "title": "test-tar2",
     "aliases": [
       "latest"
     ]
+  },
+  {
+    "version": "test-tar",
+    "title": "test-tar",
+    "aliases": []
   },
   {
     "version": "prerelease",
