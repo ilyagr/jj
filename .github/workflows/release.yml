@@ -109,10 +109,10 @@ jobs:
       - name: Compile docs and zip them up
         run: |
           uv run mkdocs build
-          archive="jj-${RELEASE_TAG_NAME}-docs-html.tar.gz"
-          cd rendered-docs
-          # Does not include `.` in the archive, and would include hidden files if we had any
-          ls -A | tar czf "../$archive" -T -
+          basedir="jj-${RELEASE_TAG_NAME}-docs"
+          archive="${basedir}-html.tar.gz"
+          mv rendered-docs "$basedir"
+          tar czf "$archive" "$basedir"
           echo "ASSET=$archive" >> $GITHUB_ENV
         env:
           MKDOCS_OFFLINE: true
