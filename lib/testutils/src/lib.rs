@@ -253,9 +253,7 @@ impl TestRepoBackend {
         store_path: &Path,
     ) -> Result<Box<dyn Backend>, BackendInitError> {
         match self {
-            Self::Simple => Ok(Box::new(IntentionallyWrongName_SimpleBackend::init(
-                store_path,
-            ))),
+            Self::Simple => Ok(Box::new(SimpleBackend::init(store_path))),
         }
     }
 }
