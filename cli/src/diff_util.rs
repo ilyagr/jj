@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::borrow::Borrow;
 use std::borrow::Cow;
 use std::cmp::max;
 use std::io;
 use std::iter;
-use std::mem;
 use std::ops::Range;
 use std::path::Path;
 use std::path::PathBuf;
@@ -39,7 +37,6 @@ use jj_lib::commit::Commit;
 use jj_lib::config::ConfigGetError;
 use jj_lib::conflicts::ConflictMarkerStyle;
 use jj_lib::conflicts::ConflictMaterializeOptions;
-use jj_lib::conflicts::MaterializedFileValue;
 use jj_lib::conflicts::MaterializedTreeDiffEntry;
 use jj_lib::conflicts::MaterializedTreeValue;
 use jj_lib::conflicts::materialize_merge_result_to_bytes;
@@ -66,7 +63,6 @@ use jj_lib::merge::Merge;
 use jj_lib::merge::MergeBuilder;
 use jj_lib::merge::MergedTreeValue;
 use jj_lib::merged_tree::MergedTree;
-use jj_lib::object_id::ObjectId as _;
 use jj_lib::repo::Repo;
 use jj_lib::repo_path::InvalidRepoPathError;
 use jj_lib::repo_path::RepoPath;
@@ -74,6 +70,14 @@ use jj_lib::repo_path::RepoPathUiConverter;
 use jj_lib::rewrite::rebase_to_dest_parent;
 use jj_lib::settings::UserSettings;
 use jj_lib::store::Store;
+use jj_lib::unified_diff::DiffLineType;
+use jj_lib::unified_diff::DiffTokenType;
+use jj_lib::unified_diff::FileContent;
+use jj_lib::unified_diff::UnifiedDiffError;
+use jj_lib::unified_diff::file_content_for_diff;
+use jj_lib::unified_diff::git_diff_part;
+use jj_lib::unified_diff::unified_diff_hunks;
+use jj_lib::unified_diff::unzip_diff_hunks_to_lines;
 use pollster::FutureExt as _;
 use thiserror::Error;
 use tracing::instrument;
@@ -402,6 +406,15 @@ pub enum DiffRenderError {
     InvalidRepoPath(#[from] InvalidRepoPathError),
     #[error(transparent)]
     Io(#[from] io::Error),
+}
+
+impl From<UnifiedDiffError> for DiffRenderError {
+    fn from(value: UnifiedDiffError) -> Self {
+        match value {
+            UnifiedDiffError::Backend(error) => Self::Backend(error),
+            UnifiedDiffError::AccessDenied { path, source } => Self::AccessDenied { path, source },
+        }
+    }
 }
 
 /// Configuration and environment to render textual diff.
@@ -1213,38 +1226,6 @@ fn split_diff_hunks_by_matching_newline<'a, 'b>(
     })
 }
 
-struct FileContent<T> {
-    /// false if this file is likely text; true if it is likely binary.
-    is_binary: bool,
-    contents: T,
-}
-
-impl FileContent<Merge<BString>> {
-    fn is_empty(&self) -> bool {
-        self.contents.as_resolved().is_some_and(|c| c.is_empty())
-    }
-}
-
-fn file_content_for_diff<T>(
-    path: &RepoPath,
-    file: &mut MaterializedFileValue,
-    map_resolved: impl FnOnce(BString) -> T,
-) -> BackendResult<FileContent<T>> {
-    // If this is a binary file, don't show the full contents.
-    // Determine whether it's binary by whether the first 8k bytes contain a null
-    // character; this is the same heuristic used by git as of writing: https://github.com/git/git/blob/eea0e59ffbed6e33d171ace5be13cde9faa41639/xdiff-interface.c#L192-L198
-    const PEEK_SIZE: usize = 8000;
-    // TODO: currently we look at the whole file, even though for binary files we
-    // only need to know the file size. To change that we'd have to extend all
-    // the data backends to support getting the length.
-    let contents = BString::new(file.read_all(path).block_on()?);
-    let start = &contents[..PEEK_SIZE.min(contents.len())];
-    Ok(FileContent {
-        is_binary: start.contains(&b'\0'),
-        contents: map_resolved(contents),
-    })
-}
-
 fn diff_content(
     path: &RepoPath,
     value: MaterializedTreeValue,
@@ -1562,93 +1543,6 @@ pub async fn show_file_by_file_diff(
     Ok::<(), DiffRenderError>(())
 }
 
-struct GitDiffPart {
-    /// Octal mode string or `None` if the file is absent.
-    mode: Option<&'static str>,
-    hash: String,
-    content: FileContent<BString>,
-}
-
-fn git_diff_part(
-    path: &RepoPath,
-    value: MaterializedTreeValue,
-    materialize_options: &ConflictMaterializeOptions,
-) -> Result<GitDiffPart, DiffRenderError> {
-    const DUMMY_HASH: &str = "0000000000";
-    let mode;
-    let mut hash;
-    let content;
-    match value {
-        MaterializedTreeValue::Absent => {
-            return Ok(GitDiffPart {
-                mode: None,
-                hash: DUMMY_HASH.to_owned(),
-                content: FileContent {
-                    is_binary: false,
-                    contents: BString::default(),
-                },
-            });
-        }
-        MaterializedTreeValue::AccessDenied(err) => {
-            return Err(DiffRenderError::AccessDenied {
-                path: path.as_internal_file_string().to_owned(),
-                source: err,
-            });
-        }
-        MaterializedTreeValue::File(mut file) => {
-            mode = if file.executable { "100755" } else { "100644" };
-            hash = file.id.hex();
-            content = file_content_for_diff(path, &mut file, |content| content)?;
-        }
-        MaterializedTreeValue::Symlink { id, target } => {
-            mode = "120000";
-            hash = id.hex();
-            content = FileContent {
-                // Unix file paths can't contain null bytes.
-                is_binary: false,
-                contents: target.into(),
-            };
-        }
-        MaterializedTreeValue::GitSubmodule(id) => {
-            // TODO: What should we actually do here?
-            mode = "040000";
-            hash = id.hex();
-            content = FileContent {
-                is_binary: false,
-                contents: BString::default(),
-            };
-        }
-        MaterializedTreeValue::FileConflict(file) => {
-            mode = match file.executable {
-                Some(true) => "100755",
-                Some(false) | None => "100644",
-            };
-            hash = DUMMY_HASH.to_owned();
-            content = FileContent {
-                is_binary: false, // TODO: are we sure this is never binary?
-                contents: materialize_merge_result_to_bytes(&file.contents, materialize_options),
-            };
-        }
-        MaterializedTreeValue::OtherConflict { id } => {
-            mode = "100644";
-            hash = DUMMY_HASH.to_owned();
-            content = FileContent {
-                is_binary: false,
-                contents: id.describe().into(),
-            };
-        }
-        MaterializedTreeValue::Tree(_) => {
-            panic!("Unexpected tree in diff at path {path:?}");
-        }
-    }
-    hash.truncate(10);
-    Ok(GitDiffPart {
-        mode: Some(mode),
-        hash,
-        content,
-    })
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnifiedDiffOptions {
     /// Number of context lines to show.
@@ -1673,167 +1567,6 @@ impl UnifiedDiffOptions {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum DiffLineType {
-    Context,
-    Removed,
-    Added,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum DiffTokenType {
-    Matching,
-    Different,
-}
-
-type DiffTokenVec<'content> = Vec<(DiffTokenType, &'content [u8])>;
-
-struct UnifiedDiffHunk<'content> {
-    left_line_range: Range<usize>,
-    right_line_range: Range<usize>,
-    lines: Vec<(DiffLineType, DiffTokenVec<'content>)>,
-}
-
-impl<'content> UnifiedDiffHunk<'content> {
-    fn extend_context_lines(&mut self, lines: impl IntoIterator<Item = &'content [u8]>) {
-        let old_len = self.lines.len();
-        self.lines.extend(lines.into_iter().map(|line| {
-            let tokens = vec![(DiffTokenType::Matching, line)];
-            (DiffLineType::Context, tokens)
-        }));
-        self.left_line_range.end += self.lines.len() - old_len;
-        self.right_line_range.end += self.lines.len() - old_len;
-    }
-
-    fn extend_removed_lines(&mut self, lines: impl IntoIterator<Item = DiffTokenVec<'content>>) {
-        let old_len = self.lines.len();
-        self.lines
-            .extend(lines.into_iter().map(|line| (DiffLineType::Removed, line)));
-        self.left_line_range.end += self.lines.len() - old_len;
-    }
-
-    fn extend_added_lines(&mut self, lines: impl IntoIterator<Item = DiffTokenVec<'content>>) {
-        let old_len = self.lines.len();
-        self.lines
-            .extend(lines.into_iter().map(|line| (DiffLineType::Added, line)));
-        self.right_line_range.end += self.lines.len() - old_len;
-    }
-}
-
-fn unified_diff_hunks<'content>(
-    contents: [&'content BStr; 2],
-    options: &UnifiedDiffOptions,
-) -> Vec<UnifiedDiffHunk<'content>> {
-    let mut hunks = vec![];
-    let mut current_hunk = UnifiedDiffHunk {
-        left_line_range: 0..0,
-        right_line_range: 0..0,
-        lines: vec![],
-    };
-    let diff = diff_by_line(contents, &options.line_diff);
-    let mut diff_hunks = diff.hunks().peekable();
-    while let Some(hunk) = diff_hunks.next() {
-        match hunk.kind {
-            DiffHunkKind::Matching => {
-                // Just use the right (i.e. new) content. We could count the
-                // number of skipped lines separately, but the number of the
-                // context lines should match the displayed content.
-                let [_, right] = hunk.contents[..].try_into().unwrap();
-                let mut lines = right.split_inclusive(|b| *b == b'\n').fuse();
-                if !current_hunk.lines.is_empty() {
-                    // The previous hunk line should be either removed/added.
-                    current_hunk.extend_context_lines(lines.by_ref().take(options.context));
-                }
-                let before_lines = if diff_hunks.peek().is_some() {
-                    lines.by_ref().rev().take(options.context).collect()
-                } else {
-                    vec![] // No more hunks
-                };
-                let num_skip_lines = lines.count();
-                if num_skip_lines > 0 {
-                    let left_start = current_hunk.left_line_range.end + num_skip_lines;
-                    let right_start = current_hunk.right_line_range.end + num_skip_lines;
-                    if !current_hunk.lines.is_empty() {
-                        hunks.push(current_hunk);
-                    }
-                    current_hunk = UnifiedDiffHunk {
-                        left_line_range: left_start..left_start,
-                        right_line_range: right_start..right_start,
-                        lines: vec![],
-                    };
-                }
-                // The next hunk should be of DiffHunk::Different type if any.
-                current_hunk.extend_context_lines(before_lines.into_iter().rev());
-            }
-            DiffHunkKind::Different => {
-                let [left_lines, right_lines] =
-                    unzip_diff_hunks_to_lines(ContentDiff::by_word(hunk.contents).hunks());
-                current_hunk.extend_removed_lines(left_lines);
-                current_hunk.extend_added_lines(right_lines);
-            }
-        }
-    }
-    if !current_hunk.lines.is_empty() {
-        hunks.push(current_hunk);
-    }
-    hunks
-}
-
-/// Splits `[left, right]` hunk pairs into `[left_lines, right_lines]`.
-fn unzip_diff_hunks_to_lines<'content, I>(diff_hunks: I) -> [Vec<DiffTokenVec<'content>>; 2]
-where
-    I: IntoIterator,
-    I::Item: Borrow<DiffHunk<'content>>,
-{
-    let mut left_lines: Vec<DiffTokenVec<'content>> = vec![];
-    let mut right_lines: Vec<DiffTokenVec<'content>> = vec![];
-    let mut left_tokens: DiffTokenVec<'content> = vec![];
-    let mut right_tokens: DiffTokenVec<'content> = vec![];
-
-    for hunk in diff_hunks {
-        let hunk = hunk.borrow();
-        match hunk.kind {
-            DiffHunkKind::Matching => {
-                // TODO: add support for unmatched contexts
-                debug_assert!(hunk.contents.iter().all_equal());
-                for token in hunk.contents[0].split_inclusive(|b| *b == b'\n') {
-                    left_tokens.push((DiffTokenType::Matching, token));
-                    right_tokens.push((DiffTokenType::Matching, token));
-                    if token.ends_with(b"\n") {
-                        left_lines.push(mem::take(&mut left_tokens));
-                        right_lines.push(mem::take(&mut right_tokens));
-                    }
-                }
-            }
-            DiffHunkKind::Different => {
-                let [left, right] = hunk.contents[..]
-                    .try_into()
-                    .expect("hunk should have exactly two inputs");
-                for token in left.split_inclusive(|b| *b == b'\n') {
-                    left_tokens.push((DiffTokenType::Different, token));
-                    if token.ends_with(b"\n") {
-                        left_lines.push(mem::take(&mut left_tokens));
-                    }
-                }
-                for token in right.split_inclusive(|b| *b == b'\n') {
-                    right_tokens.push((DiffTokenType::Different, token));
-                    if token.ends_with(b"\n") {
-                        right_lines.push(mem::take(&mut right_tokens));
-                    }
-                }
-            }
-        }
-    }
-
-    if !left_tokens.is_empty() {
-        left_lines.push(left_tokens);
-    }
-    if !right_tokens.is_empty() {
-        right_lines.push(right_tokens);
-    }
-    [left_lines, right_lines]
-}
-
 fn show_unified_diff_hunks(
     formatter: &mut dyn Formatter,
     contents: [&BStr; 2],
@@ -1854,7 +1587,9 @@ fn show_unified_diff_hunks(
         }
     }
 
-    for hunk in unified_diff_hunks(contents, options) {
+    for hunk in unified_diff_hunks(contents, options.context, |input| {
+        diff_by_line(input, &options.line_diff)
+    }) {
         writeln!(
             formatter.labeled("hunk_header"),
             "@@ -{},{} +{},{} @@",
