@@ -1640,6 +1640,7 @@ Before the command actually moves, creates, or deletes a remote bookmark, it mak
 * `--allow-private` — Allow pushing commits that are private
 
    The set of private commits can be configured by the `git.private-commits` setting. The default is `none()`, meaning all commits are eligible to be pushed.
+* `--allow-conflicted` — Allow pushing commits with conflicts
 * `-r`, `--revisions <REVSETS>` — Push bookmarks pointing to these commits (can be repeated)
 * `-c`, `--change <REVSETS>` — Push this commit by creating a bookmark (can be repeated)
 

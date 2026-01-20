@@ -169,6 +169,10 @@ pub struct GitPushArgs {
     #[arg(long)]
     allow_private: bool,
 
+    /// Allow pushing commits with conflicts
+    #[arg(long)]
+    allow_conflicted: bool,
+
     /// Push bookmarks pointing to these commits (can be repeated)
     #[arg(long, short, value_name = "REVSETS")]
     // While `-r` will often be used with mutable revisions, immutable revisions
@@ -544,7 +548,7 @@ fn validate_commits_ready_to_push(
         {
             reasons.push("it has no author and/or committer set");
         }
-        if commit.has_conflict() {
+        if commit.has_conflict() && !args.allow_conflicted {
             reasons.push("it has conflicts");
         }
         let is_private = is_private(commit.id())?;

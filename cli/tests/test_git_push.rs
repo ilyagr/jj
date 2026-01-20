@@ -1652,6 +1652,78 @@ fn test_git_push_conflict() {
 }
 
 #[test]
+fn test_git_push_and_fetch_conflict() {
+    let test_env = TestEnvironment::default();
+    set_up(&test_env);
+    let work_dir = test_env.work_dir("local");
+    let origin_dir = test_env.work_dir("origin");
+
+    // Create a conflict by rebasing
+    work_dir.write_file("file", "first");
+    work_dir.run_jj(["commit", "-m", "first"]).success();
+    work_dir.write_file("file", "second");
+    work_dir.run_jj(["commit", "-m", "second"]).success();
+    work_dir.write_file("file", "third");
+    work_dir
+        .run_jj(["rebase", "-r", "@", "-o", "@--"])
+        .success();
+    work_dir
+        .run_jj(["bookmark", "create", "-r@", "my-bookmark"])
+        .success();
+    work_dir.run_jj(["describe", "-m", "third"]).success();
+
+    // Push fails without --allow-conflicted
+    let output = work_dir.run_jj(["git", "push", "--bookmark=my-bookmark"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Error: Won't push commit 0ae07d1968ee since it has conflicts
+    Hint: Rejected commit: yostqsxw 0ae07d19 my-bookmark | (conflict) third
+    [EOF]
+    [exit status: 1]
+    ");
+
+    // Push succeeds with --allow-conflicted
+    let output = work_dir.run_jj(["git", "push", "--bookmark=my-bookmark", "--allow-conflicted"]);
+    insta::assert_snapshot!(output, @r"
+    ------- stderr -------
+    Changes to push to origin:
+      Add bookmark my-bookmark to 0ae07d1968ee
+    [EOF]
+    ");
+
+    // Fetch the conflicted commit in the origin repo
+    origin_dir.run_jj(["git", "import"]).success();
+    let output = origin_dir.run_jj(["log", "-r", "my-bookmark"]);
+    insta::assert_snapshot!(output, @"
+    ×  yostqsxw test.user@example.com 2001-02-03 08:05:18 my-bookmark 0ae07d19 (conflict)
+    │  third
+    ~
+    [EOF]
+    ");
+
+    // Verify the conflict is detected by jj resolve --list
+    let output = origin_dir.run_jj(["resolve", "--list", "-r", "my-bookmark"]);
+    insta::assert_snapshot!(output, @"
+    file    2-sided conflict
+    [EOF]
+    ");
+
+    // Verify the conflict is actually present by checking file content
+    let output = origin_dir.run_jj(["file", "show", "-r", "my-bookmark", "file"]);
+    insta::assert_snapshot!(output, @r#"
+    <<<<<<< conflict 1 of 1
+    %%%%%%% diff from: vruxwmqv 979f4e80 "second" (parents of rebased revision) (no terminating newline)
+    \\\\\\\        to: yqosqzyt fd916d5f "first" (rebase destination) (no terminating newline)
+    -second
+    +first
+    +++++++ yostqsxw db73d2e3 (rebased revision) (no terminating newline)
+    third
+    >>>>>>> conflict 1 of 1 ends
+    [EOF]
+    "#);
+}
+
+#[test]
 fn test_git_push_no_description() {
     let test_env = TestEnvironment::default();
     set_up(&test_env);
