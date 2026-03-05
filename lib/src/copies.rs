@@ -377,7 +377,7 @@ pub struct CopyHistoryDiffStream<'a> {
     inner: Fuse<TreeDiffStream<'a>>,
     before_tree: &'a MergedTree,
     after_tree: &'a MergedTree,
-    pending: FuturesOrdered<BoxFuture<'static, CopyHistoryTreeDiffEntry>>,
+    pending: FuturesOrdered<BoxFuture<'static, Option<CopyHistoryTreeDiffEntry>>>,
 }
 
 impl<'a> CopyHistoryDiffStream<'a> {
@@ -407,7 +407,12 @@ impl Stream for CopyHistoryDiffStream<'_> {
             // First, check if we have newly-finished futures. If this returns Pending, we
             // intentionally fall through to poll `self.inner`.
             if let Poll::Ready(Some(next)) = self.pending.poll_next_unpin(cx) {
-                return Poll::Ready(Some(next));
+                if let Some(entry) = next {
+                    return Poll::Ready(Some(entry));
+                }
+                // The future evaluated successfully but does not wish to provide any diff
+                // entries
+                continue;
             }
 
             // If we didn't have queued results above, we want to check our wrapped stream
@@ -420,9 +425,9 @@ impl Stream for CopyHistoryDiffStream<'_> {
 
             let Ok(Diff { before, after }) = &next_diff_entry.values else {
                 self.pending
-                    .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry::normal(
+                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
                         next_diff_entry,
-                    ))));
+                    )))));
                 continue;
             };
 
@@ -431,16 +436,16 @@ impl Stream for CopyHistoryDiffStream<'_> {
             // TODO: consider accepting conflicts if the copy IDs can be resolved.
             let Some(before) = before.as_resolved() else {
                 self.pending
-                    .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry::normal(
+                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
                         next_diff_entry,
-                    ))));
+                    )))));
                 continue;
             };
             let Some(after) = after.as_resolved() else {
                 self.pending
-                    .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry::normal(
+                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
                         next_diff_entry,
-                    ))));
+                    )))));
                 continue;
             };
 
@@ -450,10 +455,9 @@ impl Stream for CopyHistoryDiffStream<'_> {
                     Some(TreeValue::File { copy_id: id1, .. }),
                     Some(TreeValue::File { copy_id: id2, .. }),
                 ) if id1 == id2 => {
-                    self.pending
-                        .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry::normal(
-                            next_diff_entry,
-                        ))));
+                    self.pending.push_back(Box::pin(ready(Some(
+                        CopyHistoryTreeDiffEntry::normal(next_diff_entry),
+                    ))));
                 }
 
                 (other, Some(f @ TreeValue::File { .. })) => {
@@ -466,7 +470,7 @@ impl Stream for CopyHistoryDiffStream<'_> {
                         // a case where having a deletion entry may be
                         // excessive.
                         self.pending
-                            .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry {
+                            .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry {
                                 target_path: next_diff_entry.path.clone(),
                                 diffs: Ok(Merge::resolved(CopyHistoryDiffTerm {
                                     target_value: None,
@@ -475,7 +479,7 @@ impl Stream for CopyHistoryDiffStream<'_> {
                                         Merge::resolved(Some(other.clone())),
                                     )],
                                 })),
-                            })));
+                            }))));
                     }
 
                     let future = tree_diff_entry_from_copies(
@@ -500,11 +504,11 @@ impl Stream for CopyHistoryDiffStream<'_> {
                 // TODO: Consider creating a helper that removes the extraneous
                 // deletion records. The helper would likely either collect the
                 // deletions and emit them last, or collect the entire stream.
-                _ => self
-                    .pending
-                    .push_back(Box::pin(ready(CopyHistoryTreeDiffEntry::normal(
-                        next_diff_entry,
-                    )))),
+                _ => {
+                    self.pending.push_back(Box::pin(ready(Some(
+                        CopyHistoryTreeDiffEntry::normal(next_diff_entry),
+                    ))));
+                }
             }
         }
     }
@@ -566,11 +570,11 @@ async fn tree_diff_entry_from_copies(
     after_tree: MergedTree,
     file: TreeValue,
     target_path: RepoPathBuf,
-) -> CopyHistoryTreeDiffEntry {
-    CopyHistoryTreeDiffEntry {
+) -> Option<CopyHistoryTreeDiffEntry> {
+    Some(CopyHistoryTreeDiffEntry {
         target_path,
         diffs: diffs_from_copies(before_tree, after_tree, file).await,
-    }
+    })
 }
 
 async fn diffs_from_copies(
