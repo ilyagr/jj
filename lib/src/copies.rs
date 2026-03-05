@@ -491,19 +491,26 @@ impl Stream for CopyHistoryDiffStream<'_> {
                     self.pending.push_back(Box::pin(future));
                 }
 
-                // Anything else (e.g. deletions, file => non-file non-tree),
+                (Some(f @ TreeValue::File { .. }), None) => {
+                    // A file is has been either deleted or renamed. Use
+                    // reversed copy-tracing to check which. If it was renamed,
+                    // we emit nothing now. The rename entry is emitted on a
+                    // different loop iteration, whenever the corresponding
+                    // entry on the "after" side is processed.
+                    let before_tree = self.before_tree.clone();
+                    let after_tree = self.after_tree.clone();
+                    let f = f.clone();
+                    self.pending.push_back(Box::pin(async move {
+                        if file_was_renamed_away(before_tree, after_tree, f).await {
+                            None
+                        } else {
+                            Some(CopyHistoryTreeDiffEntry::normal(next_diff_entry))
+                        }
+                    }));
+                }
+
+                // Anything else (e.g. non-file deletions, file => non-file),
                 // issue a simple diff entry.
-                //
-                // NOTE[rename-source-deletion]: in particular, this will
-                // generate a deletion record for every file rename. Unlike the
-                // old `CopiesTreeDiffStream`, we don't suppress rename-source
-                // deletions here because we do copy-tracing lazily, and you
-                // might not learn that a deletion was unnecessary until getting
-                // a rename entry long after the deletion entry in question.
-                //
-                // TODO: Consider creating a helper that removes the extraneous
-                // deletion records. The helper would likely either collect the
-                // deletions and emit them last, or collect the entire stream.
                 _ => {
                     self.pending.push_back(Box::pin(ready(Some(
                         CopyHistoryTreeDiffEntry::normal(next_diff_entry),
@@ -575,6 +582,59 @@ async fn tree_diff_entry_from_copies(
         target_path,
         diffs: diffs_from_copies(before_tree, after_tree, file).await,
     })
+}
+
+/// Checks whether `before_file`, which is assumed to exist in `before_tree` but
+/// not in `after_tree` at its current path, was deleted or whether it was
+/// renamed to something else in the `after` tree.
+async fn file_was_renamed_away(
+    before_tree: MergedTree,
+    after_tree: MergedTree,
+    before_file: TreeValue,
+) -> bool {
+    // Call `diffs_from_copies` with the trees reversed. From the reversed
+    // perspective, `file` looks like a new entry in the "before" tree.
+    //
+    // `diffs_from_copies` will check whether it corresponds to something from
+    // the "after" tree. If not, `diffs_from_copies` will see `before_file` as a
+    // completely new file creation and return a diff entry with no sources.
+    // This means that the removal of `before_file` in the `before_tree` is a
+    // genuine deletion. If the removal of `before_file` was a rename,
+    // `diffs_from_copies` will return a `CopyHistorySource::Rename` (it will
+    // detect the reverse rename). In unusual cases, we may get a `Copy` instead
+    // — this means the target path exists in both trees, so the deletion is a
+    // separate real event and should not be suppressed.
+
+    // TODO: Figure out what's going on with this Copy case. (Aside:
+    // CopyHistorySource::Normal shouldn't happen because `before_file` is not
+    // in `after_tree`). Here's what AI thinks about that:
+
+    // AI: The previous Claude instance tried treating `Rename` and `Copy` the same.
+    // AI: This broke the reverse case of `test_copy_diffstream_copy`. The scenario:
+    //
+    // AI: - `foo` exists, `bar` is a copy of `foo`. Then `bar` is deleted.
+    // AI: - Reversed copy-tracing for `bar` finds `foo` as a relative. Since `foo`
+    // AI:   still exists at its path in both trees, `classify_source` returns
+    // AI:   `Copy(foo)`, not `Rename(foo)`.
+    // AI: - If we suppressed on `Copy`, we'd lose `bar`'s deletion — but `bar` was
+    // AI:   genuinely deleted (`foo` still exists, it wasn't a rename).
+    //
+    // AI: The distinction is clear: `Rename(path)` means the source path is absent
+    // AI: from the "after" tree (in the reversed sense), so the file truly moved
+    // AI: away. `Copy(path)` means the source still exists, so the deletion is a
+    // AI: separate real event.
+    diffs_from_copies(after_tree, before_tree, before_file)
+        .await
+        .is_ok_and(|diffs| {
+            // Note: as of this writing, `diffs` will always be a resolved
+            // conflict with a single add. The conflict logic should be correct,
+            // but is not tested.
+            diffs.adds().any(|term| {
+                term.sources
+                    .iter()
+                    .any(|(src, _)| matches!(src, CopyHistorySource::Rename(_)))
+            })
+        })
 }
 
 async fn diffs_from_copies(
