@@ -315,6 +315,44 @@ pub fn is_ancestor(copies: &CopyGraph, ancestor: &CopyId, descendant: &CopyId) -
     false
 }
 
+/// Returns whether `id_a` and `id_b` represent a simple, linear same-path
+/// evolution: one is a direct (single) parent of the other at the same path.
+/// This excludes merges (multiple parents) and indirect ancestry through
+/// intermediate nodes at different paths.
+fn is_simple_same_path_evolution(copy_graph: &CopyGraph, id_a: &CopyId, id_b: &CopyId) -> bool {
+    // Check if id_b is the sole parent of id_a (at the same path)
+    if let Some(history_a) = copy_graph.get(id_a)
+        && history_a.parents.len() == 1
+        && history_a.parents[0] == *id_b
+        && let Some(history_b) = copy_graph.get(id_b)
+        && history_a.current_path == history_b.current_path
+    {
+        return true;
+    }
+    // Check the reverse: id_a is the sole parent of id_b (at the same path)
+    if let Some(history_b) = copy_graph.get(id_b)
+        && history_b.parents.len() == 1
+        && history_b.parents[0] == *id_a
+        && let Some(history_a) = copy_graph.get(id_a)
+        && history_a.current_path == history_b.current_path
+    {
+        return true;
+    }
+    false
+}
+
+/// Fetches the copy graph for the given copy ID.
+async fn fetch_copy_graph(tree: &MergedTree, copy_id: &CopyId) -> BackendResult<CopyGraph> {
+    Ok(tree
+        .store()
+        .backend()
+        .get_related_copies(copy_id)
+        .await?
+        .into_iter()
+        .map(|related| (related.id, related.history))
+        .collect())
+}
+
 /// Describes the source of a CopyHistoryDiffTerm
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum CopyHistorySource {
@@ -409,7 +447,18 @@ async fn classify_diff_entry(
         // loop — the deletion goes through the `(Some(File), None)` arm
         // (which checks `file_was_renamed_away`), and the creation goes
         // through the `(None, Some(File))` arm (copy-tracing).
-        (Some(_), Some(TreeValue::File { .. })) => CopyDiffAction::DecomposeDeletionAndCreation,
+        (Some(other), Some(f @ TreeValue::File { .. })) => {
+            // If both sides are files with a direct parent relationship
+            // (simple same-path evolution), treat as a normal diff — no
+            // split needed.
+            if let Some(before_id) = other.copy_id()
+                && let Ok(graph) = fetch_copy_graph(after_tree, f.copy_id().unwrap()).await
+                && is_simple_same_path_evolution(&graph, f.copy_id().unwrap(), before_id)
+            {
+                return CopyDiffAction::Normal;
+            }
+            CopyDiffAction::DecomposeDeletionAndCreation
+        }
 
         // New file with copy history — do copy-tracing.
         (None, Some(f @ TreeValue::File { .. })) => {

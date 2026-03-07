@@ -2727,26 +2727,16 @@ fn test_copy_diffstream_same_path_parent() {
     let old_foo_val = left.path_value(foo).unwrap();
     let new_foo_val = right.path_value(foo).unwrap();
 
+    // foo_v2 is a direct child of foo_v1 at the same path — simple evolution.
+    // No deletion, just a normal diff.
     assert_eq!(
         collect_diffs(&left, &right),
-        [
-            // TODO: The deletion occurs here because we currently treat this
-            // new `foo` as completely unrelated to the old `foo` (same as the
-            // case of `test_copy_diffstream_distinct_histories`). Arguably, we
-            // could instead consider this copy history as causing them to be
-            // related and omit the deletion, or we could consider forbidding
-            // this kind of copy history entirely.
-            expected_deletion(foo, &old_foo_val),
-            expected_normal(foo, &old_foo_val, &new_foo_val),
-        ],
+        [expected_normal(foo, &old_foo_val, &new_foo_val)],
     );
 
     assert_eq!(
         collect_diffs(&right, &left),
-        [
-            expected_deletion(foo, &new_foo_val),
-            expected_normal(foo, &new_foo_val, &old_foo_val),
-        ],
+        [expected_normal(foo, &new_foo_val, &old_foo_val)],
     );
 }
 
