@@ -16,7 +16,6 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::collections::VecDeque;
 use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
@@ -24,10 +23,7 @@ use std::task::ready;
 
 use futures::Stream;
 use futures::StreamExt as _;
-use futures::future::BoxFuture;
 use futures::future::try_join_all;
-use futures::stream::Fuse;
-use futures::stream::FuturesOrdered;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 
@@ -373,69 +369,20 @@ impl CopyHistoryTreeDiffEntry {
 }
 
 /// Adapts a `TreeDiffStream` to follow copies / renames.
-pub struct CopyHistoryDiffStream<'a> {
-    inner: Fuse<TreeDiffStream<'a>>,
+///
+/// Generally prefer `MergedTree::diff_stream_with_copy_history()` instead of
+/// calling this directly.
+pub fn copy_history_diff_stream<'a>(
+    inner: TreeDiffStream<'a>,
     before_tree: &'a MergedTree,
     after_tree: &'a MergedTree,
-    /// In-flight classification futures, one per inner stream entry.
-    pending: FuturesOrdered<BoxFuture<'static, Vec<CopyHistoryTreeDiffEntry>>>,
-    /// Entries from the most recently completed future, waiting to be yielded.
-    resolved: VecDeque<CopyHistoryTreeDiffEntry>,
-}
-
-impl<'a> CopyHistoryDiffStream<'a> {
-    /// Creates an iterator over the differences between two trees, taking copy
-    /// history into account. Generally prefer
-    /// `MergedTree::diff_stream_with_copy_history()` instead of calling this
-    /// directly.
-    pub fn new(
-        inner: TreeDiffStream<'a>,
-        before_tree: &'a MergedTree,
-        after_tree: &'a MergedTree,
-    ) -> Self {
-        Self {
-            inner: inner.fuse(),
-            before_tree,
-            after_tree,
-            pending: FuturesOrdered::new(),
-            resolved: VecDeque::with_capacity(2),
-        }
-    }
-}
-
-impl Stream for CopyHistoryDiffStream<'_> {
-    type Item = CopyHistoryTreeDiffEntry;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        loop {
-            // Drain entries from the most recently completed future.
-            if let Some(entry) = self.resolved.pop_front() {
-                return Poll::Ready(Some(entry));
-            }
-
-            // Poll the next completed future (in push order).
-            if let Poll::Ready(Some(actions)) = self.pending.poll_next_unpin(cx) {
-                self.resolved.extend(actions);
-                continue;
-            }
-
-            // Pull the next entry from the inner stream.
-            let next_diff_entry = match ready!(self.inner.poll_next_unpin(cx)) {
-                Some(entry) => entry,
-                None if self.pending.is_empty() => return Poll::Ready(None),
-                _ => return Poll::Pending,
-            };
-
-            // Push a classification future for pipelining.
-            let before_tree = self.before_tree.clone();
-            let after_tree = self.after_tree.clone();
-            self.pending.push_back(Box::pin(classify_diff_entry(
-                before_tree,
-                after_tree,
-                next_diff_entry,
-            )));
-        }
-    }
+) -> impl Stream<Item = CopyHistoryTreeDiffEntry> + 'a {
+    let before_tree = before_tree.clone();
+    let after_tree = after_tree.clone();
+    inner
+        .map(move |entry| classify_diff_entry(before_tree.clone(), after_tree.clone(), entry))
+        .buffered(64)
+        .flat_map(futures::stream::iter)
 }
 
 async fn classify_source(
@@ -516,7 +463,7 @@ async fn classify_diff_entry(
     after_tree: MergedTree,
     diff_entry: TreeDiffEntry,
 ) -> Vec<CopyHistoryTreeDiffEntry> {
-    let Ok(diff) = &diff_entry.values else {
+    let Ok(ref diff) = diff_entry.values else {
         return vec![CopyHistoryTreeDiffEntry::normal(diff_entry)];
     };
 
@@ -527,54 +474,20 @@ async fn classify_diff_entry(
         return vec![CopyHistoryTreeDiffEntry::normal(diff_entry)];
     };
 
-    // Classify synchronously, extracting needed data before doing async work.
-    // The local enum avoids holding borrows on `diff_entry` across await points.
-    enum Case {
-        Normal,
-        Shadowing {
-            before_copy_id: Option<CopyId>,
-            after_copy_id: CopyId,
-            before_value: TreeValue,
-            after_file: TreeValue,
-        },
-        NewFile(TreeValue),
-        DeletedFile(TreeValue),
-    }
-
-    let case = match (before, after) {
+    match (before, after) {
         // Matching copy IDs — no copy-tracing needed.
         (
             Some(TreeValue::File { copy_id: id1, .. }),
             Some(TreeValue::File { copy_id: id2, .. }),
-        ) if id1 == id2 => Case::Normal,
+        ) if id1 == id2 => vec![CopyHistoryTreeDiffEntry::normal(diff_entry)],
 
         // Same path, different copy IDs (or non-file → file).
-        (Some(other), Some(f @ TreeValue::File { .. })) => Case::Shadowing {
-            before_copy_id: other.copy_id().cloned(),
-            after_copy_id: f.copy_id().unwrap().clone(),
-            before_value: other.clone(),
-            after_file: f.clone(),
-        },
+        (Some(other), Some(f @ TreeValue::File { .. })) => {
+            let before_copy_id = other.copy_id().cloned();
+            let after_copy_id = f.copy_id().unwrap().clone();
+            let other = other.clone();
+            let f = f.clone();
 
-        // New file with copy history — needs copy-tracing.
-        (None, Some(f @ TreeValue::File { .. })) => Case::NewFile(f.clone()),
-
-        // File disappeared — might be a deletion or a rename.
-        (Some(f @ TreeValue::File { .. }), None) => Case::DeletedFile(f.clone()),
-
-        _ => Case::Normal,
-    };
-
-    // Async resolution based on the classification.
-    match case {
-        Case::Normal => vec![CopyHistoryTreeDiffEntry::normal(diff_entry)],
-
-        Case::Shadowing {
-            before_copy_id,
-            after_copy_id,
-            before_value,
-            after_file,
-        } => {
             // When copy IDs differ but one is the sole direct parent of the
             // other at the same path, this is a simple evolution (e.g. a file
             // gaining new copy metadata). Emit as normal, don't split.
@@ -588,18 +501,18 @@ async fn classify_diff_entry(
             // old file was renamed elsewhere (chain renames, swaps, etc.).
             let mut results = Vec::with_capacity(2);
 
-            let suppress_deletion = matches!(&before_value, TreeValue::File { .. })
+            let suppress_deletion = matches!(&other, TreeValue::File { .. })
                 && file_was_renamed_away(
                     before_tree.clone(),
                     after_tree.clone(),
-                    before_value.clone(),
+                    other.clone(),
                 )
                 .await;
             if !suppress_deletion {
                 results.push(CopyHistoryTreeDiffEntry::normal(TreeDiffEntry {
                     path: diff_entry.path.clone(),
                     values: Ok(Diff {
-                        before: Merge::resolved(Some(before_value)),
+                        before: Merge::resolved(Some(other)),
                         after: Merge::resolved(None),
                     }),
                 }));
@@ -607,27 +520,36 @@ async fn classify_diff_entry(
 
             results.push(CopyHistoryTreeDiffEntry {
                 target_path: diff_entry.path,
-                diffs: diffs_from_copies(before_tree, after_tree, after_file).await,
+                diffs: diffs_from_copies(before_tree, after_tree, f).await,
             });
 
             results
         }
 
-        Case::NewFile(file) => vec![CopyHistoryTreeDiffEntry {
-            target_path: diff_entry.path,
-            diffs: diffs_from_copies(before_tree, after_tree, file).await,
-        }],
+        // New file with copy history — needs copy-tracing.
+        (None, Some(f @ TreeValue::File { .. })) => {
+            let f = f.clone();
+            vec![CopyHistoryTreeDiffEntry {
+                target_path: diff_entry.path,
+                diffs: diffs_from_copies(before_tree, after_tree, f).await,
+            }]
+        }
 
-        Case::DeletedFile(file) => {
+        // File disappeared — might be a deletion or a rename.
+        (Some(f @ TreeValue::File { .. }), None) => {
+            let f = f.clone();
             // Use reversed copy-tracing to check whether the file was renamed
             // rather than deleted. If renamed, suppress — the rename entry is
             // emitted when the corresponding "after" side is processed.
-            if file_was_renamed_away(before_tree, after_tree, file).await {
+            if file_was_renamed_away(before_tree, after_tree, f).await {
                 vec![]
             } else {
                 vec![CopyHistoryTreeDiffEntry::normal(diff_entry)]
             }
         }
+
+        // Anything else (e.g. non-file deletions, file → non-file).
+        _ => vec![CopyHistoryTreeDiffEntry::normal(diff_entry)],
     }
 }
 
