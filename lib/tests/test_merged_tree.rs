@@ -2181,6 +2181,113 @@ fn test_copy_diffstream_rename() {
 }
 
 #[test]
+fn test_copy_diffstream_chain_rename() {
+    // CASE: a renamed to b, then (old) b renamed to c.
+    // Left tree: {a, b_orig}. Right tree: {b_renamed (from a), c (from b_orig)}.
+    // b has different copy IDs in left vs right.
+    let test_repo = testutils::TestRepo::init();
+    let repo = &test_repo.repo;
+
+    let a = repo_path("a.txt");
+    let a_history = CopyHistory {
+        current_path: a.to_owned(),
+        parents: vec![],
+        salt: vec![],
+    };
+    let a_copyid = repo
+        .store()
+        .backend()
+        .write_copy(&a_history)
+        .block_on()
+        .unwrap();
+
+    let b = repo_path("b.txt");
+    let b_history_orig = CopyHistory {
+        current_path: b.to_owned(),
+        parents: vec![],
+        salt: vec![],
+    };
+    let b_copyid_orig = repo
+        .store()
+        .backend()
+        .write_copy(&b_history_orig)
+        .block_on()
+        .unwrap();
+    // In the right tree, b has a new copy ID descended from a (a was renamed to b)
+    let b_history_renamed = CopyHistory {
+        current_path: b.to_owned(),
+        parents: vec![a_copyid.clone()],
+        salt: vec![],
+    };
+    let b_copyid_renamed = repo
+        .store()
+        .backend()
+        .write_copy(&b_history_renamed)
+        .block_on()
+        .unwrap();
+
+    let c = repo_path("c.txt");
+    // c descends from the ORIGINAL b (old b was renamed to c)
+    let c_history = CopyHistory {
+        current_path: c.to_owned(),
+        parents: vec![b_copyid_orig.clone()],
+        salt: vec![],
+    };
+    let c_copyid = repo
+        .store()
+        .backend()
+        .write_copy(&c_history)
+        .block_on()
+        .unwrap();
+
+    let left = create_tree_with_copy_id(
+        repo,
+        &[(a, "a content", &a_copyid), (b, "b content", &b_copyid_orig)],
+    );
+    let a_val = left.path_value(a).unwrap();
+    let old_b_val = left.path_value(b).unwrap();
+    let right = create_tree_with_copy_id(
+        repo,
+        &[
+            (b, "was a", &b_copyid_renamed),
+            (c, "was b", &c_copyid),
+        ],
+    );
+    let new_b_val = right.path_value(b).unwrap();
+    let c_val = right.path_value(c).unwrap();
+
+    // Forward: a renamed to b, old b renamed to c.
+    // b has different copy IDs in left vs right, so the diff stream sees the
+    // shadowing case for b (deletion of old + copy-tracing of new), plus a
+    // disappearing and c appearing. The chain renames are correctly detected.
+    assert_eq!(
+        collect_diffs(&left, &right),
+        [
+            // NOTE[rename-source-deletion]
+            expected_deletion(a, &a_val),
+            // Shadowing deletion: old b replaced by new b with different copy ID
+            expected_deletion(b, &old_b_val),
+            expected_rename(a, &a_val, b, &new_b_val),
+            expected_rename(b, &old_b_val, c, &c_val),
+        ],
+    );
+
+    // Reverse
+    assert_eq!(
+        collect_diffs(&right, &left),
+        [
+            expected_rename(b, &new_b_val, a, &a_val),
+            // Shadowing deletion: new b replaced by old b with different copy ID
+            // NOTE[rename-source-deletion]
+            expected_deletion(b, &new_b_val),
+            expected_rename(c, &c_val, b, &old_b_val),
+            // NOTE[rename-source-deletion]
+            expected_deletion(c, &c_val),
+        ],
+    );
+}
+
+#[test]
 fn test_copy_diffstream_file_dir_mismatch() {
     // CASE: file / dir mismatch
     let test_repo = testutils::TestRepo::init();
