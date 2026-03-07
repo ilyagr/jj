@@ -24,11 +24,7 @@ use std::task::ready;
 
 use futures::Stream;
 use futures::StreamExt as _;
-use futures::future::BoxFuture;
-use futures::future::ready;
 use futures::future::try_join_all;
-use futures::stream::Fuse;
-use futures::stream::FuturesOrdered;
 use indexmap::IndexMap;
 use indexmap::IndexSet;
 
@@ -373,169 +369,138 @@ impl CopyHistoryTreeDiffEntry {
     }
 }
 
+/// The result of processing a single `TreeDiffEntry` through copy-tracing.
+enum CopyDiffAction {
+    /// Emit this entry directly (no copy-tracing needed).
+    Normal,
+    /// Emit this copy-traced entry instead.
+    CopyTraced(CopyHistoryTreeDiffEntry),
+    /// Split the entry's `before` and `after` into separate deletion +
+    /// creation entries and re-process both halves through the loop.
+    DecomposeDeletionAndCreation,
+    /// Suppress this entry (it's a rename source handled elsewhere).
+    Suppress,
+}
+
+/// Decides how to handle a single diff entry with respect to copy history.
+async fn classify_diff_entry(
+    before_tree: &MergedTree,
+    after_tree: &MergedTree,
+    path: &RepoPath,
+    before: &MergedTreeValue,
+    after: &MergedTreeValue,
+) -> CopyDiffAction {
+    // Don't try copy-tracing if we have conflicts on either side.
+    //
+    // TODO: consider accepting conflicts if the copy IDs can be resolved.
+    let (Some(before), Some(after)) = (before.as_resolved(), after.as_resolved()) else {
+        return CopyDiffAction::Normal;
+    };
+
+    match (before, after) {
+        // Matching copy IDs — no copy-tracing needed.
+        (
+            Some(TreeValue::File { copy_id: id1, .. }),
+            Some(TreeValue::File { copy_id: id2, .. }),
+        ) if id1 == id2 => CopyDiffAction::Normal,
+
+        // Shadowing: same path, different copy IDs (or non-file → file).
+        // Split into deletion + creation and re-process both through the
+        // loop — the deletion goes through the `(Some(File), None)` arm
+        // (which checks `file_was_renamed_away`), and the creation goes
+        // through the `(None, Some(File))` arm (copy-tracing).
+        (Some(_), Some(TreeValue::File { .. })) => CopyDiffAction::DecomposeDeletionAndCreation,
+
+        // New file with copy history — do copy-tracing.
+        (None, Some(f @ TreeValue::File { .. })) => {
+            let traced = tree_diff_entry_from_copies(
+                before_tree.clone(),
+                after_tree.clone(),
+                f.clone(),
+                path.to_owned(),
+            )
+            .await;
+            CopyDiffAction::CopyTraced(traced)
+        }
+
+        // File deleted or renamed — check via reversed copy-tracing.
+        // If renamed, suppress this entry; the rename is emitted when
+        // the "after" side is processed.
+        (Some(f @ TreeValue::File { .. }), None) => {
+            if file_was_renamed_away(before_tree.clone(), after_tree.clone(), f.clone()).await {
+                CopyDiffAction::Suppress
+            } else {
+                CopyDiffAction::Normal
+            }
+        }
+
+        // Anything else (e.g. non-file deletions, file → non-file).
+        _ => CopyDiffAction::Normal,
+    }
+}
+
 /// Adapts a `TreeDiffStream` to follow copies / renames.
-pub struct CopyHistoryDiffStream<'a> {
-    inner: Fuse<TreeDiffStream<'a>>,
-    /// Synthetic `TreeDiffEntry`s from splitting shadowing entries (same path,
-    /// different copy IDs) into separate deletion + creation entries.
-    pending_inner: VecDeque<TreeDiffEntry>,
+///
+/// Generally prefer `MergedTree::diff_stream_with_copy_history()` instead of
+/// calling this directly.
+pub fn copy_history_diff_stream<'a>(
+    inner: TreeDiffStream<'a>,
     before_tree: &'a MergedTree,
     after_tree: &'a MergedTree,
-    pending: FuturesOrdered<BoxFuture<'static, Option<CopyHistoryTreeDiffEntry>>>,
-}
-
-impl<'a> CopyHistoryDiffStream<'a> {
-    /// Creates an iterator over the differences between two trees, taking copy
-    /// history into account. Generally prefer
-    /// `MergedTree::diff_stream_with_copy_history()` instead of calling this
-    /// directly.
-    pub fn new(
-        inner: TreeDiffStream<'a>,
-        before_tree: &'a MergedTree,
-        after_tree: &'a MergedTree,
-    ) -> Self {
-        Self {
-            inner: inner.fuse(),
-            pending_inner: VecDeque::with_capacity(2),
-            before_tree,
-            after_tree,
-            pending: FuturesOrdered::new(),
-        }
-    }
-}
-
-impl Stream for CopyHistoryDiffStream<'_> {
-    type Item = CopyHistoryTreeDiffEntry;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        loop {
-            // First, check if we have newly-finished futures. If this returns Pending, we
-            // intentionally fall through to poll `self.inner`.
-            if let Poll::Ready(Some(next)) = self.pending.poll_next_unpin(cx) {
-                if let Some(entry) = next {
-                    return Poll::Ready(Some(entry));
-                }
-                // The future evaluated successfully but does not wish to provide any diff
-                // entries
-                continue;
-            }
-
-            // If we didn't have queued results above, we want to check our wrapped stream
-            // for the next non-copy-matched diff entry.
-            let next_diff_entry = match self.pending_inner.pop_front() {
-                Some(entry) => entry,
-                None => match ready!(self.inner.poll_next_unpin(cx)) {
-                    Some(diff_entry) => diff_entry,
-                    None if self.pending.is_empty() => return Poll::Ready(None),
-                    _ => return Poll::Pending,
-                },
-            };
-
-            let Ok(Diff { before, after }) = &next_diff_entry.values else {
-                self.pending
-                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
-                        next_diff_entry,
-                    )))));
-                continue;
-            };
-
-            // Don't try copy-tracing if we have conflicts on either side.
-            //
-            // TODO: consider accepting conflicts if the copy IDs can be resolved.
-            let Some(before) = before.as_resolved() else {
-                self.pending
-                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
-                        next_diff_entry,
-                    )))));
-                continue;
-            };
-            let Some(after) = after.as_resolved() else {
-                self.pending
-                    .push_back(Box::pin(ready(Some(CopyHistoryTreeDiffEntry::normal(
-                        next_diff_entry,
-                    )))));
-                continue;
-            };
-
-            match (before, after) {
-                // If we have files with matching copy_ids, no need to do copy-tracing.
-                (
-                    Some(TreeValue::File { copy_id: id1, .. }),
-                    Some(TreeValue::File { copy_id: id2, .. }),
-                ) if id1 == id2 => {
-                    self.pending.push_back(Box::pin(ready(Some(
-                        CopyHistoryTreeDiffEntry::normal(next_diff_entry),
-                    ))));
-                }
-
-                // Shadowing: same path, different copy IDs (or non-file →
-                // file). Split into a deletion of the old value and a
-                // creation of the new value, then re-process both through
-                // the main loop. This lets the deletion go through
-                // `file_was_renamed_away` (if the old value is a File),
-                // suppressing it when the old file was actually renamed
-                // elsewhere — e.g., in chain renames like a→b, old_b→c.
-                //
-                // Note: same-path-parent cases are unaffected because
-                // `classify_source` returns Normal (not Rename), so
-                // `file_was_renamed_away` returns false for them.
-                (Some(other), Some(f @ TreeValue::File { .. })) => {
-                    self.pending_inner.push_back(TreeDiffEntry {
-                        path: next_diff_entry.path.clone(),
-                        values: Ok(Diff {
-                            before: Merge::resolved(Some(other.clone())),
-                            after: Merge::resolved(None),
-                        }),
-                    });
-                    self.pending_inner.push_back(TreeDiffEntry {
-                        path: next_diff_entry.path.clone(),
-                        values: Ok(Diff {
-                            before: Merge::resolved(None),
-                            after: Merge::resolved(Some(f.clone())),
-                        }),
-                    });
-                    continue;
-                }
-
-                // New file with copy history — do copy-tracing.
-                (None, Some(f @ TreeValue::File { .. })) => {
-                    let future = tree_diff_entry_from_copies(
-                        self.before_tree.clone(),
-                        self.after_tree.clone(),
-                        f.clone(),
-                        next_diff_entry.path.clone(),
-                    );
-                    self.pending.push_back(Box::pin(future));
-                }
-
-                (Some(f @ TreeValue::File { .. }), None) => {
-                    // A file is has been either deleted or renamed. Use
-                    // reversed copy-tracing to check which. If it was renamed,
-                    // we emit nothing now. The rename entry is emitted on a
-                    // different loop iteration, whenever the corresponding
-                    // entry on the "after" side is processed.
-                    let before_tree = self.before_tree.clone();
-                    let after_tree = self.after_tree.clone();
-                    let f = f.clone();
-                    self.pending.push_back(Box::pin(async move {
-                        if file_was_renamed_away(before_tree, after_tree, f).await {
-                            None
-                        } else {
-                            Some(CopyHistoryTreeDiffEntry::normal(next_diff_entry))
-                        }
-                    }));
-                }
-
-                // Anything else (e.g. non-file deletions, file => non-file),
-                // issue a simple diff entry.
-                _ => {
-                    self.pending.push_back(Box::pin(ready(Some(
-                        CopyHistoryTreeDiffEntry::normal(next_diff_entry),
-                    ))));
+) -> impl Stream<Item = CopyHistoryTreeDiffEntry> + 'a {
+    futures::stream::unfold(
+        (inner, VecDeque::with_capacity(2)),
+        move |(mut inner, mut pending): (TreeDiffStream<'_>, VecDeque<TreeDiffEntry>)| async move {
+            loop {
+                let entry = match pending.pop_front() {
+                    Some(e) => e,
+                    None => inner.next().await?,
+                };
+                let Ok(Diff { before, after }) = entry.values else {
+                    return Some((CopyHistoryTreeDiffEntry::normal(entry), (inner, pending)));
+                };
+                match classify_diff_entry(before_tree, after_tree, &entry.path, &before, &after)
+                    .await
+                {
+                    CopyDiffAction::Normal => {
+                        // We deconstructed `entry` above, and reconstruct it here to avoid either a
+                        // clone or a "use of a partially moved value" error.
+                        let entry = TreeDiffEntry {
+                            path: entry.path,
+                            values: Ok(Diff { before, after }),
+                        };
+                        return Some((CopyHistoryTreeDiffEntry::normal(entry), (inner, pending)));
+                    }
+                    CopyDiffAction::CopyTraced(traced) => {
+                        return Some((traced, (inner, pending)));
+                    }
+                    CopyDiffAction::DecomposeDeletionAndCreation => {
+                        pending.push_back(TreeDiffEntry {
+                            path: entry.path.clone(),
+                            values: Ok(Diff {
+                                before,
+                                after: Merge::resolved(None),
+                            }),
+                        });
+                        pending.push_back(TreeDiffEntry {
+                            path: entry.path,
+                            values: Ok(Diff {
+                                before: Merge::resolved(None),
+                                after,
+                            }),
+                        });
+                        // Note: `pending` will never have more than two
+                        // elements; the logic of `classify_diff_entry` is such
+                        // that this arm is only hit if neither `before` nor
+                        // `after` are `None`, so the synthetic entries we added
+                        // won't trigger it again.
+                        continue;
+                    }
+                    CopyDiffAction::Suppress => continue,
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 async fn classify_source(
@@ -594,11 +559,11 @@ async fn tree_diff_entry_from_copies(
     after_tree: MergedTree,
     file: TreeValue,
     target_path: RepoPathBuf,
-) -> Option<CopyHistoryTreeDiffEntry> {
-    Some(CopyHistoryTreeDiffEntry {
+) -> CopyHistoryTreeDiffEntry {
+    CopyHistoryTreeDiffEntry {
         target_path,
         diffs: diffs_from_copies(before_tree, after_tree, file).await,
-    })
+    }
 }
 
 /// Checks whether `before_file`, which is assumed to exist in `before_tree` but
