@@ -415,8 +415,10 @@ async fn resolve_diff_entry_copies(
             }]
         }
 
-        // For files with non-matching copy-ids, or for a non-file that changes to a
-        // file, mark the first as deleted and do copy-tracing on the second.
+        // File with non-matching copy ID, or non-file replaced by file:
+        // mark the old value as deleted and do copy-tracing on the new one.
+        // The deletion is suppressed if `file_was_renamed_away` detects the
+        // old file was renamed elsewhere (e.g. chain renames like a→b, old_b→c).
         //
         // NOTE[deletion-diff-entry]: this may emit two diff entries, where the old
         // diffstream would contain only one (even with gix's heuristic-based copy
@@ -434,19 +436,24 @@ async fn resolve_diff_entry_copies(
         (Some(other), Some(f @ TreeValue::File { .. })) => {
             let other = other.clone();
             let f = f.clone();
-            vec![
-                CopyHistoryTreeDiffEntry {
+            let mut results = Vec::with_capacity(2);
+            let suppress_deletion = matches!(&other, TreeValue::File { .. })
+                && file_was_renamed_away(before_tree.clone(), after_tree.clone(), other.clone())
+                    .await;
+            if !suppress_deletion {
+                results.push(CopyHistoryTreeDiffEntry {
                     target_path: diff_entry.path.clone(),
                     diffs: Ok(Merge::resolved(CopyHistoryDiffTerm {
                         target_value: None,
                         sources: vec![(CopyHistorySource::Normal, Merge::resolved(Some(other)))],
                     })),
-                },
-                CopyHistoryTreeDiffEntry {
-                    target_path: diff_entry.path,
-                    diffs: diffs_from_copies(before_tree, after_tree, f).await,
-                },
-            ]
+                });
+            }
+            results.push(CopyHistoryTreeDiffEntry {
+                target_path: diff_entry.path,
+                diffs: diffs_from_copies(before_tree, after_tree, f).await,
+            });
+            results
         }
 
         // A file has been either deleted or renamed. Use reversed

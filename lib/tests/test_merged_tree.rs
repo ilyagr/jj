@@ -2273,30 +2273,22 @@ fn test_copy_diffstream_chain_rename() {
     let c_val = right.path_value(c).block_on().unwrap();
 
     // Forward: a renamed to b, old b renamed to c.
-    // b has different copy IDs in left vs right, so the diff stream sees the
-    // shadowing case for b (deletion of old + copy-tracing of new), plus a
-    // disappearing and c appearing. The chain renames are correctly detected.
-    // a's rename-source deletion is suppressed by `file_was_renamed_away`.
-    //
-    // TODO: Ideally the output would just be [rename(a→b), rename(b→c)].
-    // The shadowing deletion of b is redundant with the two renames.
+    // b has different copy IDs in left vs right (shadowing). The deletion of
+    // old_b is suppressed by `file_was_renamed_away` (old_b was renamed to c).
     assert_eq!(
         collect_diffs(&left, &right),
         [
-            // TODO: this shadowing deletion is redundant with the renames
-            expected_deletion(b, &old_b_val),
             expected_rename(a, &a_val, b, &new_b_val),
             expected_rename(b, &old_b_val, c, &c_val),
         ],
     );
 
-    // Reverse: symmetric.
+    // Reverse: symmetric — new_b's deletion is suppressed because
+    // `file_was_renamed_away` detects new_b was renamed to a.
     assert_eq!(
         collect_diffs(&right, &left),
         [
             expected_rename(b, &new_b_val, a, &a_val),
-            // TODO: this shadowing deletion is redundant with the renames
-            expected_deletion(b, &new_b_val),
             expected_rename(c, &c_val, b, &old_b_val),
         ],
     );
@@ -2404,6 +2396,54 @@ fn test_copy_diffstream_symlink_with_history() {
             expected_deletion(path, &symlink_val),
             expected_copy(other_path, &other_val, path, &file_val),
         ],
+    );
+}
+
+#[test]
+fn test_copy_diffstream_copy_over_symlink() {
+    // CASE: foo is a file, bar is a symlink. bar becomes a copy of foo
+    // (overwriting the symlink). This exercises the shadowing split for
+    // non-file → file: the symlink deletion goes through the catch-all arm
+    // (not `file_was_renamed_away`), and the file creation is copy-traced.
+    let test_repo = testutils::TestRepo::init();
+    let repo = &test_repo.repo;
+
+    let foo = repo_path("foo.txt");
+    let bar = repo_path("bar.txt");
+    let histories = write_copy_histories(repo, &[(foo, vec![]), (bar, vec![foo])]);
+
+    let mut left_builder = TestTreeBuilder::new(repo.store().clone());
+    left_builder
+        .file(foo, "foo contents")
+        .copy_history(&histories[foo]);
+    left_builder.symlink(bar, "./some_target");
+    let left = left_builder.write_merged_tree();
+    let foo_val = left.path_value(foo).block_on().unwrap();
+    let symlink_val = left.path_value(bar).block_on().unwrap();
+
+    // foo still exists in right (this is a copy, not a rename).
+    let right = create_tree_with_copy_history(
+        repo,
+        &histories,
+        &[(foo, "foo contents"), (bar, "copied from foo")],
+    );
+    let new_bar_val = right.path_value(bar).block_on().unwrap();
+
+    // Forward: bar changes from symlink to file (shadowing split: symlink
+    // deletion via catch-all + copy-traced creation from foo).
+    assert_eq!(
+        collect_diffs(&left, &right),
+        [
+            expected_deletion(bar, &symlink_val),
+            expected_copy(foo, &foo_val, bar, &new_bar_val),
+        ],
+    );
+
+    // Reverse: bar changes from file to symlink. This hits the catch-all
+    // (symlink is not a File), so no copy-tracing — just a normal entry.
+    assert_eq!(
+        collect_diffs(&right, &left),
+        [expected_normal(bar, &new_bar_val, &symlink_val)],
     );
 }
 
@@ -2850,12 +2890,13 @@ fn test_copy_diffstream_merge_oneway() {
         ],
     );
 
+    // Reverse: bar_merged's shadowing deletion is suppressed because reversed
+    // copy-tracing finds Rename(foo) — foo is a parent of bar_merged in the
+    // copy graph, and foo is absent from right_no_foo. The deletion is
+    // redundant with the Normal entry that already captures bar's change.
     assert_eq!(
         collect_diffs(&right_no_foo, &left),
         [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(bar, &new_bar_val),
             expected_normal(bar, &new_bar_val, &old_bar_val),
             expected_copy(bar, &new_bar_val, foo, &foo_val),
         ],
@@ -3057,12 +3098,13 @@ fn test_copy_diffstream_rename_overwrite() {
         ],
     );
 
+    // Reverse: bar_renamed's shadowing deletion is suppressed because reversed
+    // copy-tracing finds Rename(foo) — foo is a parent of bar_renamed, and
+    // foo is absent from right. The deletion is redundant with the
+    // rename(bar→foo) entry.
     assert_eq!(
         collect_diffs(&right, &left),
         [
-            // TODO: these deletion/creation entries should eventually be replaced with a single
-            // "normal" entry; see NOTE[deletion-diff-entry] in copies.rs
-            expected_deletion(bar, &new_bar_val),
             expected_creation(bar, &old_bar_val),
             expected_rename(bar, &new_bar_val, foo, &foo_val),
         ],
@@ -3186,30 +3228,23 @@ fn test_copy_diffstream_double_rename() {
     let new_foo_val = right.path_value(foo).block_on().unwrap();
     let new_bar_val = right.path_value(bar).block_on().unwrap();
 
+    // The swap is fully described by two renames. The shadowing deletions
+    // of old_bar and old_foo are suppressed because `file_was_renamed_away`
+    // detects that each was renamed to the other path (old_bar→foo in the
+    // copy graph, old_foo→bar in the copy graph).
     assert_eq!(
         collect_diffs(&left, &right),
         [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(bar, &old_bar_val),
             expected_rename(foo, &old_foo_val, bar, &new_bar_val),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &old_foo_val),
             expected_rename(bar, &old_bar_val, foo, &new_foo_val),
         ],
     );
 
+    // Reverse: symmetric.
     assert_eq!(
         collect_diffs(&right, &left),
         [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(bar, &new_bar_val),
             expected_rename(foo, &new_foo_val, bar, &old_bar_val),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &new_foo_val),
             expected_rename(bar, &new_bar_val, foo, &old_foo_val),
         ],
     );
