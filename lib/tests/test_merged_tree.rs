@@ -2755,22 +2755,12 @@ fn test_copy_diffstream_same_path_parent() {
 
     assert_eq!(
         collect_diffs(&left, &right),
-        [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &old_foo_val),
-            expected_normal(foo, &old_foo_val, &new_foo_val),
-        ],
+        [expected_normal(foo, &old_foo_val, &new_foo_val)],
     );
 
     assert_eq!(
         collect_diffs(&right, &left),
-        [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &new_foo_val),
-            expected_normal(foo, &new_foo_val, &old_foo_val),
-        ],
+        [expected_normal(foo, &new_foo_val, &old_foo_val)],
     );
 }
 

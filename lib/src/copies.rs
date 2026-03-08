@@ -379,9 +379,28 @@ pub fn copy_history_diff_stream<'a>(
         .flat_map(futures::stream::iter)
 }
 
-/// Classifies a single `TreeDiffEntry`, performing copy-tracing when needed.
-/// Returns a `Vec` because in some cases (different copy IDs at the same path)
-/// a single TreeDiffEntry decomposes into a deletion + copy-traced creation.
+/// Returns true if `id1` and `id2` represent a simple same-path evolution:
+/// one is the sole direct parent of the other, and both are at the same path.
+/// This excludes merges (multiple parents) and indirect ancestry through
+/// different paths (e.g. rename round-trips like foo→bar→foo).
+async fn is_simple_same_path_evolution(tree: &MergedTree, id1: &CopyId, id2: &CopyId) -> bool {
+    let backend = tree.store().backend();
+    let Ok(h1) = backend.read_copy(id1).await else {
+        return false;
+    };
+    let Ok(h2) = backend.read_copy(id2).await else {
+        return false;
+    };
+    h1.current_path == h2.current_path
+        && (h1.parents == [id2.clone()] || h2.parents == [id1.clone()])
+}
+
+/// Classifies a `TreeDiffEntry` into zero or more [`CopyHistoryTreeDiffEntry`]s
+/// by examining copy histories. Returns a `Vec` because shadowing cases (same
+/// path, different copy IDs) decompose into a deletion + copy-traced creation.
+///
+/// This is the core logic of [`copy_history_diff_stream`], extracted into an
+/// async function so it can be pipelined via `.buffered()`.
 async fn resolve_diff_entry_copies(
     before_tree: MergedTree,
     after_tree: MergedTree,
@@ -415,53 +434,53 @@ async fn resolve_diff_entry_copies(
             }]
         }
 
-        // File with non-matching copy ID, or non-file replaced by file:
-        // mark the old value as deleted and do copy-tracing on the new one.
-        // The deletion is suppressed if `file_was_renamed_away` detects the
-        // old file was renamed elsewhere (e.g. chain renames like a→b, old_b→c).
-        //
-        // NOTE[deletion-diff-entry]: this may emit two diff entries, where the old
-        // diffstream would contain only one (even with gix's heuristic-based copy
-        // detection).
-        //
-        // This may be desirable in some cases (such as replacing a file X with a
-        // copy of some other file Y; the deletion entry makes it more clear that
-        // the original X was replaced by a formerly unrelated file). It is less
-        // desirable in cases where the new file shares some actual relation to the
-        // old one.
-        //
-        // We plan to improve this in the near future, but for now we'll keep the
-        // simpler implementation since this behavior is not visible outside of
-        // tests yet.
+        // Same path, different copy IDs (or non-file → file).
         (Some(other), Some(f @ TreeValue::File { .. })) => {
+            let before_copy_id = other.copy_id().cloned();
+            let after_copy_id = f.copy_id().unwrap().clone();
             let other = other.clone();
             let f = f.clone();
+
+            // When copy IDs differ but one is the sole direct parent of the
+            // other at the same path, this is a simple evolution (e.g. a file
+            // gaining new copy metadata). Emit as normal, don't split.
+            if let Some(before_id) = &before_copy_id {
+                if is_simple_same_path_evolution(&before_tree, before_id, &after_copy_id).await {
+                    return vec![CopyHistoryTreeDiffEntry::normal(diff_entry)];
+                }
+            }
+            // Otherwise, decompose into deletion + copy-traced creation.
+            // The deletion is suppressed if `file_was_renamed_away` detects the
+            // old file was renamed elsewhere (chain renames, swaps, etc.).
             let mut results = Vec::with_capacity(2);
+
             let suppress_deletion = matches!(&other, TreeValue::File { .. })
                 && file_was_renamed_away(before_tree.clone(), after_tree.clone(), other.clone())
                     .await;
             if !suppress_deletion {
-                results.push(CopyHistoryTreeDiffEntry {
-                    target_path: diff_entry.path.clone(),
-                    diffs: Ok(Merge::resolved(CopyHistoryDiffTerm {
-                        target_value: None,
-                        sources: vec![(CopyHistorySource::Normal, Merge::resolved(Some(other)))],
-                    })),
-                });
+                results.push(CopyHistoryTreeDiffEntry::normal(TreeDiffEntry {
+                    path: diff_entry.path.clone(),
+                    values: Ok(Diff {
+                        before: Merge::resolved(Some(other)),
+                        after: Merge::resolved(None),
+                    }),
+                }));
             }
+
             results.push(CopyHistoryTreeDiffEntry {
                 target_path: diff_entry.path,
                 diffs: diffs_from_copies(before_tree, after_tree, f).await,
             });
+
             results
         }
 
-        // A file has been either deleted or renamed. Use reversed
-        // copy-tracing to check which. If it was renamed, we emit nothing
-        // now — the rename entry is emitted when the corresponding entry
-        // on the "after" side is processed.
+        // File disappeared — might be a deletion or a rename.
         (Some(f @ TreeValue::File { .. }), None) => {
             let f = f.clone();
+            // Use reversed copy-tracing to check whether the file was renamed
+            // rather than deleted. If renamed, suppress — the rename entry is
+            // emitted when the corresponding "after" side is processed.
             if file_was_renamed_away(before_tree, after_tree, f).await {
                 vec![]
             } else {
@@ -494,9 +513,31 @@ async fn file_was_renamed_away(
     // detect the reverse rename). In unusual cases, we may get a `Copy` instead
     // — this means the target path exists in both trees, so the deletion is a
     // separate real event and should not be suppressed.
+
+    // TODO: Figure out what's going on with this Copy case. (Aside:
+    // CopyHistorySource::Normal shouldn't happen because `before_file` is not
+    // in `after_tree`). Here's what AI thinks about that:
+
+    // AI: The previous Claude instance tried treating `Rename` and `Copy` the same.
+    // AI: This broke the reverse case of `test_copy_diffstream_copy`. The scenario:
+    //
+    // AI: - `foo` exists, `bar` is a copy of `foo`. Then `bar` is deleted.
+    // AI: - Reversed copy-tracing for `bar` finds `foo` as a relative. Since `foo`
+    // AI:   still exists at its path in both trees, `classify_source` returns
+    // AI:   `Copy(foo)`, not `Rename(foo)`.
+    // AI: - If we suppressed on `Copy`, we'd lose `bar`'s deletion — but `bar` was
+    // AI:   genuinely deleted (`foo` still exists, it wasn't a rename).
+    //
+    // AI: The distinction is clear: `Rename(path)` means the source path is absent
+    // AI: from the "after" tree (in the reversed sense), so the file truly moved
+    // AI: away. `Copy(path)` means the source still exists, so the deletion is a
+    // AI: separate real event.
     diffs_from_copies(after_tree, before_tree, before_file)
         .await
         .is_ok_and(|diffs| {
+            // Note: as of this writing, `diffs` will always be a resolved
+            // conflict with a single add. The conflict logic should be correct,
+            // but is not tested.
             diffs.adds().any(|term| {
                 term.sources
                     .iter()
