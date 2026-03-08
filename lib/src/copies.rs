@@ -465,12 +465,53 @@ async fn resolve_diff_entry_copies(
             ]
         }
 
-        // Anything else (e.g. file => non-file non-tree), issue a simple diff entry.
-        //
-        // NOTE[deletion-diff-entry2]: this is another point where a spurious deletion entry
-        // can be generated; we have a planned fix in the works.
+        // A file has been either deleted or renamed. Use reversed
+        // copy-tracing to check which. If it was renamed, we emit nothing
+        // now — the rename entry is emitted when the corresponding entry
+        // on the "after" side is processed.
+        (Some(f @ TreeValue::File { .. }), None) => {
+            let f = f.clone();
+            if file_was_renamed_away(before_tree, after_tree, f).await {
+                vec![]
+            } else {
+                vec![CopyHistoryTreeDiffEntry::normal(diff_entry)]
+            }
+        }
+
+        // Anything else (e.g. non-file deletions, file → non-file).
         _ => vec![CopyHistoryTreeDiffEntry::normal(diff_entry)],
     }
+}
+
+/// Checks whether `before_file`, which is assumed to exist in `before_tree` but
+/// not in `after_tree` at its current path, was deleted or whether it was
+/// renamed to something else in the `after` tree.
+async fn file_was_renamed_away(
+    before_tree: MergedTree,
+    after_tree: MergedTree,
+    before_file: TreeValue,
+) -> bool {
+    // Call `diffs_from_copies` with the trees reversed. From the reversed
+    // perspective, `file` looks like a new entry in the "before" tree.
+    //
+    // `diffs_from_copies` will check whether it corresponds to something from
+    // the "after" tree. If not, `diffs_from_copies` will see `before_file` as a
+    // completely new file creation and return a diff entry with no sources.
+    // This means that the removal of `before_file` in the `before_tree` is a
+    // genuine deletion. If the removal of `before_file` was a rename,
+    // `diffs_from_copies` will return a `CopyHistorySource::Rename` (it will
+    // detect the reverse rename). In unusual cases, we may get a `Copy` instead
+    // — this means the target path exists in both trees, so the deletion is a
+    // separate real event and should not be suppressed.
+    diffs_from_copies(after_tree, before_tree, before_file)
+        .await
+        .is_ok_and(|diffs| {
+            diffs.adds().any(|term| {
+                term.sources
+                    .iter()
+                    .any(|(src, _)| matches!(src, CopyHistorySource::Rename(_)))
+            })
+        })
 }
 
 async fn diffs_from_copies(

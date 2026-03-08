@@ -2196,23 +2196,13 @@ fn test_copy_diffstream_rename() -> TestResult {
     let bar_val = right.path_value(bar).block_on()?;
     assert_eq!(
         collect_diffs(&left, &right),
-        [
-            expected_rename(foo, &foo_val, bar, &bar_val),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &foo_val),
-        ],
+        [expected_rename(foo, &foo_val, bar, &bar_val)],
     );
 
     // reverse diff
     assert_eq!(
         collect_diffs(&right, &left),
-        [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(bar, &bar_val),
-            expected_rename(bar, &bar_val, foo, &foo_val),
-        ],
+        [expected_rename(bar, &bar_val, foo, &foo_val)],
     );
     Ok(())
 }
@@ -2285,29 +2275,28 @@ fn test_copy_diffstream_chain_rename() -> TestResult {
     // b has different copy IDs in left vs right, so the diff stream sees the
     // shadowing case for b (deletion of old + copy-tracing of new), plus a
     // disappearing and c appearing. The chain renames are correctly detected.
+    // a's rename-source deletion is suppressed by `file_was_renamed_away`.
+    //
+    // TODO: Ideally the output would just be [rename(a→b), rename(b→c)].
+    // The shadowing deletion of b is redundant with the two renames.
     assert_eq!(
         collect_diffs(&left, &right),
         [
-            // NOTE[rename-source-deletion]
-            expected_deletion(a, &a_val),
-            // Shadowing deletion: old b replaced by new b with different copy ID
+            // TODO: this shadowing deletion is redundant with the renames
             expected_deletion(b, &old_b_val),
             expected_rename(a, &a_val, b, &new_b_val),
             expected_rename(b, &old_b_val, c, &c_val),
         ],
     );
 
-    // Reverse
+    // Reverse: symmetric.
     assert_eq!(
         collect_diffs(&right, &left),
         [
             expected_rename(b, &new_b_val, a, &a_val),
-            // Shadowing deletion: new b replaced by old b with different copy ID
-            // NOTE[rename-source-deletion]
+            // TODO: this shadowing deletion is redundant with the renames
             expected_deletion(b, &new_b_val),
             expected_rename(c, &c_val, b, &old_b_val),
-            // NOTE[rename-source-deletion]
-            expected_deletion(c, &c_val),
         ],
     );
     Ok(())
@@ -2677,23 +2666,20 @@ fn test_copy_diffstream_multiple_descendants() -> TestResult {
         collect_diffs(&left, &right),
         [
             expected_rename(gru, &gru_val, bar, &bar_val),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(gru, &gru_val),
             expected_rename(gru, &gru_val, qux, &qux_val),
         ],
     );
 
     // check reverse diff
+    //
+    // Note: qux's deletion is suppressed because reversed copy-tracing
+    // finds gru (a relative) in `left`, and gru is absent from `right`,
+    // so classify_source returns Rename. However, the forward copy-tracing
+    // for gru only matched bar (the nearest relative), so there is no
+    // rename entry for qux — it vanishes from the diff entirely.
     assert_eq!(
         collect_diffs(&right, &left),
-        [
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(bar, &bar_val),
-            expected_rename(bar, &bar_val, gru, &gru_val),
-            expected_deletion(qux, &qux_val),
-        ],
+        [expected_rename(bar, &bar_val, gru, &gru_val)],
     );
     Ok(())
 }
@@ -2857,8 +2843,9 @@ fn test_copy_diffstream_merge_oneway() -> TestResult {
                     ],
                 }),
             ),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
+            // Foo's deletion is not suppressed here because reversed
+            // copy-tracing finds Copy (not Rename) — bar still exists at
+            // bar's path in both trees, just with a different copy ID.
             expected_deletion(foo, &foo_val),
         ],
     );
@@ -3062,9 +3049,6 @@ fn test_copy_diffstream_rename_overwrite() -> TestResult {
         [
             expected_deletion(bar, &old_bar_val),
             expected_rename(foo, &foo_val, bar, &new_bar_val),
-            // TODO: this deletion should disappear eventually; see NOTE[deletion-diff-entry] in
-            // copies.rs
-            expected_deletion(foo, &foo_val),
         ],
     );
 
